@@ -427,7 +427,9 @@ export const useAura = () => {
 
   useEffect(() => {
     if (!isUnlocked || !keyRef.current) return;
-    saveVault(keyRef.current, getVaultSnapshot()).then(() => setStorageUsage(getVaultStorageUsage()));
+    saveVault(keyRef.current, getVaultSnapshot()).then(() =>
+      setStorageUsage(getVaultStorageUsage())
+    );
   }, [isUnlocked, getVaultSnapshot]);
 
   useEffect(() => {
