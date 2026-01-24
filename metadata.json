@@ -1,0 +1,5 @@
+{
+  "name": "Areté Life OS",
+  "description": "A personal life operating system dedicated to the pursuit of excellence. Areté internalizes your health, finance, and spiritual data to provide high-fidelity tactical guidance.",
+  "requestFramePermissions": ["camera", "microphone"]
+}

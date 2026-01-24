@@ -1,0 +1,54 @@
+import path from 'path';
+import { defineConfig, loadEnv } from 'vite';
+import react from '@vitejs/plugin-react';
+import { handleGeminiAction } from './api/gemini';
+
+const devGeminiProxy = () => ({
+  name: 'dev-gemini-proxy',
+  configureServer(server: any) {
+    server.middlewares.use('/api/gemini', (req: any, res: any) => {
+      if (req.method !== 'POST') {
+        res.statusCode = 405;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: 'Method not allowed' }));
+        return;
+      }
+
+      let body = '';
+      req.on('data', (chunk: Buffer) => {
+        body += chunk.toString();
+      });
+      req.on('end', async () => {
+        try {
+          const parsed = body ? JSON.parse(body) : {};
+          const result = await handleGeminiAction(parsed.action, parsed.payload);
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify(result));
+        } catch (err) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: 'Gemini request failed' }));
+        }
+      });
+    });
+  },
+});
+
+export default defineConfig(({ command, mode }) => {
+  const env = loadEnv(mode, '.', '');
+  if (env.GEMINI_API_KEY) process.env.GEMINI_API_KEY = env.GEMINI_API_KEY;
+  const isDev = command === 'serve';
+  return {
+    server: {
+      port: 3000,
+      host: '0.0.0.0',
+    },
+    plugins: [react(), ...(isDev ? [devGeminiProxy()] : [])],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, '.'),
+      },
+    },
+  };
+});

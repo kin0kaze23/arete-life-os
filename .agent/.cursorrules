@@ -1,0 +1,17 @@
+# Agent Operating Manual
+
+## Mission
+Ship a production-ready Life OS app with stable core loops, premium dark UI, and reliable deployment.
+
+## Guardrails
+- main is always green and deployable
+- no secrets in git
+- minimal changes, iterative
+- tests/build must pass before merge
+
+## Definition of Done (for any task)
+- UI has empty/loading/error states
+- state updates are reactive; no manual refresh
+- edge cases considered
+- lint/typecheck/build pass
+- PR includes verification steps
