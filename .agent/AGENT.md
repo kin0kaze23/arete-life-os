@@ -76,18 +76,22 @@ Logs:
 ## GitHub Automation Rules (Always Enforced)
 
 ### Pre-push checklist (required)
+
 - Run `npm run doctor`
 - Ensure Git status is clean
 
 ### Post-push verification (required)
+
 - Check GitHub Actions for the latest `main` run and confirm it is green
 - If any failure is detected, fix it immediately and re-run CI
 
 ### Automation I will perform
+
 - Commit changes with clear messages
 - Push to `main` only after local `npm run doctor` passes
 - Re-run failed CI jobs and apply fixes until green
 
 ### Suggested improvements (optional)
+
 - Add a local Git hook to block pushes when `npm run doctor` fails
 - Set branch protection to require CI passing before merge
