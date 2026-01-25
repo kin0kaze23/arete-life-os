@@ -67,6 +67,7 @@ Logs:
 - Confirm CI green on PR
 - Merge to main
 - Verify Vercel deployment
+- If deployment issues occur, see [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
 
 ### 7) Safety and secrets
 
@@ -95,3 +96,7 @@ Logs:
 
 - Add a local Git hook to block pushes when `npm run doctor` fails
 - Set branch protection to require CI passing before merge
+
+## Related Documentation
+
+- [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - Common issues and solutions (CSP, Vercel deployment, git config)
