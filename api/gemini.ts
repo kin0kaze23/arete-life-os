@@ -74,6 +74,15 @@ const getOpenAIModel = () => {
   return 'gpt-5.1';
 };
 
+type OpenAIReasoningEffort = 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh';
+
+const getOpenAIReasoningEffort = (): OpenAIReasoningEffort => {
+  const value = process.env.OPENAI_REASONING_EFFORT?.trim().toLowerCase();
+  const allowed: OpenAIReasoningEffort[] = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh'];
+  if (value && (allowed as string[]).includes(value)) return value as OpenAIReasoningEffort;
+  return 'medium';
+};
+
 const getOpenAIClient = () => {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
@@ -86,8 +95,10 @@ const callOpenAI = async (input: string, options?: { json?: boolean }) => {
   const client = getOpenAIClient();
   if (!client) throw new Error('Missing OPENAI_API_KEY');
   const model = getOpenAIModel();
+  const reasoningEffort = getOpenAIReasoningEffort();
   const response = await client.responses.create({
     model,
+    reasoning: { effort: reasoningEffort },
     input,
     ...(options?.json ? { text: { format: { type: 'json_object' } } } : {}),
   });
