@@ -92,11 +92,22 @@ Logs:
 - Push to `main` only after local `npm run doctor` passes
 - Re-run failed CI jobs and apply fixes until green
 
+### Git Hooks (Automated Quality Gates)
+
+Pre-push hook automatically runs `npm run doctor` before each push.
+
+**Setup (run once after cloning):**
+
+```bash
+./scripts/setup-hooks.sh
+```
+
 ### Suggested improvements (optional)
 
-- Add a local Git hook to block pushes when `npm run doctor` fails
 - Set branch protection to require CI passing before merge
 
 ## Related Documentation
 
 - [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - Common issues and solutions (CSP, Vercel deployment, git config)
+- [LEARNINGS.md](./LEARNINGS.md) - Session-by-session discoveries and resolved issues
+- [../CLAUDE.md](../CLAUDE.md) - Quick reference loaded at session start

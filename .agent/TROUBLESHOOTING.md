@@ -9,6 +9,7 @@ Common issues and solutions discovered during development. Reference this before
 ### Issue: UI Broken / CSS Not Loading on Vercel
 
 **Symptoms:**
+
 - App renders but looks completely unstyled
 - Dark background might show, but no Tailwind classes applied
 - Forms and text visible but no styling
@@ -18,6 +19,7 @@ Content Security Policy (CSP) in `vercel.json` blocking external resources.
 
 **Solution:**
 Ensure `connect-src` in CSP includes all required external services:
+
 ```
 connect-src 'self' https://cdn.tailwindcss.com https://esm.sh https://generativelanguage.googleapis.com;
 ```
@@ -29,6 +31,7 @@ connect-src 'self' https://cdn.tailwindcss.com https://esm.sh https://generative
 ### Issue: Vercel Not Auto-Deploying After Push
 
 **Symptoms:**
+
 - Push succeeds to GitHub
 - GitHub Actions CI passes
 - No new deployment appears in Vercel dashboard
@@ -59,11 +62,13 @@ If auto-deploy is broken, manually redeploy from Vercel dashboard while fixing t
 ### Issue: Vercel Check Failing on GitHub
 
 **Symptoms:**
+
 - GitHub shows red X next to commit
 - Message: "No GitHub account was found matching the commit author email"
 
 **Solution:**
 Configure git to use your GitHub noreply email:
+
 ```bash
 # Get your GitHub user ID
 gh api user --jq '.id, .login'
@@ -81,14 +86,15 @@ git config user.email
 
 This project uses external CDNs. The CSP must allow:
 
-| Resource | CSP Directive | Domain |
-|----------|--------------|--------|
-| Tailwind CSS | `script-src`, `connect-src` | `https://cdn.tailwindcss.com` |
-| React/ES Modules | `script-src`, `connect-src` | `https://esm.sh` |
-| Google Fonts | `style-src`, `font-src` | `https://fonts.googleapis.com`, `https://fonts.gstatic.com` |
-| Gemini AI API | `connect-src` | `https://generativelanguage.googleapis.com` |
+| Resource         | CSP Directive               | Domain                                                      |
+| ---------------- | --------------------------- | ----------------------------------------------------------- |
+| Tailwind CSS     | `script-src`, `connect-src` | `https://cdn.tailwindcss.com`                               |
+| React/ES Modules | `script-src`, `connect-src` | `https://esm.sh`                                            |
+| Google Fonts     | `style-src`, `font-src`     | `https://fonts.googleapis.com`, `https://fonts.gstatic.com` |
+| Gemini AI API    | `connect-src`               | `https://generativelanguage.googleapis.com`                 |
 
 **Current working CSP in `vercel.json`:**
+
 ```
 default-src 'self';
 base-uri 'self';
@@ -136,6 +142,7 @@ When something breaks on Vercel:
 ## Architecture Notes
 
 This project uses a CDN-based architecture:
+
 - **Tailwind CSS**: Loaded from CDN, compiled at runtime (not bundled)
 - **React**: Loaded from esm.sh via import maps (not bundled)
 - **Implications**: Requires proper CSP configuration; relies on external service availability
