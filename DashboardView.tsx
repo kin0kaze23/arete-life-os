@@ -448,6 +448,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return chips.slice(0, 6);
   }, [profile, blindSpots]);
 
+  const overallConfidence = useMemo(() => {
+    if (corePillars.length === 0) return 0;
+    const total = corePillars.reduce(
+      (sum, pillar) => sum + getCoverageScore(pillar.id, pillar.categories).total,
+      0
+    );
+    return Math.round(total / corePillars.length);
+  }, [corePillars, memory, sources, profile]);
+
   const ritualData = useMemo(() => {
     const hour = currentTime.getHours();
     if (hour >= 5 && hour < 11)
@@ -819,6 +828,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
           </div>
         </div>
+
+        {overallConfidence < 45 && (
+          <div className="glass-panel p-5 rounded-[2rem] border border-amber-500/20 bg-amber-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-400">
+                Low Data Confidence
+              </p>
+              <p className="text-xs text-amber-200/70 mt-2">
+                We need more signals to personalize your Do/Watch guidance. Add a quick note or
+                upload a file to improve accuracy.
+              </p>
+            </div>
+            <button
+              onClick={() => onNavigate('vault')}
+              className="px-4 py-2 rounded-xl bg-amber-500 text-slate-900 text-[9px] font-black uppercase tracking-widest hover:bg-amber-400 transition-all"
+            >
+              Add Context
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="glass-panel p-8 rounded-[2.5rem] border border-white/5 bg-slate-950/40 flex flex-col gap-6">
