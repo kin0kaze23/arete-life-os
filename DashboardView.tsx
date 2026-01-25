@@ -48,7 +48,9 @@ import {
   WidgetType,
   Recommendation,
   Source,
+  SourceFile,
 } from './types';
+import { SourceViewer } from './SourceViewer';
 
 interface DashboardViewProps {
   memory: MemoryEntry[];
@@ -102,6 +104,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [expandedDoId, setExpandedDoId] = useState<string | null>(null);
   const [expandedRecId, setExpandedRecId] = useState<string | null>(null);
   const [horizon, setHorizon] = useState<'now' | 'soon' | 'always'>('now');
+  const [drawerPillarId, setDrawerPillarId] = useState<string | null>(null);
+  const [viewerSourceId, setViewerSourceId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -220,6 +224,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     );
     return sourceIds.size;
   };
+
+  const getPillarSources = (categories: Category[]) => {
+    const sourceIds = new Set(
+      getPillarMemory(categories)
+        .map((item) => item.sourceId)
+        .filter((id): id is string => Boolean(id))
+    );
+    return sources.filter((s) => sourceIds.has(s.id));
+  };
+
+  const toSourceFile = (source: Source): SourceFile => ({
+    name: source.name,
+    mimeType: source.mimeType,
+    data: source.data,
+  });
 
   const getLatestSignal = (categories: Category[]) => {
     const items = getPillarMemory(categories);
@@ -1134,6 +1153,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             );
             const fallbackTasks = tasks.filter((t) => pillar.categories.includes(t.category));
             const items = recs.length ? recs.slice(0, 2) : fallbackTasks.slice(0, 2);
+            const pillarSources = getPillarSources(pillar.categories);
             const status =
               coverage.total < 40 ? 'At Risk' : coverage.total < 70 ? 'Attention' : 'OK';
             const statusClass =
@@ -1182,6 +1202,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           ? item.description
                           : item.methodology || item.description;
                       const rationale = 'impactScore' in item ? item.rationale : item.reasoning;
+                      const evidenceCount =
+                        'impactScore' in item
+                          ? (item.evidenceLinks?.sources?.length || 0) +
+                            (item.evidenceLinks?.claims?.length || 0)
+                          : 0;
                       return (
                         <button
                           key={id}
@@ -1197,6 +1222,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           <p className="text-[10px] text-slate-400 mt-2 line-clamp-2">
                             {description}
                           </p>
+                          <div className="mt-3 flex items-center gap-2 text-[9px] uppercase tracking-widest text-slate-500">
+                            <span>{getPillarMemory(pillar.categories).length} signals</span>
+                            <span>•</span>
+                            <span>{pillarSources.length} files</span>
+                            {evidenceCount > 0 && (
+                              <>
+                                <span>•</span>
+                                <span>{evidenceCount} evidence</span>
+                              </>
+                            )}
+                          </div>
                           {isExpanded && (
                             <p className="text-[10px] text-slate-500 mt-2">
                               {rationale || 'Grounded in recent signals.'}
@@ -1213,7 +1249,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
 
                 <button
-                  onClick={() => onNavigate('vault')}
+                  onClick={() => setDrawerPillarId(pillar.id)}
                   className="text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-indigo-400 transition-all"
                 >
                   View all
@@ -1259,6 +1295,163 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           ))}
       </div>
+
+      {drawerPillarId && (
+        <div className="fixed inset-0 z-[120] flex items-end lg:items-stretch justify-end bg-black/60 backdrop-blur-md">
+          <div className="w-full lg:w-[520px] bg-[#0a0b10] border-l border-white/5 p-6 lg:p-8 overflow-y-auto no-scrollbar animate-in slide-in-from-right-6 duration-300">
+            {(() => {
+              const pillar = corePillars.find((p) => p.id === drawerPillarId)!;
+              const pillarRecs = recommendations.filter(
+                (r) => pillar.categories.includes(r.category) && r.status === 'ACTIVE'
+              );
+              const pillarTasks = tasks.filter((t) => pillar.categories.includes(t.category));
+              const items = pillarRecs.length ? pillarRecs : pillarTasks;
+              const evidenceSources = getPillarSources(pillar.categories);
+              const evidenceSignals = getPillarMemory(pillar.categories).slice(0, 5);
+              const coverage = getCoverageScore(pillar.id, pillar.categories);
+
+              return (
+                <div className="space-y-6">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-[9px] uppercase tracking-widest text-slate-500">
+                        Domain detail
+                      </p>
+                      <h3 className="text-2xl font-black text-white">{pillar.title}</h3>
+                      <p className="text-[10px] text-slate-500 mt-2">
+                        Data confidence {coverage.total}% • {evidenceSignals.length} signals •{' '}
+                        {evidenceSources.length} files
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setDrawerPillarId(null)}
+                      className="px-4 py-2 rounded-xl bg-slate-900 border border-white/5 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-all"
+                    >
+                      Close
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+                      Recommendations
+                    </p>
+                    {items.length > 0 ? (
+                      items.map((item) => {
+                        const id = item.id;
+                        const isExpanded = expandedRecId === id;
+                        const isRec = 'impactScore' in item;
+                        const title = item.title;
+                        const description = isRec
+                          ? item.description
+                          : item.methodology || item.description;
+                        const rationale = isRec ? item.rationale : item.reasoning;
+                        const steps = isRec ? item.steps || [] : item.steps || [];
+                        return (
+                          <div
+                            key={id}
+                            className="p-4 rounded-2xl border border-white/5 bg-slate-900/60 space-y-3"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <p className="text-xs font-black text-white">{title}</p>
+                                <p className="text-[10px] text-slate-400 mt-1">{description}</p>
+                              </div>
+                              <button
+                                onClick={() => setExpandedRecId(isExpanded ? null : id)}
+                                className="text-[9px] uppercase tracking-widest text-indigo-400 font-black"
+                              >
+                                {isExpanded ? 'Hide' : 'Detail'}
+                              </button>
+                            </div>
+                            {isExpanded && (
+                              <div className="border-t border-white/5 pt-3 space-y-3 text-[10px] text-slate-400">
+                                <div>
+                                  <span className="text-[9px] uppercase tracking-widest text-slate-500">
+                                    Why
+                                  </span>
+                                  <p className="mt-2">
+                                    {rationale || 'Grounded in recent signals.'}
+                                  </p>
+                                </div>
+                                <div>
+                                  <span className="text-[9px] uppercase tracking-widest text-slate-500">
+                                    Steps
+                                  </span>
+                                  <ul className="mt-2 space-y-2">
+                                    {(steps.length ? steps : ['Define next step.']).map(
+                                      (step, idx) => (
+                                        <li key={idx} className="flex items-start gap-2">
+                                          <span className="w-5 h-5 rounded-full bg-indigo-600/20 text-indigo-400 flex items-center justify-center text-[9px] font-black">
+                                            {idx + 1}
+                                          </span>
+                                          <span>{step}</span>
+                                        </li>
+                                      )
+                                    )}
+                                  </ul>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="p-4 rounded-2xl border border-dashed border-slate-800 text-[10px] text-slate-500">
+                        No recommendations yet. Log more signals.
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+                      Evidence
+                    </p>
+                    {evidenceSources.length > 0 ? (
+                      <div className="space-y-3">
+                        {evidenceSources.slice(0, 4).map((source) => (
+                          <button
+                            key={source.id}
+                            onClick={() => setViewerSourceId(source.id)}
+                            className="w-full text-left p-4 rounded-2xl border border-white/5 bg-slate-900/60 hover:border-indigo-500/30 transition-all"
+                          >
+                            <p className="text-xs font-black text-white">{source.name}</p>
+                            <p className="text-[10px] text-slate-500 mt-1">{source.mimeType}</p>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-4 rounded-2xl border border-dashed border-slate-800 text-[10px] text-slate-500">
+                        No files linked yet.
+                      </div>
+                    )}
+                    {evidenceSignals.length > 0 && (
+                      <div className="space-y-2">
+                        {evidenceSignals.map((signal) => (
+                          <div
+                            key={signal.id}
+                            className="p-3 rounded-2xl bg-slate-900/40 border border-white/5 text-[10px] text-slate-400"
+                          >
+                            {signal.content}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {viewerSourceId &&
+        (() => {
+          const source = sources.find((s) => s.id === viewerSourceId);
+          if (!source) return null;
+          return (
+            <SourceViewer files={[toSourceFile(source)]} onClose={() => setViewerSourceId(null)} />
+          );
+        })()}
 
       {/* SYSTEM STATUS FOOTER */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#02040a]/80 backdrop-blur-xl border-t border-white/5 px-10 py-4 flex items-center justify-between">
