@@ -75,7 +75,7 @@ interface DashboardViewProps {
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
-  memory,
+  memory = [],
   tasks,
   dailyPlan,
   goals,

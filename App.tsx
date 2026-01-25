@@ -203,6 +203,7 @@ const App: React.FC = () => {
               {activeTab === 'dashboard' && (
                 <DashboardView
                   {...(aura as any)}
+                  memory={aura.memoryItems}
                   refreshAll={aura.refreshAura}
                   onOpenProfile={() => {
                     setActiveTab('vault');
