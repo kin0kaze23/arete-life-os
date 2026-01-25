@@ -162,6 +162,38 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return Boolean(value);
   };
 
+  const parseNumber = (value: string) => {
+    const cleaned = value.replace(/[^0-9.-]/g, '');
+    if (!cleaned) return null;
+    const parsed = Number(cleaned);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  const financeMetrics = useMemo(() => {
+    const income = profile.finances.income ? parseNumber(profile.finances.income) : null;
+    const fixed = profile.finances.fixedCosts ? parseNumber(profile.finances.fixedCosts) : null;
+    const variable = profile.finances.variableCosts
+      ? parseNumber(profile.finances.variableCosts)
+      : null;
+    if (income === null || fixed === null || variable === null) return null;
+    const dailyVariableBudget = Math.round(variable / 30);
+    const weeklyVariableBudget = Math.round(variable / 4);
+    const savingsRate = Math.max(0, (income - (fixed + variable)) / income);
+    return {
+      income,
+      fixed,
+      variable,
+      dailyVariableBudget,
+      weeklyVariableBudget,
+      savingsRate: Math.round(savingsRate * 100),
+    };
+  }, [profile.finances]);
+
+  const hasFattyLiver = useMemo(
+    () => profile.health.conditions?.some((c) => c.toLowerCase().includes('fatty liver')) || false,
+    [profile.health.conditions]
+  );
+
   const getProfileCoverage = (pillarId: string) => {
     const profileFieldSets: Record<string, unknown[]> = {
       health: [
@@ -398,6 +430,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         prevention: 'Review spend weekly and adjust.',
       });
     }
+    if (financeMetrics) {
+      always.push({
+        id: 'always-budget-daily',
+        title: `Daily budget target: ${financeMetrics.dailyVariableBudget}`,
+        why: `Weekly budget ${financeMetrics.weeklyVariableBudget} • savings rate ${financeMetrics.savingsRate}%`,
+        impact: 'Moderate',
+        prevention: 'Track variable spending daily.',
+      });
+    }
+    if (hasFattyLiver) {
+      always.push({
+        id: 'always-fatty-liver',
+        title: 'Fatty liver support plan',
+        why: 'Prioritize liver-friendly habits and monitor symptoms.',
+        impact: 'High impact',
+        prevention: 'Limit alcohol, favor high-fiber meals, add light activity.',
+      });
+    }
     if (profile.relationship.socialEnergy) {
       always.push({
         id: 'always-relationship',
@@ -436,7 +486,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const doItems = useMemo(() => getHorizonDo(), [horizon, dailyPlan, tasks, recommendations]);
   const watchItems = useMemo(
     () => getHorizonWatch(),
-    [horizon, blindSpots, insights, timelineEvents, profile]
+    [horizon, blindSpots, insights, timelineEvents, profile, financeMetrics, hasFattyLiver]
   );
   const needsReviewCount = useMemo(
     () => recommendations.filter((r) => r.needsReview).length,
@@ -461,11 +511,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const chips: string[] = [];
     if (profile.health.conditions?.length)
       chips.push(`Health watch: ${profile.health.conditions[0]}`);
+    if (hasFattyLiver) chips.push('Fatty liver: avoid alcohol + prioritize fiber + movement');
+    if (financeMetrics) {
+      chips.push(`Daily budget: ${financeMetrics.dailyVariableBudget}`);
+      chips.push(`Weekly budget: ${financeMetrics.weeklyVariableBudget}`);
+      chips.push(`Savings rate: ${financeMetrics.savingsRate}%`);
+      chips.push(`Today spend target: ${financeMetrics.dailyVariableBudget}`);
+    }
     if (profile.finances.fixedCosts) chips.push('Review fixed costs monthly');
     if (profile.relationship.socialEnergy) chips.push('Monitor social energy');
     if (blindSpots.length > 0) chips.push('Review blind spots weekly');
     return chips.slice(0, 6);
-  }, [profile, blindSpots]);
+  }, [profile, blindSpots, financeMetrics, hasFattyLiver]);
 
   const overallConfidence = useMemo(() => {
     if (corePillars.length === 0) return 0;
@@ -1154,6 +1211,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             const fallbackTasks = tasks.filter((t) => pillar.categories.includes(t.category));
             const items = recs.length ? recs.slice(0, 2) : fallbackTasks.slice(0, 2);
             const pillarSources = getPillarSources(pillar.categories);
+            const metricLine =
+              pillar.id === 'finance' && financeMetrics
+                ? `Savings rate ${financeMetrics.savingsRate}%`
+                : pillar.id === 'health' && hasFattyLiver
+                  ? 'Condition: fatty liver'
+                  : pillar.id === 'personal' && profile.personal.jobRole
+                    ? `Role: ${profile.personal.jobRole}`
+                    : pillar.id === 'relationships' && profile.relationship.socialEnergy
+                      ? `Social energy: ${profile.relationship.socialEnergy}`
+                      : pillar.id === 'spiritual' && profile.spiritual.coreValues.length > 0
+                        ? `Core values: ${profile.spiritual.coreValues.slice(0, 2).join(', ')}`
+                        : null;
             const status =
               coverage.total < 40 ? 'At Risk' : coverage.total < 70 ? 'Attention' : 'OK';
             const statusClass =
@@ -1178,6 +1247,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <p className="text-[9px] uppercase tracking-widest text-slate-500">
                         Last signal: {formatSignalTime(latestSignal)}
                       </p>
+                      {metricLine && (
+                        <p className="text-[9px] uppercase tracking-widest text-slate-600 mt-1">
+                          {metricLine}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <span
