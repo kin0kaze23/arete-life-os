@@ -568,19 +568,24 @@ export const useAura = () => {
     }
   };
 
+  const getDailyCap = () => {
+    const preferred = ruleOfLife?.taskPreferences?.dailyCap;
+    const fallback = typeof preferred === 'number' && preferred > 0 ? preferred : 8;
+    return Math.min(8, Math.max(5, fallback));
+  };
+
   const planMyDay = async () => {
     setIsPlanningDay(true);
     try {
-      setDailyPlan(
-        await generateDailyPlan(
-          profile,
-          timelineEvents,
-          goals,
-          blindSpots,
-          ruleOfLife,
-          prompts.find((p) => p.id === 'deepPlanning')!
-        )
+      const plan = await generateDailyPlan(
+        profile,
+        timelineEvents,
+        goals,
+        blindSpots,
+        ruleOfLife,
+        prompts.find((p) => p.id === 'deepPlanning')!
       );
+      setDailyPlan(plan.slice(0, getDailyCap()));
     } finally {
       setIsPlanningDay(false);
     }
