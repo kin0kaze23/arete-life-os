@@ -4,6 +4,10 @@
 
 Ship a production-ready Life OS app with stable core loops, premium dark UI, and reliable deployment.
 
+## Session Init (Fast)
+
+Start with `./.agent/README.md` for the current context index and quick start.
+
 ## Guardrails
 
 - main is always green and deployable
