@@ -11,6 +11,22 @@ Ship a production-ready Life OS app with stable core loops, premium dark UI, and
 - minimal changes, iterative
 - tests/build must pass before merge
 
+## AI Runtime Configuration (Server-side)
+
+Set these in Vercel (Production + Preview as needed):
+
+- `GEMINI_API_KEY`
+- `GEMINI_MODEL_PRO` (default: `gemini-3-pro-preview`)
+- `GEMINI_MODEL_FLASH` (default: `gemini-3-flash-preview`)
+- `OPENAI_API_KEY` (fallback)
+- `OPENAI_MODEL` (default: `gpt-5.1`)
+- `OPENAI_REASONING_EFFORT` (default: `medium`)
+
+Notes:
+
+- Gemini is primary; OpenAI is automatic fallback.
+- Keys must remain server-side only (never in client code).
+
 ## Definition of Done (for any task)
 
 - UI has empty/loading/error states

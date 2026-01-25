@@ -82,6 +82,40 @@ git config user.email
 
 ---
 
+### Issue: Gemini Model Not Found (404)
+
+**Symptoms:**
+
+- `/api/gemini` returns 500
+- Vercel logs show `models/... is not found for API version v1beta`
+
+**Root Cause:**
+Model ID configured in prod is unavailable for the project or API version.
+
+**Solution:**
+Set these env vars in Vercel (Production + Preview if needed):
+
+```
+GEMINI_MODEL_PRO=gemini-3-pro-preview
+GEMINI_MODEL_FLASH=gemini-3-flash-preview
+```
+
+If you override defaults, ensure the model exists in the Gemini API list for your project.
+
+---
+
+### Issue: Gemini JSON Shape Mismatch
+
+**Symptoms:**
+
+- Vercel logs show `plan.map is not a function`
+
+**Root Cause:**
+Model returned non-array JSON for the daily plan.
+
+**Solution:**
+Server now accepts `[]` or `{ tasks: [...] }`. If it recurs, check prompt for strict array requirement.
+
 ## CSP (Content Security Policy) Reference
 
 This project uses external CDNs. The CSP must allow:

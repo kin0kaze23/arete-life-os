@@ -97,6 +97,40 @@ User wanted to ensure the app was secure for storing sensitive personal data bef
 
 ---
 
+## 2026-01-25: Gemini Reliability + OpenAI Fallback
+
+### Issue
+
+Gemini requests intermittently failed on Vercel with 500s, including model errors and JSON parsing errors.
+
+### Root Causes
+
+1. **Model not available in prod**
+   - Defaulted to `gemini-1.5-flash` which returned 404 in `v1beta`.
+2. **Non-array JSON response**
+   - Gemini returned a non-array payload for daily plan, causing `plan.map` to crash.
+
+### Solution
+
+- Default Gemini models set to `gemini-3-pro-preview` and `gemini-3-flash-preview`.
+- Added model configuration via env vars: `GEMINI_MODEL_PRO`, `GEMINI_MODEL_FLASH`.
+- Hardened daily plan parsing to accept `{ tasks: [...] }` or fallback to `[]`.
+- Added sanitized error logging with an error id to trace Vercel failures.
+- Added OpenAI fallback (Responses API) when Gemini fails.
+- Added OpenAI model configuration and reasoning effort envs: `OPENAI_MODEL`, `OPENAI_REASONING_EFFORT`.
+
+### Key Learnings
+
+- **Model defaults matter in prod**: missing/unsupported model IDs return 404.
+- **GenAI JSON can be malformed**: guard all array parses defensively.
+- **Fallbacks increase reliability**: OpenAI fallback keeps core flows alive.
+
+### Prevention
+
+- Configure all AI models via Vercel env vars.
+- Keep OpenAI fallback enabled and use reasoning effort `medium` by default.
+- Use error ids in logs to pinpoint failure types quickly.
+
 ## Template for Future Entries
 
 ```markdown
