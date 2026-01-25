@@ -71,7 +71,7 @@ const getModel = (kind: 'pro' | 'flash') => {
 const getOpenAIModel = () => {
   const value = process.env.OPENAI_MODEL?.trim();
   if (value && value.length > 0) return value;
-  return 'gpt-5';
+  return 'gpt-5.1';
 };
 
 const getOpenAIClient = () => {
