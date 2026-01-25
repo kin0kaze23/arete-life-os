@@ -57,8 +57,8 @@ OUTPUT SCHEMA:
 }
 `;
 
-const DEFAULT_PRO_MODEL = 'gemini-1.5-pro';
-const DEFAULT_FLASH_MODEL = 'gemini-1.5-flash';
+const DEFAULT_PRO_MODEL = 'gemini-3-pro-preview';
+const DEFAULT_FLASH_MODEL = 'gemini-3-flash-preview';
 
 const getModel = (kind: 'pro' | 'flash') => {
   const raw = kind === 'pro' ? process.env.GEMINI_MODEL_PRO : process.env.GEMINI_MODEL_FLASH;
