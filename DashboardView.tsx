@@ -423,6 +423,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     () => recommendations.filter((r) => r.needsReview).length,
     [recommendations]
   );
+  const needsReviewItems = useMemo(
+    () => recommendations.filter((r) => r.needsReview).slice(0, 2),
+    [recommendations]
+  );
   const alwaysDoChips = useMemo(() => {
     const chips: string[] = [];
     if (ruleOfLife?.nonNegotiables?.sleepWindow)
@@ -1003,6 +1007,45 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             )}
           </div>
         </div>
+
+        {needsReviewItems.length > 0 && (
+          <div className="glass-panel p-6 rounded-[2rem] border border-amber-500/20 bg-amber-500/5 space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <h4 className="text-lg font-black text-white uppercase tracking-tight">
+                  Needs Review
+                </h4>
+                <p className="text-[10px] text-amber-200/70 uppercase tracking-widest">
+                  Resolve missing data to sharpen recommendations.
+                </p>
+              </div>
+              <button
+                onClick={() => onNavigate('vault')}
+                className="px-4 py-2 rounded-xl bg-amber-500 text-slate-900 text-[9px] font-black uppercase tracking-widest hover:bg-amber-400 transition-all"
+              >
+                Resolve Now
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {needsReviewItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="p-4 rounded-2xl border border-amber-500/20 bg-slate-950/40"
+                >
+                  <p className="text-xs font-black text-white">{item.title}</p>
+                  <p className="text-[10px] text-slate-400 mt-2">
+                    {item.rationale || item.description}
+                  </p>
+                  {item.missingFields?.length > 0 && (
+                    <p className="text-[9px] text-amber-300/70 mt-2 uppercase tracking-widest">
+                      Missing: {item.missingFields.slice(0, 3).join(', ')}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="glass-panel p-6 rounded-[2rem] border border-white/5 bg-slate-950/40">
