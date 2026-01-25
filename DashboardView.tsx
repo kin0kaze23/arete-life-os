@@ -71,6 +71,7 @@ interface DashboardViewProps {
   dismissInsight: (insight: ProactiveInsight) => void;
   onNavigate: (tab: any) => void;
   isPlanningDay: boolean;
+  isGeneratingTasks: boolean;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -94,9 +95,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   dismissInsight,
   onNavigate,
   isPlanningDay,
+  isGeneratingTasks,
 }) => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+  const [expandedDoId, setExpandedDoId] = useState<string | null>(null);
+  const [expandedRecId, setExpandedRecId] = useState<string | null>(null);
+  const [horizon, setHorizon] = useState<'now' | 'soon' | 'always'>('now');
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -222,41 +227,168 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return items.reduce((latest, item) => (item.timestamp > latest ? item.timestamp : latest), 0);
   };
 
-  const getDoNext = (categories: Category[]) => {
-    const fromPlan = dailyPlan.filter((t) => categories.includes(t.category));
-    const fromTasks = tasks.filter((t) => categories.includes(t.category));
-    const fromRecs = recommendations.filter((r) => categories.includes(r.category));
-    const selected = fromPlan.length ? fromPlan : fromTasks.length ? fromTasks : fromRecs;
-    return selected.slice(0, 2).map((item) => {
-      if ('impactScore' in item) {
-        return {
-          title: item.title,
-          why: item.rationale || item.description,
-          how: item.steps?.[0] || item.definitionOfDone,
-          meta: `${item.estimatedTime || '15 mins'} • Impact ${item.impactScore}`,
-        };
-      }
-      return {
-        title: item.title,
-        why: item.reasoning || item.why || item.description,
-        how: item.methodology || item.definitionOfDone,
-        meta: item.priority ? `${item.priority.toUpperCase()} priority` : 'Action',
-      };
-    });
+  const priorityRank = (priority: DailyTask['priority']) =>
+    priority === 'high' ? 3 : priority === 'medium' ? 2 : 1;
+
+  const buildDoFromTask = (task: DailyTask) => ({
+    id: task.id,
+    title: task.title,
+    why: task.why || task.reasoning || task.description,
+    steps: task.steps || [],
+    time: task.estimate_min ? `${task.estimate_min}m` : '15m',
+    effort: task.energy || 'MEDIUM',
+    when: task.start_time
+      ? `${task.start_time}${task.end_time ? `–${task.end_time}` : ''}`
+      : task.best_window || 'Today',
+    inputs: task.inputs || [],
+    definition: task.definitionOfDone,
+    risks: task.risks || [],
+    followUp: 'Log outcome and update vault.',
+    type: 'task' as const,
+  });
+
+  const buildDoFromRec = (rec: Recommendation) => ({
+    id: rec.id,
+    title: rec.title,
+    why: rec.rationale || rec.description,
+    steps: rec.steps || [],
+    time: rec.estimatedTime || '15m',
+    effort: rec.impactScore >= 8 ? 'HIGH' : rec.impactScore >= 5 ? 'MEDIUM' : 'LOW',
+    when: 'Next available block',
+    inputs: rec.inputs || [],
+    definition: rec.definitionOfDone,
+    risks: rec.risks || [],
+    followUp: 'Confirm completion in nightly review.',
+    type: 'rec' as const,
+  });
+
+  const getHorizonDo = () => {
+    if (horizon === 'now') {
+      const plan = dailyPlan.filter((t) => !t.completed);
+      const fallback = tasks.filter((t) => !t.completed);
+      const selected = plan.length ? plan : fallback;
+      return selected
+        .sort((a, b) => priorityRank(b.priority) - priorityRank(a.priority))
+        .map(buildDoFromTask);
+    }
+    if (horizon === 'soon') {
+      return tasks
+        .filter((t) => !t.completed)
+        .sort((a, b) => priorityRank(b.priority) - priorityRank(a.priority))
+        .map(buildDoFromTask);
+    }
+    const always: Array<ReturnType<typeof buildDoFromTask>> = [];
+    if (profile.health.sleepTime || profile.health.wakeTime) {
+      always.push(
+        buildDoFromTask({
+          id: `always-sleep`,
+          ownerId: profile.id,
+          title: 'Protect sleep window',
+          description: 'Maintain consistent sleep and wake times.',
+          category: Category.HEALTH,
+          priority: 'high',
+          completed: false,
+          createdAt: Date.now(),
+          start_time: profile.health.sleepTime || undefined,
+          end_time: profile.health.wakeTime || undefined,
+        } as DailyTask)
+      );
+    }
+    if (ruleOfLife?.nonNegotiables?.devotion) {
+      always.push(
+        buildDoFromTask({
+          id: `always-devotion`,
+          ownerId: profile.id,
+          title: 'Daily devotion',
+          description: ruleOfLife.nonNegotiables.devotion,
+          category: Category.SPIRITUAL,
+          priority: 'medium',
+          completed: false,
+          createdAt: Date.now(),
+        } as DailyTask)
+      );
+    }
+    if (ruleOfLife?.nonNegotiables?.sabbath) {
+      always.push(
+        buildDoFromTask({
+          id: `always-sabbath`,
+          ownerId: profile.id,
+          title: 'Weekly sabbath',
+          description: ruleOfLife.nonNegotiables.sabbath,
+          category: Category.SPIRITUAL,
+          priority: 'medium',
+          completed: false,
+          createdAt: Date.now(),
+        } as DailyTask)
+      );
+    }
+    return always;
   };
 
-  const getWatchouts = (categories: Category[]) => {
-    const filteredInsights = insights.filter((i) => categories.includes(i.category));
-    if (filteredInsights.length > 0) {
-      return filteredInsights.slice(0, 2).map((i) => ({
-        title: i.title,
-        why: i.description,
-      }));
+  const getWatchFromBlindSpot = (bs: BlindSpot) => ({
+    id: bs.id,
+    title: bs.signal,
+    why: bs.why,
+    impact: bs.severity === 'high' ? 'High impact' : bs.severity === 'med' ? 'Moderate' : 'Low',
+    prevention: bs.actions?.[0] || 'Define a guardrail and check in.',
+  });
+
+  const getWatchFromInsight = (insight: ProactiveInsight) => ({
+    id: insight.id,
+    title: insight.title,
+    why: insight.description,
+    impact: 'Moderate',
+    prevention: 'Log a quick check-in to confirm status.',
+  });
+
+  const getHorizonWatch = () => {
+    if (horizon === 'now') {
+      const spots = blindSpots
+        .slice()
+        .sort((a, b) => (a.severity === 'high' ? -1 : b.severity === 'high' ? 1 : 0))
+        .map(getWatchFromBlindSpot);
+      if (spots.length > 0) return spots;
+      return insights.map(getWatchFromInsight);
     }
-    return blindSpots.slice(0, 1).map((bs) => ({
-      title: bs.signal,
-      why: bs.why,
-    }));
+    if (horizon === 'soon') {
+      const upcoming = timelineEvents
+        .map((event) => ({
+          ...event,
+          daysAway: Math.floor(
+            (new Date(event.date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+          ),
+        }))
+        .filter((event) => event.daysAway >= 1 && event.daysAway <= 14)
+        .map((event) => ({
+          id: event.id,
+          title: `Upcoming: ${event.title}`,
+          why: `${event.daysAway} days away • ${event.description}`,
+          impact: 'Time-sensitive',
+          prevention: 'Run a prep plan and allocate time.',
+        }));
+      const spots = blindSpots.map(getWatchFromBlindSpot);
+      return [...upcoming, ...spots];
+    }
+    const always: Array<ReturnType<typeof getWatchFromBlindSpot>> = [];
+    if (profile.finances.fixedCosts || profile.finances.variableCosts) {
+      always.push({
+        id: 'always-budget',
+        title: 'Monthly spend guardrail',
+        why: 'Maintain budget discipline to prevent drift.',
+        impact: 'High impact',
+        prevention: 'Review spend weekly and adjust.',
+      });
+    }
+    if (profile.relationship.socialEnergy) {
+      always.push({
+        id: 'always-relationship',
+        title: 'Relational drift',
+        why: 'Low social energy can reduce connection quality.',
+        impact: 'Moderate',
+        prevention: 'Schedule one intentional check-in.',
+      });
+    }
+    return always;
   };
 
   const getCoverageScore = (pillarId: string, categories: Category[]) => {
@@ -281,6 +413,36 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const diffDays = Math.floor(diffHours / 24);
     return `${diffDays}d ago`;
   };
+
+  const doItems = useMemo(() => getHorizonDo(), [horizon, dailyPlan, tasks, recommendations]);
+  const watchItems = useMemo(
+    () => getHorizonWatch(),
+    [horizon, blindSpots, insights, timelineEvents, profile]
+  );
+  const needsReviewCount = useMemo(
+    () => recommendations.filter((r) => r.needsReview).length,
+    [recommendations]
+  );
+  const alwaysDoChips = useMemo(() => {
+    const chips: string[] = [];
+    if (ruleOfLife?.nonNegotiables?.sleepWindow)
+      chips.push(`Sleep window: ${ruleOfLife.nonNegotiables.sleepWindow}`);
+    if (ruleOfLife?.nonNegotiables?.devotion) chips.push('Daily devotion');
+    if (ruleOfLife?.nonNegotiables?.sabbath) chips.push('Weekly sabbath');
+    if (profile.spiritual.coreValues?.length)
+      chips.push(`Core values: ${profile.spiritual.coreValues.slice(0, 3).join(', ')}`);
+    return chips.slice(0, 6);
+  }, [ruleOfLife, profile]);
+
+  const alwaysWatchChips = useMemo(() => {
+    const chips: string[] = [];
+    if (profile.health.conditions?.length)
+      chips.push(`Health watch: ${profile.health.conditions[0]}`);
+    if (profile.finances.fixedCosts) chips.push('Review fixed costs monthly');
+    if (profile.relationship.socialEnergy) chips.push('Monitor social energy');
+    if (blindSpots.length > 0) chips.push('Review blind spots weekly');
+    return chips.slice(0, 6);
+  }, [profile, blindSpots]);
 
   const ritualData = useMemo(() => {
     const hour = currentTime.getHours();
@@ -602,122 +764,388 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       <div className="space-y-6">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+          <div className="space-y-2">
             <div className="flex items-center gap-2">
               <ShieldCheck size={14} className="text-emerald-400" />
               <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">
-                Core Aspect Intelligence
+                Do + Watch Command
               </span>
             </div>
             <h3 className="text-2xl md:text-3xl font-black text-white tracking-tight">
               What to do, why it matters, and what to watch.
             </h3>
+            <p className="text-xs text-slate-500 max-w-xl">
+              AI guidance grounded in your profile, memory vault, and uploaded files.
+            </p>
           </div>
-          <button
-            onClick={refreshAll}
-            className="px-6 py-3 rounded-2xl bg-slate-900 border border-white/5 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:border-indigo-500/30 transition-all"
-          >
-            Refresh Signals
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-1 bg-slate-900/80 border border-white/5 rounded-2xl p-1">
+              {[
+                { id: 'now', label: 'Now' },
+                { id: 'soon', label: 'Soon' },
+                { id: 'always', label: 'Always' },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setHorizon(item.id as typeof horizon)}
+                  className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                    horizon === item.id
+                      ? 'bg-indigo-600 text-white shadow-lg'
+                      : 'text-slate-500 hover:text-white'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            {needsReviewCount > 0 && (
+              <button
+                onClick={() => onNavigate('vault')}
+                className="px-4 py-2 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-[9px] font-black uppercase tracking-widest text-amber-400 hover:bg-amber-500/20 transition-all"
+              >
+                Needs Review · {needsReviewCount}
+              </button>
+            )}
+            <button
+              onClick={refreshAll}
+              className="px-6 py-3 rounded-2xl bg-slate-900 border border-white/5 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:border-indigo-500/30 transition-all"
+            >
+              Refresh Signals
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="glass-panel p-8 rounded-[2.5rem] border border-white/5 bg-slate-950/40 flex flex-col gap-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-xl font-black text-white uppercase tracking-tight">Do</h4>
+                <p className="text-[10px] text-slate-500 uppercase tracking-widest">
+                  {horizon === 'now'
+                    ? 'Today priorities'
+                    : horizon === 'soon'
+                      ? 'Next 7–14 days'
+                      : 'Evergreen routines'}
+                </p>
+              </div>
+              <button
+                onClick={planMyDay}
+                className="px-5 py-2 rounded-xl bg-white text-slate-900 text-[9px] font-black uppercase tracking-widest hover:bg-indigo-500 hover:text-white transition-all"
+              >
+                Plan My Day
+              </button>
+            </div>
+
+            {isPlanningDay ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-20 w-full rounded-2xl" />
+                ))}
+              </div>
+            ) : doItems.length > 0 ? (
+              <div className="space-y-4">
+                {doItems.slice(0, 3).map((item) => {
+                  const isExpanded = expandedDoId === item.id;
+                  return (
+                    <div
+                      key={item.id}
+                      className="p-5 rounded-2xl border border-white/5 bg-slate-900/60 space-y-4"
+                    >
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div className="space-y-2">
+                          <h5 className="text-sm font-black text-white">{item.title}</h5>
+                          <p className="text-[10px] text-slate-400">
+                            {item.why || 'Needs more context to explain rationale.'}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-3 text-[9px] uppercase tracking-widest text-slate-500">
+                            <span>{item.time}</span>
+                            <span>{item.effort}</span>
+                            <span>{item.when}</span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setExpandedDoId(isExpanded ? null : item.id)}
+                          className="px-4 py-2 rounded-xl bg-indigo-600/10 border border-indigo-500/20 text-[9px] font-black uppercase tracking-widest text-indigo-400 hover:bg-indigo-600 hover:text-white transition-all"
+                        >
+                          {isExpanded ? 'Hide' : 'Start'}
+                        </button>
+                      </div>
+
+                      {isExpanded && (
+                        <div className="space-y-4 border-t border-white/5 pt-4 text-[10px] text-slate-300">
+                          <div>
+                            <span className="text-[9px] uppercase tracking-widest text-slate-500">
+                              Steps
+                            </span>
+                            <ul className="mt-2 space-y-2">
+                              {(item.steps.length ? item.steps : ['Define first step.']).map(
+                                (step, idx) => (
+                                  <li key={idx} className="flex items-start gap-3">
+                                    <span className="w-5 h-5 rounded-full bg-indigo-600/20 text-indigo-400 flex items-center justify-center text-[9px] font-black">
+                                      {idx + 1}
+                                    </span>
+                                    <span>{step}</span>
+                                  </li>
+                                )
+                              )}
+                            </ul>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <span className="text-[9px] uppercase tracking-widest text-slate-500">
+                                Inputs
+                              </span>
+                              <p className="mt-2 text-slate-400">
+                                {item.inputs.length ? item.inputs.join(', ') : 'None listed.'}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-[9px] uppercase tracking-widest text-slate-500">
+                                Definition of done
+                              </span>
+                              <p className="mt-2 text-slate-400">
+                                {item.definition || 'Completion confirmed by a logged outcome.'}
+                              </p>
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-[9px] uppercase tracking-widest text-slate-500">
+                              Risks / Watch-outs
+                            </span>
+                            <p className="mt-2 text-slate-400">
+                              {item.risks.length ? item.risks.join(' • ') : 'No major risks noted.'}
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-[9px] uppercase tracking-widest text-slate-500">
+                              Follow-up
+                            </span>
+                            <p className="mt-2 text-slate-400">{item.followUp}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {doItems.length > 3 && (
+                  <button
+                    onClick={() => onNavigate('vault')}
+                    className="text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-indigo-400 transition-all"
+                  >
+                    +{doItems.length - 3} more • View all
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="p-6 rounded-2xl border border-dashed border-slate-800 text-[10px] text-slate-500 space-y-3">
+                <p>No actions yet. Add signals or run Plan My Day.</p>
+                <button
+                  onClick={() => onNavigate('vault')}
+                  className="px-4 py-2 rounded-xl bg-slate-900 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-white border border-white/5 hover:border-indigo-500/30 transition-all"
+                >
+                  Add Context
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="glass-panel p-8 rounded-[2.5rem] border border-white/5 bg-slate-950/40 flex flex-col gap-6">
+            <div>
+              <h4 className="text-xl font-black text-white uppercase tracking-tight">Watch</h4>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest">
+                {horizon === 'now'
+                  ? 'Today watch-outs'
+                  : horizon === 'soon'
+                    ? 'Upcoming risks'
+                    : 'Baseline guardrails'}
+              </p>
+            </div>
+
+            {isGeneratingTasks ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-20 w-full rounded-2xl" />
+                ))}
+              </div>
+            ) : watchItems.length > 0 ? (
+              <div className="space-y-4">
+                {watchItems.slice(0, 3).map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-5 rounded-2xl border border-rose-500/10 bg-rose-500/5 space-y-3"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <h5 className="text-sm font-black text-white">{item.title}</h5>
+                      <span className="text-[9px] uppercase tracking-widest text-rose-300">
+                        {item.impact}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-rose-200/70">{item.why}</p>
+                    <p className="text-[10px] text-rose-200/70 italic">
+                      Next prevention step: {item.prevention}
+                    </p>
+                  </div>
+                ))}
+                {watchItems.length > 3 && (
+                  <button
+                    onClick={() => onNavigate('vault')}
+                    className="text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-rose-400 transition-all"
+                  >
+                    +{watchItems.length - 3} more • View all
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="p-6 rounded-2xl border border-dashed border-slate-800 text-[10px] text-slate-500">
+                No risks detected yet. Keep logging signals.
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="glass-panel p-6 rounded-[2rem] border border-white/5 bg-slate-950/40">
+            <h5 className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-400">
+              Always-Do
+            </h5>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {alwaysDoChips.length > 0 ? (
+                alwaysDoChips.map((chip) => (
+                  <span
+                    key={chip}
+                    className="px-3 py-2 rounded-full bg-slate-900 text-[9px] font-black uppercase tracking-widest text-slate-400 border border-white/5"
+                  >
+                    {chip}
+                  </span>
+                ))
+              ) : (
+                <span className="text-[10px] text-slate-500">No routines captured yet.</span>
+              )}
+            </div>
+          </div>
+          <div className="glass-panel p-6 rounded-[2rem] border border-white/5 bg-slate-950/40">
+            <h5 className="text-[10px] font-black uppercase tracking-[0.3em] text-rose-400">
+              Always-Watch
+            </h5>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {alwaysWatchChips.length > 0 ? (
+                alwaysWatchChips.map((chip) => (
+                  <span
+                    key={chip}
+                    className="px-3 py-2 rounded-full bg-rose-500/5 text-[9px] font-black uppercase tracking-widest text-rose-300 border border-rose-500/10"
+                  >
+                    {chip}
+                  </span>
+                ))
+              ) : (
+                <span className="text-[10px] text-slate-500">No guardrails set yet.</span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        <div className="flex items-center gap-2">
+          <ShieldCheck size={14} className="text-indigo-400" />
+          <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">
+            Domain Panels
+          </span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {corePillars.map((pillar) => {
             const coverage = getCoverageScore(pillar.id, pillar.categories);
-            const doNext = getDoNext(pillar.categories);
-            const watchouts = getWatchouts(pillar.categories);
             const latestSignal = getLatestSignal(pillar.categories);
+            const recs = recommendations.filter(
+              (r) => pillar.categories.includes(r.category) && r.status === 'ACTIVE'
+            );
+            const fallbackTasks = tasks.filter((t) => pillar.categories.includes(t.category));
+            const items = recs.length ? recs.slice(0, 2) : fallbackTasks.slice(0, 2);
+            const status =
+              coverage.total < 40 ? 'At Risk' : coverage.total < 70 ? 'Attention' : 'OK';
+            const statusClass =
+              status === 'OK'
+                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                : status === 'Attention'
+                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                  : 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+
             return (
               <div
                 key={pillar.id}
-                className="glass-panel p-8 rounded-[2.5rem] border border-white/5 bg-slate-950/40 flex flex-col gap-6"
+                className="glass-panel p-6 rounded-[2rem] border border-white/5 bg-slate-950/40 flex flex-col gap-5"
               >
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-white/5 flex items-center justify-center">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-slate-900 border border-white/5 flex items-center justify-center">
                       {pillar.icon}
                     </div>
                     <div>
-                      <h4 className="text-xl font-black text-white">{pillar.title}</h4>
-                      <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">
-                        Signals: {coverage.memoryCount} logs • {coverage.fileCount} files • Profile{' '}
-                        {coverage.profileScore}%
-                      </p>
-                      <p className="text-[9px] uppercase tracking-widest text-slate-600 font-bold mt-1">
+                      <h4 className="text-lg font-black text-white">{pillar.title}</h4>
+                      <p className="text-[9px] uppercase tracking-widest text-slate-500">
                         Last signal: {formatSignalTime(latestSignal)}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-black text-white">{coverage.total}%</div>
-                    <p className="text-[9px] uppercase tracking-widest text-slate-500">
-                      Data Confidence
-                    </p>
-                  </div>
+                  <span
+                    className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${statusClass}`}
+                  >
+                    {status}
+                  </span>
                 </div>
 
                 <div className="h-1.5 bg-slate-900 rounded-full overflow-hidden">
                   <div className="h-full bg-indigo-500" style={{ width: `${coverage.total}%` }} />
                 </div>
 
-                <div className="grid grid-cols-1 gap-6">
-                  <div className="space-y-3">
-                    <h5 className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-400">
-                      What to do (Why + How)
-                    </h5>
-                    {doNext.length > 0 ? (
-                      doNext.map((item, idx) => (
-                        <div
-                          key={`${pillar.id}-do-${idx}`}
-                          className="p-4 rounded-2xl bg-slate-900/60 border border-white/5"
-                        >
-                          <p className="text-xs font-black text-white">{item.title}</p>
-                          <p className="text-[10px] text-slate-400 mt-2">
-                            {item.why || 'Need more context to explain rationale.'}
-                          </p>
-                          <p className="text-[10px] text-slate-500 mt-2 italic">
-                            How: {item.how || 'Follow the next tactical step.'}
-                          </p>
-                          <p className="text-[9px] text-slate-600 mt-2 uppercase tracking-widest">
-                            {item.meta}
-                          </p>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="p-4 rounded-2xl border border-dashed border-slate-800 text-[10px] text-slate-500 space-y-3">
-                        <p>No actions yet. Add signals to build guidance.</p>
+                <div className="space-y-3">
+                  {items.length > 0 ? (
+                    items.map((item) => {
+                      const id = 'impactScore' in item ? item.id : item.id;
+                      const isExpanded = expandedRecId === id;
+                      const title = item.title;
+                      const description =
+                        'impactScore' in item
+                          ? item.description
+                          : item.methodology || item.description;
+                      const rationale = 'impactScore' in item ? item.rationale : item.reasoning;
+                      return (
                         <button
-                          onClick={() => onNavigate('vault')}
-                          className="px-4 py-2 rounded-xl bg-slate-900 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-white border border-white/5 hover:border-indigo-500/30 transition-all"
+                          key={id}
+                          onClick={() => setExpandedRecId(isExpanded ? null : id)}
+                          className="w-full text-left p-4 rounded-2xl border border-white/5 bg-slate-900/60 hover:border-indigo-500/30 transition-all"
                         >
-                          Add Context
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-xs font-black text-white">{title}</p>
+                            <span className="text-[8px] uppercase tracking-widest text-slate-500">
+                              {isExpanded ? 'Hide' : 'View'}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-2 line-clamp-2">
+                            {description}
+                          </p>
+                          {isExpanded && (
+                            <p className="text-[10px] text-slate-500 mt-2">
+                              {rationale || 'Grounded in recent signals.'}
+                            </p>
+                          )}
                         </button>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-3">
-                    <h5 className="text-[10px] font-black uppercase tracking-[0.3em] text-rose-400">
-                      Watchouts (Why)
-                    </h5>
-                    {watchouts.length > 0 ? (
-                      watchouts.map((item, idx) => (
-                        <div
-                          key={`${pillar.id}-watch-${idx}`}
-                          className="p-4 rounded-2xl bg-rose-500/5 border border-rose-500/10"
-                        >
-                          <p className="text-xs font-black text-white">{item.title}</p>
-                          <p className="text-[10px] text-rose-200/70 mt-2">{item.why}</p>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="p-4 rounded-2xl border border-dashed border-slate-800 text-[10px] text-slate-500">
-                        No risks detected yet. Keep logging signals.
-                      </div>
-                    )}
-                  </div>
+                      );
+                    })
+                  ) : (
+                    <div className="p-4 rounded-2xl border border-dashed border-slate-800 text-[10px] text-slate-500">
+                      No recommendations yet. Log more signals.
+                    </div>
+                  )}
                 </div>
+
+                <button
+                  onClick={() => onNavigate('vault')}
+                  className="text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-indigo-400 transition-all"
+                >
+                  View all
+                </button>
               </div>
             );
           })}
