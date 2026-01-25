@@ -9,6 +9,7 @@
 | Operating Manual  | [.agent/AGENT.md](.agent/AGENT.md)                     |
 | Troubleshooting   | [.agent/TROUBLESHOOTING.md](.agent/TROUBLESHOOTING.md) |
 | Session Learnings | [.agent/LEARNINGS.md](.agent/LEARNINGS.md)             |
+| User Guide        | [guide/README.md](guide/README.md)                     |
 
 ## Project Overview
 
@@ -85,7 +86,14 @@ To maintain context across sessions:
 
 ```
 .agent/
-├── AGENT.md          # Operating manual & protocols
+├── AGENT.md           # Operating manual & protocols
 ├── TROUBLESHOOTING.md # Common issues & solutions
 └── LEARNINGS.md       # Session-by-session discoveries
+
+guide/
+├── README.md          # User guide index
+├── GETTING_STARTED.md # First-time setup
+├── DAILY_USAGE.md     # Daily workflows
+├── SECURITY.md        # Data protection guide
+└── FAQ.md             # Common questions
 ```

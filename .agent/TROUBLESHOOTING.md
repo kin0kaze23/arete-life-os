@@ -148,3 +148,120 @@ This project uses a CDN-based architecture:
 - **Implications**: Requires proper CSP configuration; relies on external service availability
 
 Consider migrating to bundled Tailwind/React for better production reliability (optional future improvement).
+
+---
+
+## Security Architecture
+
+### Encryption Overview
+
+Your data is protected with industry-standard encryption:
+
+| Component          | Implementation                                         |
+| ------------------ | ------------------------------------------------------ |
+| Algorithm          | AES-256-GCM (authenticated encryption)                 |
+| Key Derivation     | PBKDF2 with SHA-256, 100,000 iterations                |
+| Salt               | 16 random bytes (unique per vault)                     |
+| Initialization Vec | 12 random bytes (unique per save)                      |
+| Storage            | Browser localStorage (encrypted)                       |
+| Key Storage        | Memory only (never persisted, cleared on lock/refresh) |
+
+**What this means:**
+
+- Your passphrase is never stored anywhere
+- The encryption key exists only while the vault is unlocked
+- Each save operation uses a fresh random IV
+- Data cannot be decrypted without your passphrase
+
+### Data Persistence
+
+| Scenario                | Data Status                       |
+| ----------------------- | --------------------------------- |
+| Browser refresh         | Data persists, vault locks        |
+| Close tab/browser       | Data persists, vault locks        |
+| Clear browser data      | **DATA LOST** - export backup!    |
+| Switch browsers/devices | Data does NOT sync                |
+| Forget passphrase       | **DATA UNRECOVERABLE**            |
+| Use export backup       | Can restore on any browser/device |
+
+### Session Security
+
+- **Auto-lock**: Vault locks after 15 minutes of inactivity
+- **Activity detection**: Mouse, keyboard, touch, scroll
+- **No "remember me"**: Passphrase required each session
+- **Key cleared**: Encryption key wiped on lock
+
+### Passphrase Requirements (New Vaults)
+
+- Minimum 8 characters
+- Strength meter requires "Fair" or better
+- Recommendations:
+  - Mix uppercase + lowercase
+  - Include numbers
+  - Include symbols (!@#$%^&\*)
+  - Use a passphrase (multiple words)
+
+### Data Backup Best Practices
+
+1. **Export regularly**: Settings → Export Vault
+2. **Store backup securely**: Encrypted cloud storage or password manager
+3. **Test restore**: Try importing on another browser
+4. **After major updates**: Always export after adding significant data
+
+### API Security (Gemini AI)
+
+- API key stored in environment variables (server-side only)
+- Never exposed to browser/frontend code
+- All AI requests routed through `/api/gemini` endpoint
+- Rate limited (30 requests/minute per IP)
+
+**Privacy note**: Data sent to Gemini AI for processing includes your profile and memory items. This is transmitted securely via HTTPS to Google's servers.
+
+---
+
+## Data Loss Prevention
+
+### Backup Export
+
+```
+Settings → Export Vault → Download JSON file
+```
+
+This creates an **encrypted** backup containing:
+
+- All profile data
+- Memories and claims
+- Goals and tasks
+- Settings and layouts
+
+**Note:** The exported file is encrypted with your vault passphrase. You'll need the same passphrase to import it.
+
+### Recovery After Accidental Clear
+
+If you cleared browser data:
+
+1. Check if you have an exported backup file
+2. Go to the lock screen
+3. Use Import function
+4. Enter your original passphrase
+
+If no backup exists: **Data cannot be recovered**
+
+---
+
+## Security FAQ
+
+**Q: Is my passphrase sent anywhere?**
+A: No. It's used locally to derive the encryption key, then discarded.
+
+**Q: Can Anthropic/developers see my data?**
+A: No. All encryption happens in your browser. We never have access to your passphrase or data.
+
+**Q: What if I forget my passphrase?**
+A: Data cannot be recovered. There's no "forgot password" because we don't store your passphrase.
+
+**Q: Is the Gemini API secure?**
+A: The API key is server-side only. Your data is sent to Google over HTTPS for AI processing.
+
+**Q: Should I use the same passphrase as my other accounts?**
+A: No. Use a unique passphrase. Consider a passphrase like "correct-horse-battery-staple".

@@ -1,4 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+
+type PasswordStrength = {
+  score: 0 | 1 | 2 | 3 | 4;
+  label: string;
+  color: string;
+};
+
+const checkPasswordStrength = (password: string): PasswordStrength => {
+  if (!password) return { score: 0, label: '', color: '' };
+
+  let score = 0;
+  if (password.length >= 8) score++;
+  if (password.length >= 12) score++;
+  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
+  if (/\d/.test(password)) score++;
+  if (/[^a-zA-Z0-9]/.test(password)) score++;
+
+  if (score <= 1) return { score: 1, label: 'Weak', color: 'text-rose-400' };
+  if (score === 2) return { score: 2, label: 'Fair', color: 'text-amber-400' };
+  if (score === 3) return { score: 3, label: 'Good', color: 'text-yellow-400' };
+  return { score: 4, label: 'Strong', color: 'text-emerald-400' };
+};
 
 type VaultLockViewProps = {
   hasVault: boolean;
@@ -20,10 +42,22 @@ export const VaultLockView: React.FC<VaultLockViewProps> = ({
   const [localError, setLocalError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const strength = useMemo(() => checkPasswordStrength(passphrase), [passphrase]);
+
   const handleSubmit = async () => {
     setLocalError(null);
     if (!passphrase) {
       setLocalError('Passphrase is required.');
+      return;
+    }
+    if (!hasVault && passphrase.length < 8) {
+      setLocalError('Passphrase must be at least 8 characters.');
+      return;
+    }
+    if (!hasVault && strength.score < 2) {
+      setLocalError(
+        'Please choose a stronger passphrase. Try mixing uppercase, lowercase, numbers, and symbols.'
+      );
       return;
     }
     if (!hasVault && passphrase !== confirm) {
@@ -69,6 +103,26 @@ export const VaultLockView: React.FC<VaultLockViewProps> = ({
               className="w-full bg-slate-900/70 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
               placeholder="Enter passphrase"
             />
+            {!hasVault && passphrase && (
+              <div className="mt-2 flex items-center gap-2">
+                <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all ${
+                      strength.score === 1
+                        ? 'bg-rose-500 w-1/4'
+                        : strength.score === 2
+                          ? 'bg-amber-500 w-2/4'
+                          : strength.score === 3
+                            ? 'bg-yellow-500 w-3/4'
+                            : 'bg-emerald-500 w-full'
+                    }`}
+                  />
+                </div>
+                <span className={`text-[10px] font-medium ${strength.color}`}>
+                  {strength.label}
+                </span>
+              </div>
+            )}
           </div>
 
           {!hasVault && (
