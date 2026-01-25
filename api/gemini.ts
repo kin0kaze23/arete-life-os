@@ -57,6 +57,16 @@ OUTPUT SCHEMA:
 }
 `;
 
+const DEFAULT_PRO_MODEL = 'gemini-1.5-pro';
+const DEFAULT_FLASH_MODEL = 'gemini-1.5-flash';
+
+const getModel = (kind: 'pro' | 'flash') => {
+  const raw = kind === 'pro' ? process.env.GEMINI_MODEL_PRO : process.env.GEMINI_MODEL_FLASH;
+  const value = raw?.trim();
+  if (value && value.length > 0) return value;
+  return kind === 'pro' ? DEFAULT_PRO_MODEL : DEFAULT_FLASH_MODEL;
+};
+
 const fillTemplate = (template: string, data: Record<string, string>) => {
   let res = template;
   for (const [key, value] of Object.entries(data)) {
@@ -78,7 +88,7 @@ const askAura = async (
   promptConfig: PromptConfig
 ) => {
   const ai = getClient();
-  const model = 'gemini-3-pro-preview';
+  const model = getModel('pro');
 
   const finalPrompt = fillTemplate(promptConfig.template || promptConfig.defaultTemplate, {
     profile: JSON.stringify(profile),
@@ -117,7 +127,7 @@ const generateDeepTasks = async (
   promptConfig: PromptConfig
 ): Promise<{ recommendations: Recommendation[]; tasks: DailyTask[] }> => {
   const ai = getClient();
-  const model = 'gemini-3-pro-preview';
+  const model = getModel('pro');
 
   const memberContext = familyMembers.map((m) => ({
     id: m.id,
@@ -169,7 +179,7 @@ const generateEventPrepPlan = async (
   history: MemoryEntry[]
 ): Promise<Recommendation> => {
   const ai = getClient();
-  const model = 'gemini-3-pro-preview';
+  const model = getModel('pro');
 
   const prompt = `
     You are the Areté Chief of Staff. Generate a high-fidelity "Preparation Strategy" for an upcoming event.
@@ -212,7 +222,7 @@ const processInput = async (
   familyMembers: UserProfile[] = []
 ): Promise<any> => {
   const ai = getClient();
-  const model = 'gemini-3-flash-preview';
+  const model = getModel('flash');
 
   const memberContext = familyMembers.map((m) => ({
     id: m.id,
@@ -258,7 +268,7 @@ const generateTasks = async (
   promptConfig: PromptConfig
 ): Promise<DailyTask[]> => {
   const ai = getClient();
-  const model = 'gemini-3-flash-preview';
+  const model = getModel('flash');
   const finalPrompt = fillTemplate(promptConfig.template || promptConfig.defaultTemplate, {
     profile: JSON.stringify(profile),
     history: JSON.stringify(history.slice(-10)),
@@ -282,7 +292,7 @@ const generateInsights = async (
   promptConfig: PromptConfig
 ): Promise<ProactiveInsight[]> => {
   const ai = getClient();
-  const model = 'gemini-3-pro-preview';
+  const model = getModel('pro');
   const finalPrompt = fillTemplate(promptConfig.template || promptConfig.defaultTemplate, {
     profile: JSON.stringify(profile),
     history: JSON.stringify(history.slice(-30)),
@@ -306,7 +316,7 @@ const generateBlindSpots = async (
   promptConfig: PromptConfig
 ): Promise<BlindSpot[]> => {
   const ai = getClient();
-  const model = 'gemini-3-pro-preview';
+  const model = getModel('pro');
   const finalPrompt = fillTemplate(promptConfig.template || promptConfig.defaultTemplate, {
     profile: JSON.stringify(profile),
     history: JSON.stringify(history.slice(-30)),
@@ -332,7 +342,7 @@ const generateDailyPlan = async (
   promptConfig: PromptConfig
 ): Promise<DailyTask[]> => {
   const ai = getClient();
-  const model = 'gemini-3-flash-preview';
+  const model = getModel('flash');
 
   const prompt = `
     Synthesize a time-blocked "Daily Mission".
@@ -381,6 +391,26 @@ const getClientIp = (req: any) => {
   const realIp = req.headers['x-real-ip'];
   if (typeof realIp === 'string' && realIp.length > 0) return realIp;
   return req.socket?.remoteAddress || 'unknown';
+};
+
+const redactSensitive = (value: string) =>
+  value
+    .replace(/AIza[0-9A-Za-z\-_]{10,}/g, '[redacted]')
+    .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, 'Bearer [redacted]');
+
+const serializeError = (err: unknown) => {
+  if (!err) return { message: 'Unknown error' };
+  const anyErr = err as any;
+  const payload: Record<string, unknown> = {
+    name: anyErr?.name,
+    message: anyErr?.message,
+    status: anyErr?.status ?? anyErr?.code,
+    details: anyErr?.details ?? anyErr?.error?.message,
+  };
+  for (const [key, value] of Object.entries(payload)) {
+    if (typeof value === 'string') payload[key] = redactSensitive(value);
+  }
+  return payload;
 };
 
 const checkRateLimit = (ip: string) => {
@@ -465,6 +495,8 @@ export default async function handler(req: any, res: any) {
     const result = await handleGeminiAction(action, payload);
     res.status(200).json(result);
   } catch (err) {
-    res.status(500).json({ error: 'Gemini request failed' });
+    const errorId = `gemini-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    console.error(`[${errorId}] Gemini request failed`, serializeError(err));
+    res.status(500).json({ error: 'Gemini request failed', id: errorId });
   }
 }

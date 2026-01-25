@@ -36,6 +36,21 @@ Provide:
 - Give exactly one verification command (prefer `npm run doctor`)
 - Explain what success looks like
 
+### 2.5) Autopilot (when you say "do all the things")
+
+When you ask me to take over routine workflow, I will:
+
+- Check `git status` and summarize changes
+- Run `npm run doctor` before any push
+- Commit with a clear message
+- Push to `main` if checks pass
+
+I will still ask for approval before:
+
+- Infra changes (CI, deployment, hosting, env policy)
+- Refactors or large structure changes
+- Dependency upgrades
+
 ### 3) When I need your approval
 
 I will wait for approval before:
