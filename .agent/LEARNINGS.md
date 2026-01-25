@@ -46,6 +46,57 @@ UI completely broken on Vercel production - app rendered but without any Tailwin
 
 ---
 
+## 2026-01-25: Security Audit & Hardening
+
+### Issue
+
+User wanted to ensure the app was secure for storing sensitive personal data before daily use.
+
+### Findings (Positive)
+
+1. **Encryption implementation is solid**
+   - AES-256-GCM with PBKDF2 (100,000 iterations)
+   - Random salt (16 bytes) and IV (12 bytes) per operation
+   - Key held only in memory, never persisted
+
+2. **API key properly secured**
+   - `.env.local` correctly gitignored via `*.local` pattern
+   - API key accessed server-side only (`process.env.GEMINI_API_KEY`)
+   - No secrets in git history
+
+3. **Session security**
+   - 15-minute inactivity auto-lock
+   - Key wiped from memory on lock
+
+### Issues Fixed
+
+1. **VoiceAdvisor.tsx wrong env var**
+   - Used `process.env.API_KEY` instead of `process.env.GEMINI_API_KEY`
+   - Fix: Updated to correct env var name
+
+2. **No passphrase strength enforcement**
+   - Users could create weak passphrases
+   - Fix: Added minimum 8 chars + strength meter requiring "Fair" or better
+
+3. **Missing user security documentation**
+   - No guidance on backup strategy, data persistence
+   - Fix: Added comprehensive `guide/SECURITY.md`
+
+### Key Learnings
+
+- **CDN architecture requires proper CSP** - already documented from earlier session
+- **Passphrase is single point of failure** - no recovery if forgotten
+- **localStorage is browser-specific** - data doesn't sync, export backups critical
+- **VoiceAdvisor feature was silently broken** - wrong env var meant it would fail in prod
+
+### Prevention
+
+- Security architecture documented in `guide/SECURITY.md`
+- Passphrase strength now enforced in UI
+- User guide created for backup best practices
+
+---
+
 ## Template for Future Entries
 
 ```markdown
