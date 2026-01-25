@@ -370,7 +370,8 @@ const generateDailyPlan = async (
   });
 
   const plan = JSON.parse(response.text || '[]');
-  return plan.map((p: any) => ({
+  const planArray = Array.isArray(plan) ? plan : (plan?.tasks ?? []);
+  return planArray.map((p: any) => ({
     ...p,
     id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
     ownerId: profile.id,
