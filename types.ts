@@ -64,9 +64,12 @@ export interface PrivacySettings {
 
 export interface Source {
   id: string;
-  data: string; // Base64
+  data?: string; // Base64 (preview or legacy)
+  storageKey?: string; // IndexedDB/OPFS key for binary
   mimeType: string;
   name: string;
+  size?: number;
+  uploadedAt?: number;
   ownerId: string | 'FAMILY_SHARED';
 }
 

@@ -23,6 +23,7 @@ import {
   Save,
 } from 'lucide-react';
 import { BentoCard, getCategoryColor, Skeleton } from './SharedUI';
+import { getFile } from './fileStore';
 
 interface MemoryVaultViewProps {
   claims: Claim[];
@@ -332,7 +333,19 @@ const ClaimCard: React.FC<{
             <p className="text-xs text-slate-300 font-medium truncate">{source.name}</p>
           </div>
           <button
-            onClick={() => window.open(`data:${source.mimeType};base64,${source.data}`, '_blank')}
+            onClick={async () => {
+              if (source.data) {
+                window.open(`data:${source.mimeType};base64,${source.data}`, '_blank');
+                return;
+              }
+              if (source.storageKey) {
+                const blob = await getFile(source.storageKey);
+                if (!blob) return;
+                const url = URL.createObjectURL(blob);
+                window.open(url, '_blank');
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+              }
+            }}
             className="w-full py-2 bg-white/5 hover:bg-white/10 text-[9px] font-black uppercase tracking-widest text-slate-300 rounded-xl border border-white/5 transition-all"
           >
             Open Resource

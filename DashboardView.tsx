@@ -51,6 +51,7 @@ import {
   SourceFile,
 } from './types';
 import { SourceViewer } from './SourceViewer';
+import { getFile } from './fileStore';
 
 interface DashboardViewProps {
   memory: MemoryEntry[];
@@ -106,12 +107,47 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [horizon, setHorizon] = useState<'now' | 'soon' | 'always'>('now');
   const [drawerPillarId, setDrawerPillarId] = useState<string | null>(null);
   const [viewerSourceId, setViewerSourceId] = useState<string | null>(null);
+  const [viewerFile, setViewerFile] = useState<SourceFile | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    let isActive = true;
+    const loadViewer = async () => {
+      if (!viewerSourceId) {
+        setViewerFile(null);
+        return;
+      }
+      const source = sources.find((s) => s.id === viewerSourceId);
+      if (!source) {
+        setViewerFile(null);
+        return;
+      }
+      if (source.data) {
+        setViewerFile({ name: source.name, mimeType: source.mimeType, data: source.data });
+        return;
+      }
+      if (source.storageKey) {
+        const blob = await getFile(source.storageKey);
+        if (!blob || !isActive) return;
+        const dataUrl = await blobToDataUrl(blob);
+        if (!isActive) return;
+        setViewerFile({
+          name: source.name,
+          mimeType: source.mimeType,
+          data: dataUrl.split(',')[1],
+        });
+      }
+    };
+    loadViewer();
+    return () => {
+      isActive = false;
+    };
+  }, [viewerSourceId, sources]);
 
   const completion = getProfileCompletion(profile);
 
@@ -265,12 +301,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     );
     return sources.filter((s) => sourceIds.has(s.id));
   };
-
-  const toSourceFile = (source: Source): SourceFile => ({
-    name: source.name,
-    mimeType: source.mimeType,
-    data: source.data,
-  });
 
   const getLatestSignal = (categories: Category[]) => {
     const items = getPillarMemory(categories);
@@ -483,6 +513,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return `${diffDays}d ago`;
   };
 
+  const blobToDataUrl = (blob: Blob) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+
   const doItems = useMemo(() => getHorizonDo(), [horizon, dailyPlan, tasks, recommendations]);
   const watchItems = useMemo(
     () => getHorizonWatch(),
@@ -532,6 +570,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     );
     return Math.round(total / corePillars.length);
   }, [corePillars, memory, sources, profile]);
+
+  const showLowConfidence = overallConfidence < 55 || memory.length < 3;
 
   const ritualData = useMemo(() => {
     const hour = currentTime.getHours();
@@ -905,7 +945,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        {overallConfidence < 45 && (
+        {showLowConfidence && (
           <div className="glass-panel p-5 rounded-[2rem] border border-amber-500/20 bg-amber-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-400">
@@ -1518,14 +1558,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       )}
 
-      {viewerSourceId &&
-        (() => {
-          const source = sources.find((s) => s.id === viewerSourceId);
-          if (!source) return null;
-          return (
-            <SourceViewer files={[toSourceFile(source)]} onClose={() => setViewerSourceId(null)} />
-          );
-        })()}
+      {viewerSourceId && viewerFile && (
+        <SourceViewer files={[viewerFile]} onClose={() => setViewerSourceId(null)} />
+      )}
 
       {/* SYSTEM STATUS FOOTER */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#02040a]/80 backdrop-blur-xl border-t border-white/5 px-10 py-4 flex items-center justify-between">

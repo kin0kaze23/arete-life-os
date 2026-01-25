@@ -23,6 +23,7 @@ import {
   MemoryEntry,
   DashboardLayout,
 } from './types';
+import { deleteFile, putFile } from './fileStore';
 import {
   processInput,
   generateDailyPlan,
@@ -511,47 +512,111 @@ export const useAura = () => {
     addAuditLog(ActionType.PROFILE_UPDATE, 'Knowledge Point Refined', `ID: ${id}`);
   };
 
-  const logMemory = async (
-    input: string,
-    attachedFiles?: { data: string; mimeType: string; name: string }[]
-  ) => {
+  const logMemory = async (input: string, attachedFiles?: File[]) => {
     setIsProcessing(true);
     const timestamp = Date.now();
-    const sourceId = `src-${timestamp}`;
+    const sourcePrefix = `src-${timestamp}`;
+    const addedSourceIds: string[] = [];
+    const addedStorageKeys: string[] = [];
+    const addedMemoryIds: string[] = [];
     try {
-      if (attachedFiles) {
-        const newSources = attachedFiles.map((f, i) => ({
-          id: `${sourceId}-${i}`,
-          data: f.data,
-          mimeType: f.mimeType,
-          name: f.name,
+      const files = attachedFiles || [];
+      const newSources: Source[] = [];
+      const memoryAdds: MemoryItem[] = [];
+
+      for (let i = 0; i < files.length; i += 1) {
+        const file = files[i];
+        if (file.size > 10 * 1024 * 1024) {
+          throw new Error(`${file.name} exceeds 10MB size cap.`);
+        }
+        const sourceId = `${sourcePrefix}-${i}`;
+        const storageKey = `file-${sourcePrefix}-${i}`;
+        await putFile(storageKey, file);
+        const source: Source = {
+          id: sourceId,
+          storageKey,
+          mimeType: file.type || 'application/octet-stream',
+          name: file.name,
+          size: file.size,
+          uploadedAt: timestamp,
           ownerId: activeUserId,
-        }));
-        setSources((prev) => [...prev, ...newSources]);
+        };
+        newSources.push(source);
+        addedSourceIds.push(sourceId);
+        addedStorageKeys.push(storageKey);
+        memoryAdds.push({
+          id: `mem-${sourceId}`,
+          timestamp,
+          content: `Uploaded file: ${file.name}`,
+          category: Category.GENERAL,
+          sentiment: 'neutral',
+          extractedFacts: [],
+          sourceId,
+          ownerId: activeUserId,
+          extractionConfidence: 0,
+        });
+        addedMemoryIds.push(`mem-${sourceId}`);
       }
-      const memoryItem: MemoryItem = {
-        id: `mem-${timestamp}`,
-        timestamp,
-        content: input,
-        category: Category.GENERAL,
-        sentiment: 'neutral',
-        extractedFacts: [],
-        sourceId: attachedFiles ? sourceId : undefined,
-        ownerId: activeUserId,
-        extractionConfidence: 0,
-      };
-      setMemoryItems((prev) => [memoryItem, ...prev]);
+
+      if (newSources.length > 0) {
+        setSources((prev) => [...newSources, ...prev]);
+      }
+
+      const trimmed = input.trim();
+      if (trimmed) {
+        const memoryItem: MemoryItem = {
+          id: `mem-${timestamp}`,
+          timestamp,
+          content: trimmed,
+          category: Category.GENERAL,
+          sentiment: 'neutral',
+          extractedFacts: [],
+          sourceId: newSources.length === 1 ? newSources[0].id : undefined,
+          ownerId: activeUserId,
+          extractionConfidence: 0,
+        };
+        memoryAdds.unshift(memoryItem);
+        addedMemoryIds.push(memoryItem.id);
+      }
+
+      if (memoryAdds.length > 0) {
+        setMemoryItems((prev) => [...memoryAdds, ...prev]);
+      }
+
+      const filesForAI =
+        files.length > 0
+          ? await Promise.all(
+              files.map(
+                (file) =>
+                  new Promise<{ data: string; mimeType: string }>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      const result = reader.result as string;
+                      const base64 = result.split(',')[1];
+                      resolve({ data: base64, mimeType: file.type || 'application/octet-stream' });
+                    };
+                    reader.onerror = () => reject(reader.error);
+                    reader.readAsDataURL(file);
+                  })
+              )
+            )
+          : undefined;
+
+      const inputForAI =
+        trimmed ||
+        (files.length > 0 ? `Uploaded files: ${files.map((f) => f.name).join(', ')}` : '');
+
       const result = await processInput(
-        input,
+        inputForAI,
         memoryItems,
         profile,
-        attachedFiles,
+        filesForAI,
         prompts.find((p) => p.id === 'internalization')!,
         familySpace.members
       );
       const newClaims: Claim[] = (result.facts || []).map((f: any, i: number) => ({
         id: `claim-${timestamp}-${i}`,
-        sourceId: memoryItem.id,
+        sourceId: addedMemoryIds[0],
         fact: f.fact,
         type: 'FACT',
         confidence: f.confidence || 0,
@@ -561,8 +626,19 @@ export const useAura = () => {
         timestamp,
       }));
       setClaims((prev) => [...newClaims, ...prev]);
-      addAuditLog(ActionType.INGEST_SIGNAL, 'Signal Ingested', input, memoryItem.id);
-      return { ...result, sourceId: memoryItem.id };
+      addAuditLog(ActionType.INGEST_SIGNAL, 'Signal Ingested', inputForAI, addedMemoryIds[0]);
+      return { ...result, sourceId: addedMemoryIds[0] };
+    } catch (err) {
+      if (addedMemoryIds.length > 0) {
+        setMemoryItems((prev) => prev.filter((m) => !addedMemoryIds.includes(m.id)));
+      }
+      if (addedSourceIds.length > 0) {
+        setSources((prev) => prev.filter((s) => !addedSourceIds.includes(s.id)));
+      }
+      if (addedStorageKeys.length > 0) {
+        await Promise.all(addedStorageKeys.map((key) => deleteFile(key)));
+      }
+      throw err;
     } finally {
       setIsProcessing(false);
     }

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   Sparkles,
   Loader2,
@@ -17,10 +17,7 @@ interface LogBarProps {
   userInput: string;
   setUserInput: (val: string) => void;
   isProcessing: boolean;
-  onLog: (
-    e: React.FormEvent,
-    files?: Array<{ data: string; mimeType: string; name: string }>
-  ) => void;
+  onLog: (e: React.FormEvent, files?: File[]) => void;
   onExport: () => void;
   onReset: () => void;
 }
@@ -34,38 +31,48 @@ export const LogBar: React.FC<LogBarProps> = ({
   onReset,
 }) => {
   const [selectedFiles, setSelectedFiles] = useState<
-    Array<{ data: string; mimeType: string; name: string }>
+    Array<{ file: File; status: 'ready' | 'uploading' | 'error'; error?: string }>
   >([]);
   const [showMenu, setShowMenu] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [pendingClear, setPendingClear] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isOnline = useOnlineStatus();
 
-  const processFiles = (files: FileList) => {
-    Array.from(files).forEach((file) => {
-      if (file.size > 15 * 1024 * 1024) return;
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const base64 = (event.target?.result as string).split(',')[1];
-        setSelectedFiles((prev) => [
-          ...prev,
-          {
-            data: base64,
-            mimeType: file.type || 'application/octet-stream',
-            name: file.name,
-          },
-        ]);
-      };
-      reader.readAsDataURL(file);
+  const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
+  const addFiles = (files: FileList) => {
+    const next = Array.from(files).map((file) => {
+      if (file.size > MAX_FILE_SIZE) {
+        return {
+          file,
+          status: 'error' as const,
+          error: 'File too large (max 10MB).',
+        };
+      }
+      return { file, status: 'ready' as const };
     });
+    setSelectedFiles((prev) => [...prev, ...next]);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!userInput.trim() && selectedFiles.length === 0) return;
-    onLog(e, selectedFiles.length > 0 ? selectedFiles : undefined);
-    setSelectedFiles([]);
+    const files = selectedFiles.filter((f) => f.status === 'ready').map((f) => f.file);
+    onLog(e, files.length > 0 ? files : undefined);
+    setSelectedFiles((prev) =>
+      prev.map((file) => (file.status === 'ready' ? { ...file, status: 'uploading' } : file))
+    );
+    setPendingClear(true);
     setShowMenu(false);
   };
+
+  useEffect(() => {
+    if (!isProcessing && pendingClear) {
+      setSelectedFiles([]);
+      setPendingClear(false);
+    }
+  }, [isProcessing, pendingClear]);
 
   return (
     <div className="p-6 bg-[#050505]/90 backdrop-blur-2xl border-t border-slate-800/50 relative z-50">
@@ -78,8 +85,14 @@ export const LogBar: React.FC<LogBarProps> = ({
             >
               <FileText size={12} className="text-indigo-400" />
               <span className="text-[10px] font-bold text-indigo-100 truncate max-w-[120px]">
-                {file.name}
+                {file.file.name}
               </span>
+              {file.status === 'uploading' && (
+                <span className="text-[9px] text-indigo-300">Uploading…</span>
+              )}
+              {file.status === 'error' && (
+                <span className="text-[9px] text-rose-400">{file.error}</span>
+              )}
               <button
                 type="button"
                 onClick={() => setSelectedFiles((prev) => prev.filter((_, i) => i !== idx))}
@@ -91,7 +104,33 @@ export const LogBar: React.FC<LogBarProps> = ({
           ))}
         </div>
 
-        <div className="flex items-center gap-4 relative">
+        <div
+          className={`flex items-center gap-4 relative rounded-2xl ${
+            isDragging ? 'ring-2 ring-indigo-500/60 bg-indigo-500/5' : ''
+          }`}
+          onDragEnter={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            setIsDragging(false);
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            setIsDragging(false);
+            if (e.dataTransfer.files.length > 0) addFiles(e.dataTransfer.files);
+          }}
+        >
+          {isDragging && (
+            <div className="absolute inset-0 rounded-2xl border border-dashed border-indigo-500/40 bg-indigo-500/10 flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-indigo-300 pointer-events-none">
+              Drop files to attach
+            </div>
+          )}
           <div className="relative">
             <ActionTooltip label="System Commands" side="top">
               <button
@@ -186,7 +225,7 @@ export const LogBar: React.FC<LogBarProps> = ({
               <input
                 type="file"
                 ref={fileInputRef}
-                onChange={(e) => e.target.files && processFiles(e.target.files)}
+                onChange={(e) => e.target.files && addFiles(e.target.files)}
                 className="hidden"
                 multiple
               />

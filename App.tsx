@@ -78,7 +78,7 @@ const App: React.FC = () => {
     );
   }
 
-  const handleLog = async (e: React.FormEvent, files?: any[]) => {
+  const handleLog = async (e: React.FormEvent, files?: File[]) => {
     if (e) e.preventDefault();
     if (!isOnline) {
       showToast('Kernel link offline. Cannot sync signals.', 'error');
