@@ -16,6 +16,7 @@ import {
   Heart,
   Wallet,
   Users,
+  User,
   Globe,
   Sun,
   Moon,
@@ -45,6 +46,8 @@ import {
   DashboardLayout,
   WidgetConfig,
   WidgetType,
+  Recommendation,
+  Source,
 } from './types';
 
 interface DashboardViewProps {
@@ -57,6 +60,8 @@ interface DashboardViewProps {
   blindSpots?: BlindSpot[];
   profile: UserProfile;
   ruleOfLife: any;
+  sources: Source[];
+  recommendations: Recommendation[];
   layout: DashboardLayout;
   toggleTask: (id: string) => void;
   refreshAll: () => void;
@@ -78,6 +83,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   blindSpots = [],
   profile,
   ruleOfLife,
+  sources,
+  recommendations,
   layout,
   toggleTask,
   refreshAll,
@@ -98,6 +105,182 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }, []);
 
   const completion = getProfileCompletion(profile);
+
+  const corePillars = useMemo(
+    () => [
+      {
+        id: 'health',
+        title: 'Health',
+        categories: [Category.HEALTH],
+        icon: <Heart className="text-emerald-400" size={18} />,
+        accent: 'emerald',
+      },
+      {
+        id: 'finance',
+        title: 'Finance',
+        categories: [Category.FINANCE],
+        icon: <Wallet className="text-sky-400" size={18} />,
+        accent: 'sky',
+      },
+      {
+        id: 'personal',
+        title: 'Personal',
+        categories: [Category.GENERAL, Category.WORK, Category.SOCIAL],
+        icon: <User className="text-violet-400" size={18} />,
+        accent: 'violet',
+      },
+      {
+        id: 'relationships',
+        title: 'Relationships',
+        categories: [Category.RELATIONSHIPS],
+        icon: <Users className="text-rose-400" size={18} />,
+        accent: 'rose',
+      },
+      {
+        id: 'spiritual',
+        title: 'Spiritual',
+        categories: [Category.SPIRITUAL],
+        icon: <Sparkles className="text-amber-300" size={18} />,
+        accent: 'amber',
+      },
+    ],
+    []
+  );
+
+  const isFilled = (value: unknown) => {
+    if (Array.isArray(value)) return value.length > 0;
+    if (typeof value === 'string') return value.trim().length > 0;
+    return Boolean(value);
+  };
+
+  const getProfileCoverage = (pillarId: string) => {
+    const profileFieldSets: Record<string, unknown[]> = {
+      health: [
+        profile.health.height,
+        profile.health.weight,
+        profile.health.sleepTime,
+        profile.health.wakeTime,
+        profile.health.activities,
+        profile.health.activityFrequency,
+        profile.health.conditions,
+        profile.health.medications,
+      ],
+      finance: [
+        profile.finances.assetsTotal,
+        profile.finances.assetsBreakdown.cash,
+        profile.finances.assetsBreakdown.investments,
+        profile.finances.assetsBreakdown.property,
+        profile.finances.assetsBreakdown.other,
+        profile.finances.liabilities,
+        profile.finances.income,
+        profile.finances.fixedCosts,
+        profile.finances.variableCosts,
+      ],
+      personal: [
+        profile.identify.name,
+        profile.identify.location,
+        profile.identify.origin,
+        profile.personal.status,
+        profile.personal.jobRole,
+        profile.personal.company,
+        profile.personal.interests,
+      ],
+      relationships: [
+        profile.relationship.livingArrangement,
+        profile.relationship.socialEnergy,
+        profile.relationship.dailyCommitments,
+        profile.relationship.socialGoals,
+        profile.innerCircle,
+      ],
+      spiritual: [
+        profile.spiritual.worldview,
+        profile.spiritual.coreValues,
+        profile.spiritual.practicePulse,
+      ],
+    };
+    const fields = profileFieldSets[pillarId] || [];
+    const filled = fields.filter(isFilled).length;
+    return fields.length === 0 ? 0 : Math.round((filled / fields.length) * 100);
+  };
+
+  const getPillarMemory = (categories: Category[]) =>
+    memory.filter((item) => categories.includes(item.category));
+
+  const getPillarSourceCount = (categories: Category[]) => {
+    const knownSources = new Set(sources.map((s) => s.id));
+    const sourceIds = new Set(
+      getPillarMemory(categories)
+        .map((item) => item.sourceId)
+        .filter((id): id is string => Boolean(id) && knownSources.has(id))
+    );
+    return sourceIds.size;
+  };
+
+  const getLatestSignal = (categories: Category[]) => {
+    const items = getPillarMemory(categories);
+    if (items.length === 0) return null;
+    return items.reduce((latest, item) => (item.timestamp > latest ? item.timestamp : latest), 0);
+  };
+
+  const getDoNext = (categories: Category[]) => {
+    const fromPlan = dailyPlan.filter((t) => categories.includes(t.category));
+    const fromTasks = tasks.filter((t) => categories.includes(t.category));
+    const fromRecs = recommendations.filter((r) => categories.includes(r.category));
+    const selected = fromPlan.length ? fromPlan : fromTasks.length ? fromTasks : fromRecs;
+    return selected.slice(0, 2).map((item) => {
+      if ('impactScore' in item) {
+        return {
+          title: item.title,
+          why: item.rationale || item.description,
+          how: item.steps?.[0] || item.definitionOfDone,
+          meta: `${item.estimatedTime || '15 mins'} • Impact ${item.impactScore}`,
+        };
+      }
+      return {
+        title: item.title,
+        why: item.reasoning || item.why || item.description,
+        how: item.methodology || item.definitionOfDone,
+        meta: item.priority ? `${item.priority.toUpperCase()} priority` : 'Action',
+      };
+    });
+  };
+
+  const getWatchouts = (categories: Category[]) => {
+    const filteredInsights = insights.filter((i) => categories.includes(i.category));
+    if (filteredInsights.length > 0) {
+      return filteredInsights.slice(0, 2).map((i) => ({
+        title: i.title,
+        why: i.description,
+      }));
+    }
+    return blindSpots.slice(0, 1).map((bs) => ({
+      title: bs.signal,
+      why: bs.why,
+    }));
+  };
+
+  const getCoverageScore = (pillarId: string, categories: Category[]) => {
+    const profileScore = getProfileCoverage(pillarId);
+    const memoryCount = getPillarMemory(categories).length;
+    const fileCount = getPillarSourceCount(categories);
+    const signalScore = Math.min(40, memoryCount * 2 + fileCount * 6);
+    return {
+      total: Math.min(100, Math.round(profileScore * 0.6 + signalScore)),
+      profileScore,
+      memoryCount,
+      fileCount,
+    };
+  };
+
+  const formatSignalTime = (timestamp: number | null) => {
+    if (!timestamp) return 'No signals yet';
+    const diffMinutes = Math.floor((Date.now() - timestamp) / 60000);
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 48) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+  };
 
   const ritualData = useMemo(() => {
     const hour = currentTime.getHours();
@@ -416,6 +599,129 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         >
           <Map size={16} /> Plot Mission
         </button>
+      </div>
+
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <ShieldCheck size={14} className="text-emerald-400" />
+              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">
+                Core Aspect Intelligence
+              </span>
+            </div>
+            <h3 className="text-2xl md:text-3xl font-black text-white tracking-tight">
+              What to do, why it matters, and what to watch.
+            </h3>
+          </div>
+          <button
+            onClick={refreshAll}
+            className="px-6 py-3 rounded-2xl bg-slate-900 border border-white/5 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:border-indigo-500/30 transition-all"
+          >
+            Refresh Signals
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          {corePillars.map((pillar) => {
+            const coverage = getCoverageScore(pillar.id, pillar.categories);
+            const doNext = getDoNext(pillar.categories);
+            const watchouts = getWatchouts(pillar.categories);
+            const latestSignal = getLatestSignal(pillar.categories);
+            return (
+              <div
+                key={pillar.id}
+                className="glass-panel p-8 rounded-[2.5rem] border border-white/5 bg-slate-950/40 flex flex-col gap-6"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-white/5 flex items-center justify-center">
+                      {pillar.icon}
+                    </div>
+                    <div>
+                      <h4 className="text-xl font-black text-white">{pillar.title}</h4>
+                      <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">
+                        Signals: {coverage.memoryCount} logs • {coverage.fileCount} files • Profile{' '}
+                        {coverage.profileScore}%
+                      </p>
+                      <p className="text-[9px] uppercase tracking-widest text-slate-600 font-bold mt-1">
+                        Last signal: {formatSignalTime(latestSignal)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-black text-white">{coverage.total}%</div>
+                    <p className="text-[9px] uppercase tracking-widest text-slate-500">
+                      Data Confidence
+                    </p>
+                  </div>
+                </div>
+
+                <div className="h-1.5 bg-slate-900 rounded-full overflow-hidden">
+                  <div className="h-full bg-indigo-500" style={{ width: `${coverage.total}%` }} />
+                </div>
+
+                <div className="grid grid-cols-1 gap-6">
+                  <div className="space-y-3">
+                    <h5 className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-400">
+                      What to do (Why + How)
+                    </h5>
+                    {doNext.length > 0 ? (
+                      doNext.map((item, idx) => (
+                        <div
+                          key={`${pillar.id}-do-${idx}`}
+                          className="p-4 rounded-2xl bg-slate-900/60 border border-white/5"
+                        >
+                          <p className="text-xs font-black text-white">{item.title}</p>
+                          <p className="text-[10px] text-slate-400 mt-2">
+                            {item.why || 'Need more context to explain rationale.'}
+                          </p>
+                          <p className="text-[10px] text-slate-500 mt-2 italic">
+                            How: {item.how || 'Follow the next tactical step.'}
+                          </p>
+                          <p className="text-[9px] text-slate-600 mt-2 uppercase tracking-widest">
+                            {item.meta}
+                          </p>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-4 rounded-2xl border border-dashed border-slate-800 text-[10px] text-slate-500 space-y-3">
+                        <p>No actions yet. Add signals to build guidance.</p>
+                        <button
+                          onClick={() => onNavigate('vault')}
+                          className="px-4 py-2 rounded-xl bg-slate-900 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-white border border-white/5 hover:border-indigo-500/30 transition-all"
+                        >
+                          Add Context
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-3">
+                    <h5 className="text-[10px] font-black uppercase tracking-[0.3em] text-rose-400">
+                      Watchouts (Why)
+                    </h5>
+                    {watchouts.length > 0 ? (
+                      watchouts.map((item, idx) => (
+                        <div
+                          key={`${pillar.id}-watch-${idx}`}
+                          className="p-4 rounded-2xl bg-rose-500/5 border border-rose-500/10"
+                        >
+                          <p className="text-xs font-black text-white">{item.title}</p>
+                          <p className="text-[10px] text-rose-200/70 mt-2">{item.why}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-4 rounded-2xl border border-dashed border-slate-800 text-[10px] text-slate-500">
+                        No risks detected yet. Keep logging signals.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
