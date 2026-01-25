@@ -17,6 +17,8 @@ This repo is a Vite + React static web app. Vercel provides zero‑config builds
 Set these in **Vercel → Project → Settings → Environment Variables**:
 
 - `GEMINI_API_KEY` = your Gemini API key
+- `OPENAI_API_KEY` = your OpenAI API key (optional fallback)
+- `OPENAI_MODEL` = OpenAI model name (optional, default: `gpt-5`)
 
 **Do not** add secrets to git or `.env.example`.
 

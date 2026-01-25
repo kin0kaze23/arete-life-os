@@ -1,4 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
+import OpenAI from 'openai';
 import type {
   BlindSpot,
   DailyTask,
@@ -67,6 +68,32 @@ const getModel = (kind: 'pro' | 'flash') => {
   return kind === 'pro' ? DEFAULT_PRO_MODEL : DEFAULT_FLASH_MODEL;
 };
 
+const getOpenAIModel = () => {
+  const value = process.env.OPENAI_MODEL?.trim();
+  if (value && value.length > 0) return value;
+  return 'gpt-5';
+};
+
+const getOpenAIClient = () => {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+  return new OpenAI({ apiKey });
+};
+
+const toJsonPrompt = (prompt: string) => `${prompt}\n\nReturn JSON only.`;
+
+const callOpenAI = async (input: string, options?: { json?: boolean }) => {
+  const client = getOpenAIClient();
+  if (!client) throw new Error('Missing OPENAI_API_KEY');
+  const model = getOpenAIModel();
+  const response = await client.responses.create({
+    model,
+    input,
+    ...(options?.json ? { text: { format: { type: 'json_object' } } } : {}),
+  });
+  return response.output_text || '';
+};
+
 const fillTemplate = (template: string, data: Record<string, string>) => {
   let res = template;
   for (const [key, value] of Object.entries(data)) {
@@ -87,37 +114,42 @@ const askAura = async (
   profile: UserProfile,
   promptConfig: PromptConfig
 ) => {
-  const ai = getClient();
-  const model = getModel('pro');
-
   const finalPrompt = fillTemplate(promptConfig.template || promptConfig.defaultTemplate, {
     profile: JSON.stringify(profile),
     history: JSON.stringify(history.slice(-20)),
     input: text,
   });
 
-  const response = await ai.models.generateContent({
-    model,
-    contents: finalPrompt,
-    config: {
-      tools: [{ googleSearch: {} }],
-    },
-  });
-
-  const urls: { title: string; uri: string }[] = [];
-  const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
-  if (chunks) {
-    chunks.forEach((chunk: any) => {
-      if (chunk.web) {
-        urls.push({ title: chunk.web.title, uri: chunk.web.uri });
-      }
+  try {
+    const ai = getClient();
+    const model = getModel('pro');
+    const response = await ai.models.generateContent({
+      model,
+      contents: finalPrompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+      },
     });
-  }
 
-  return {
-    text: response.text || 'Oracle connection unstable.',
-    sources: urls,
-  };
+    const urls: { title: string; uri: string }[] = [];
+    const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+    if (chunks) {
+      chunks.forEach((chunk: any) => {
+        if (chunk.web) {
+          urls.push({ title: chunk.web.title, uri: chunk.web.uri });
+        }
+      });
+    }
+
+    return {
+      text: response.text || 'Oracle connection unstable.',
+      sources: urls,
+    };
+  } catch (err) {
+    if (!getOpenAIClient()) throw err;
+    const textResult = await callOpenAI(finalPrompt);
+    return { text: textResult || 'Oracle connection unstable.', sources: [] };
+  }
 };
 
 const generateDeepTasks = async (
@@ -126,9 +158,6 @@ const generateDeepTasks = async (
   familyMembers: UserProfile[],
   promptConfig: PromptConfig
 ): Promise<{ recommendations: Recommendation[]; tasks: DailyTask[] }> => {
-  const ai = getClient();
-  const model = getModel('pro');
-
   const memberContext = familyMembers.map((m) => ({
     id: m.id,
     name: m.identify.name,
@@ -144,33 +173,58 @@ const generateDeepTasks = async (
     currentDate: new Date().toISOString(),
   });
 
-  const response = await ai.models.generateContent({
-    model,
-    contents: finalPrompt,
-    config: {
-      responseMimeType: 'application/json',
-    },
-  });
+  try {
+    const ai = getClient();
+    const model = getModel('pro');
+    const response = await ai.models.generateContent({
+      model,
+      contents: finalPrompt,
+      config: {
+        responseMimeType: 'application/json',
+      },
+    });
 
-  const result = JSON.parse(response.text || '{}');
-  const timestamp = Date.now();
+    const result = JSON.parse(response.text || '{}');
+    const timestamp = Date.now();
 
-  return {
-    recommendations: (result.recommendations || []).map((r: any) => ({
-      ...r,
-      id: `rec-${timestamp}-${Math.random().toString(36).substr(2, 5)}`,
-      ownerId: profile.id,
-      createdAt: timestamp,
-      status: 'ACTIVE',
-    })),
-    tasks: (result.tasks || []).map((t: any) => ({
-      ...t,
-      id: `deep-task-${timestamp}-${Math.random().toString(36).substr(2, 5)}`,
-      ownerId: profile.id,
-      createdAt: timestamp,
-      completed: false,
-    })),
-  };
+    return {
+      recommendations: (result.recommendations || []).map((r: any) => ({
+        ...r,
+        id: `rec-${timestamp}-${Math.random().toString(36).substr(2, 5)}`,
+        ownerId: profile.id,
+        createdAt: timestamp,
+        status: 'ACTIVE',
+      })),
+      tasks: (result.tasks || []).map((t: any) => ({
+        ...t,
+        id: `deep-task-${timestamp}-${Math.random().toString(36).substr(2, 5)}`,
+        ownerId: profile.id,
+        createdAt: timestamp,
+        completed: false,
+      })),
+    };
+  } catch (err) {
+    if (!getOpenAIClient()) throw err;
+    const textResult = await callOpenAI(toJsonPrompt(finalPrompt), { json: true });
+    const result = JSON.parse(textResult || '{}');
+    const timestamp = Date.now();
+    return {
+      recommendations: (result.recommendations || []).map((r: any) => ({
+        ...r,
+        id: `rec-${timestamp}-${Math.random().toString(36).substr(2, 5)}`,
+        ownerId: profile.id,
+        createdAt: timestamp,
+        status: 'ACTIVE',
+      })),
+      tasks: (result.tasks || []).map((t: any) => ({
+        ...t,
+        id: `deep-task-${timestamp}-${Math.random().toString(36).substr(2, 5)}`,
+        ownerId: profile.id,
+        createdAt: timestamp,
+        completed: false,
+      })),
+    };
+  }
 };
 
 const generateEventPrepPlan = async (
@@ -178,9 +232,6 @@ const generateEventPrepPlan = async (
   profile: UserProfile,
   history: MemoryEntry[]
 ): Promise<Recommendation> => {
-  const ai = getClient();
-  const model = getModel('pro');
-
   const prompt = `
     You are the Areté Chief of Staff. Generate a high-fidelity "Preparation Strategy" for an upcoming event.
     Use Google Search to find specific checklists or requirements if the event is a known public activity (e.g. Marathons, specific travel destinations).
@@ -192,25 +243,42 @@ const generateEventPrepPlan = async (
     RETURN ONLY JSON.
   `;
 
-  const response = await ai.models.generateContent({
-    model,
-    contents: prompt,
-    config: {
-      tools: [{ googleSearch: {} }],
-      responseMimeType: 'application/json',
-    },
-  });
+  try {
+    const ai = getClient();
+    const model = getModel('pro');
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+        responseMimeType: 'application/json',
+      },
+    });
 
-  const result = JSON.parse(response.text || '{}');
-  return {
-    ...result,
-    id: `prep-${Date.now()}`,
-    ownerId: profile.id,
-    createdAt: Date.now(),
-    status: 'ACTIVE',
-    needsReview: false,
-    evidenceLinks: { claims: [], sources: [] },
-  };
+    const result = JSON.parse(response.text || '{}');
+    return {
+      ...result,
+      id: `prep-${Date.now()}`,
+      ownerId: profile.id,
+      createdAt: Date.now(),
+      status: 'ACTIVE',
+      needsReview: false,
+      evidenceLinks: { claims: [], sources: [] },
+    };
+  } catch (err) {
+    if (!getOpenAIClient()) throw err;
+    const textResult = await callOpenAI(toJsonPrompt(prompt), { json: true });
+    const result = JSON.parse(textResult || '{}');
+    return {
+      ...result,
+      id: `prep-${Date.now()}`,
+      ownerId: profile.id,
+      createdAt: Date.now(),
+      status: 'ACTIVE',
+      needsReview: false,
+      evidenceLinks: { claims: [], sources: [] },
+    };
+  }
 };
 
 const processInput = async (
@@ -221,9 +289,6 @@ const processInput = async (
   promptConfig: PromptConfig,
   familyMembers: UserProfile[] = []
 ): Promise<any> => {
-  const ai = getClient();
-  const model = getModel('flash');
-
   const memberContext = familyMembers.map((m) => ({
     id: m.id,
     name: m.identify.name,
@@ -251,15 +316,23 @@ const processInput = async (
     });
   }
 
-  const response = await ai.models.generateContent({
-    model,
-    contents: { parts },
-    config: {
-      responseMimeType: 'application/json',
-    },
-  });
+  try {
+    const ai = getClient();
+    const model = getModel('flash');
+    const response = await ai.models.generateContent({
+      model,
+      contents: { parts },
+      config: {
+        responseMimeType: 'application/json',
+      },
+    });
 
-  return JSON.parse(response.text || '{}');
+    return JSON.parse(response.text || '{}');
+  } catch (err) {
+    if (!getOpenAIClient()) throw err;
+    const textResult = await callOpenAI(toJsonPrompt(finalPrompt), { json: true });
+    return JSON.parse(textResult || '{}');
+  }
 };
 
 const generateTasks = async (
@@ -267,23 +340,30 @@ const generateTasks = async (
   profile: UserProfile,
   promptConfig: PromptConfig
 ): Promise<DailyTask[]> => {
-  const ai = getClient();
-  const model = getModel('flash');
   const finalPrompt = fillTemplate(promptConfig.template || promptConfig.defaultTemplate, {
     profile: JSON.stringify(profile),
     history: JSON.stringify(history.slice(-10)),
     input:
       "Generate active tasks based on recent history and profile goals. Include a 'methodology' field explaining STRATEGICALLY how to complete the task accurately. Include 'valueResonance' (High/Medium/Low) compared to coreValues.",
   });
-  const response = await ai.models.generateContent({
-    model,
-    contents: finalPrompt,
-    config: {
-      responseMimeType: 'application/json',
-    },
-  });
-  const tasks = JSON.parse(response.text || '[]');
-  return tasks.map((t: any) => ({ ...t, completed: false }));
+  try {
+    const ai = getClient();
+    const model = getModel('flash');
+    const response = await ai.models.generateContent({
+      model,
+      contents: finalPrompt,
+      config: {
+        responseMimeType: 'application/json',
+      },
+    });
+    const tasks = JSON.parse(response.text || '[]');
+    return tasks.map((t: any) => ({ ...t, completed: false }));
+  } catch (err) {
+    if (!getOpenAIClient()) throw err;
+    const textResult = await callOpenAI(toJsonPrompt(finalPrompt), { json: true });
+    const tasks = JSON.parse(textResult || '[]');
+    return tasks.map((t: any) => ({ ...t, completed: false }));
+  }
 };
 
 const generateInsights = async (
@@ -291,23 +371,29 @@ const generateInsights = async (
   profile: UserProfile,
   promptConfig: PromptConfig
 ): Promise<ProactiveInsight[]> => {
-  const ai = getClient();
-  const model = getModel('pro');
   const finalPrompt = fillTemplate(promptConfig.template || promptConfig.defaultTemplate, {
     profile: JSON.stringify(profile),
     history: JSON.stringify(history.slice(-30)),
     input:
       'Generate proactive insights for achieving excellence. Use google search if appropriate to find relevant news/trends in their field.',
   });
-  const response = await ai.models.generateContent({
-    model,
-    contents: finalPrompt,
-    config: {
-      tools: [{ googleSearch: {} }],
-      responseMimeType: 'application/json',
-    },
-  });
-  return JSON.parse(response.text || '[]');
+  try {
+    const ai = getClient();
+    const model = getModel('pro');
+    const response = await ai.models.generateContent({
+      model,
+      contents: finalPrompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+        responseMimeType: 'application/json',
+      },
+    });
+    return JSON.parse(response.text || '[]');
+  } catch (err) {
+    if (!getOpenAIClient()) throw err;
+    const textResult = await callOpenAI(toJsonPrompt(finalPrompt), { json: true });
+    return JSON.parse(textResult || '[]');
+  }
 };
 
 const generateBlindSpots = async (
@@ -315,22 +401,28 @@ const generateBlindSpots = async (
   profile: UserProfile,
   promptConfig: PromptConfig
 ): Promise<BlindSpot[]> => {
-  const ai = getClient();
-  const model = getModel('pro');
   const finalPrompt = fillTemplate(promptConfig.template || promptConfig.defaultTemplate, {
     profile: JSON.stringify(profile),
     history: JSON.stringify(history.slice(-30)),
     input:
       'Analyze for potential blind spots. Be critical of discrepancies between stated values and logged behavior.',
   });
-  const response = await ai.models.generateContent({
-    model,
-    contents: finalPrompt,
-    config: {
-      responseMimeType: 'application/json',
-    },
-  });
-  return JSON.parse(response.text || '[]');
+  try {
+    const ai = getClient();
+    const model = getModel('pro');
+    const response = await ai.models.generateContent({
+      model,
+      contents: finalPrompt,
+      config: {
+        responseMimeType: 'application/json',
+      },
+    });
+    return JSON.parse(response.text || '[]');
+  } catch (err) {
+    if (!getOpenAIClient()) throw err;
+    const textResult = await callOpenAI(toJsonPrompt(finalPrompt), { json: true });
+    return JSON.parse(textResult || '[]');
+  }
 };
 
 const generateDailyPlan = async (
@@ -341,9 +433,6 @@ const generateDailyPlan = async (
   ruleOfLife: any,
   promptConfig: PromptConfig
 ): Promise<DailyTask[]> => {
-  const ai = getClient();
-  const model = getModel('flash');
-
   const prompt = `
     Synthesize a time-blocked "Daily Mission".
     MANDATORY: Rank tasks by their resonance with the user's Core Values: ${profile.spiritual.coreValues.join(', ')}.
@@ -361,23 +450,39 @@ const generateDailyPlan = async (
     input: prompt,
   });
 
-  const response = await ai.models.generateContent({
-    model,
-    contents: finalPrompt,
-    config: {
-      responseMimeType: 'application/json',
-    },
-  });
+  try {
+    const ai = getClient();
+    const model = getModel('flash');
+    const response = await ai.models.generateContent({
+      model,
+      contents: finalPrompt,
+      config: {
+        responseMimeType: 'application/json',
+      },
+    });
 
-  const plan = JSON.parse(response.text || '[]');
-  const planArray = Array.isArray(plan) ? plan : (plan?.tasks ?? []);
-  return planArray.map((p: any) => ({
-    ...p,
-    id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-    ownerId: profile.id,
-    completed: false,
-    createdAt: Date.now(),
-  }));
+    const plan = JSON.parse(response.text || '[]');
+    const planArray = Array.isArray(plan) ? plan : (plan?.tasks ?? []);
+    return planArray.map((p: any) => ({
+      ...p,
+      id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      ownerId: profile.id,
+      completed: false,
+      createdAt: Date.now(),
+    }));
+  } catch (err) {
+    if (!getOpenAIClient()) throw err;
+    const textResult = await callOpenAI(toJsonPrompt(finalPrompt), { json: true });
+    const plan = JSON.parse(textResult || '[]');
+    const planArray = Array.isArray(plan) ? plan : (plan?.tasks ?? []);
+    return planArray.map((p: any) => ({
+      ...p,
+      id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      ownerId: profile.id,
+      completed: false,
+      createdAt: Date.now(),
+    }));
+  }
 };
 
 const RATE_LIMIT_WINDOW_MS = 60_000;

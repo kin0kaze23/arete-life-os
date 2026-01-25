@@ -25,3 +25,4 @@
 
 - `git status` should never show `.env.local`
 - `git grep -n "GEMINI_API_KEY"` should not reveal real keys
+- `git grep -n "OPENAI_API_KEY"` should not reveal real keys

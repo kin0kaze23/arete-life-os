@@ -15,6 +15,8 @@ npm install
 
 1. Copy `.env.example` to `.env.local`
 2. Set your `GEMINI_API_KEY`
+3. (Optional) Set your `OPENAI_API_KEY` to enable fallback
+4. (Optional) Set `OPENAI_MODEL` (default: `gpt-5`)
 
 ```bash
 cp .env.example .env.local
