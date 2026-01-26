@@ -6,9 +6,10 @@ This file is intentionally short for fast session initialization.
 ## Read Order (Session Init, ~2 min)
 
 1. `./.agent/README.md` (this file)
-2. `./.agent/AGENT.md` (protocols + automation rules)
-3. `./.agent/TROUBLESHOOTING.md` (known issues + fixes)
-4. `./.agent/LEARNINGS.md` (latest resolved issues)
+2. `./.agent/CURRENT_STATUS.md` (latest snapshot)
+3. `./.agent/AGENT.md` (protocols + automation rules)
+4. `./.agent/TROUBLESHOOTING.md` (known issues + fixes)
+5. `./.agent/LEARNINGS.md` (latest resolved issues)
 
 ## Quick Start Checklist
 

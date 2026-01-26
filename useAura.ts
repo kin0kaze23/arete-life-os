@@ -97,14 +97,15 @@ const buildMissingData = (profile: UserProfile) => {
   return missing;
 };
 
-const extractFinanceMetrics = (payload?: Record<string, unknown> | FinanceMetrics) => {
-  if (!payload) return null;
-  const income = payload.income;
-  const fixed = payload.fixed;
-  const variable = payload.variable;
-  const dailyVariableBudget = payload.dailyVariableBudget;
-  const weeklyVariableBudget = payload.weeklyVariableBudget;
-  const savingsRate = payload.savingsRate;
+const extractFinanceMetrics = (payload?: unknown) => {
+  if (!payload || typeof payload !== 'object') return null;
+  const data = payload as Record<string, unknown>;
+  const income = data.income;
+  const fixed = data.fixed;
+  const variable = data.variable;
+  const dailyVariableBudget = data.dailyVariableBudget;
+  const weeklyVariableBudget = data.weeklyVariableBudget;
+  const savingsRate = data.savingsRate;
   const isNumber = (val: unknown): val is number => typeof val === 'number' && Number.isFinite(val);
   if (
     !isNumber(income) ||
@@ -127,6 +128,7 @@ const extractFinanceMetrics = (payload?: Record<string, unknown> | FinanceMetric
 };
 
 const detectHabit = (input: string) => {
+  if (input.trim().startsWith('/')) return null;
   const text = input.toLowerCase();
   const isHabit =
     text.includes('habit') ||
@@ -406,6 +408,8 @@ export const useAura = () => {
   const [isPlanningDay, setIsPlanningDay] = useState(false);
   const [isGeneratingTasks, setIsGeneratingTasks] = useState(false);
 
+  const ensureArray = <T>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : []);
+
   const applyVaultData = useCallback((data: VaultData) => {
     setIsOnboarded(data.isOnboarded);
     setFamilySpace(data.familySpace);
@@ -414,17 +418,17 @@ export const useAura = () => {
       data.familySpace.members.find((m) => m.id === data.activeUserId) ||
       data.familySpace.members[0];
     setProfile(nextProfile);
-    setSources(data.sources || []);
-    setMemoryItems(data.memoryItems || []);
-    setClaims(data.claims || []);
-    setTasks(data.tasks || []);
-    setRecommendations(data.recommendations || []);
-    setGoals(data.goals || []);
-    setAuditLogs(data.auditLogs || []);
-    setTimelineEvents(data.timelineEvents || []);
-    setInsights(data.insights || []);
-    setBlindSpots(data.blindSpots || []);
-    setDailyPlan(data.dailyPlan || []);
+    setSources(ensureArray<Source>(data.sources));
+    setMemoryItems(ensureArray<MemoryItem>(data.memoryItems));
+    setClaims(ensureArray<Claim>(data.claims));
+    setTasks(ensureArray<DailyTask>(data.tasks));
+    setRecommendations(ensureArray<Recommendation>(data.recommendations));
+    setGoals(ensureArray<Goal>(data.goals));
+    setAuditLogs(ensureArray<AuditLogEntry>(data.auditLogs));
+    setTimelineEvents(ensureArray<TimelineEvent>(data.timelineEvents));
+    setInsights(ensureArray<ProactiveInsight>(data.insights));
+    setBlindSpots(ensureArray<BlindSpot>(data.blindSpots));
+    setDailyPlan(ensureArray<DailyTask>(data.dailyPlan));
     setRuleOfLife(data.ruleOfLife || INITIAL_RULE_OF_LIFE);
     setPrompts(data.prompts?.length ? data.prompts : DEFAULT_PROMPTS);
     setLayouts(data.layouts || { [data.activeUserId]: DEFAULT_LAYOUT });
@@ -563,6 +567,36 @@ export const useAura = () => {
     [activeUserId]
   );
 
+  const appendMemoryItems = useCallback((items: MemoryItem[]) => {
+    if (items.length === 0) return;
+    setMemoryItems((prev) => [...items, ...prev]);
+  }, []);
+
+  const updateMemoryItem = useCallback((id: string, updates: Partial<MemoryItem>) => {
+    setMemoryItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item;
+        const toRecord = (value: unknown) =>
+          value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+        const mergedMetadata = updates.metadata
+          ? {
+              ...item.metadata,
+              ...updates.metadata,
+              payload: {
+                ...toRecord(item.metadata?.payload),
+                ...toRecord(updates.metadata?.payload),
+              },
+            }
+          : item.metadata;
+        return { ...item, ...updates, metadata: mergedMetadata };
+      })
+    );
+  }, []);
+
+  const deleteMemoryItem = useCallback((id: string) => {
+    setMemoryItems((prev) => prev.filter((item) => item.id !== id));
+  }, []);
+
   const commitClaims = (sourceId: string, facts: CategorizedFact[], updates: ProposedUpdate[]) => {
     setClaims((prev) =>
       prev.map((c) => (c.sourceId === sourceId ? { ...c, status: ClaimStatus.COMMITTED } : c))
@@ -659,11 +693,15 @@ export const useAura = () => {
       }
 
       const trimmed = input.trim();
-      if (trimmed) {
+      const isAuditEntry = trimmed.toLowerCase().startsWith('/audit');
+      const auditContent = isAuditEntry ? trimmed.replace(/^\/audit\s*/i, '').trim() : '';
+      const contentForMemory = isAuditEntry ? auditContent || 'Evening audit logged.' : trimmed;
+
+      if (contentForMemory) {
         const memoryItem: MemoryItem = {
           id: `mem-${timestamp}`,
           timestamp,
-          content: trimmed,
+          content: contentForMemory,
           category: Category.GENERAL,
           sentiment: 'neutral',
           extractedFacts: [],
@@ -675,8 +713,8 @@ export const useAura = () => {
         addedMemoryIds.push(memoryItem.id);
       }
 
-      if (trimmed) {
-        const habit = detectHabit(trimmed);
+      if (contentForMemory) {
+        const habit = detectHabit(contentForMemory);
         if (habit) {
           const habitItem: MemoryItem = {
             id: `mem-habit-${timestamp}`,
@@ -705,6 +743,31 @@ export const useAura = () => {
           memoryAdds.push(habitItem);
           addedMemoryIds.push(habitItem.id);
         }
+      }
+
+      if (isAuditEntry) {
+        const auditItem: MemoryItem = {
+          id: `mem-audit-${timestamp}`,
+          timestamp,
+          content: contentForMemory,
+          category: Category.GENERAL,
+          sentiment: 'neutral',
+          extractedFacts: [],
+          ownerId: activeUserId,
+          extractionConfidence: 1,
+          metadata: {
+            type: 'audit_reflection',
+            source: 'logbar',
+            version: 1,
+            payload: {
+              content: contentForMemory,
+              createdAt: timestamp,
+            },
+          },
+        };
+        memoryAdds.push(auditItem);
+        addedMemoryIds.push(auditItem.id);
+        addAuditLog(ActionType.DIGEST, 'Evening Audit Logged', contentForMemory, auditItem.id);
       }
 
       const financeMetrics = computeFinanceMetrics(profile);
@@ -748,7 +811,7 @@ export const useAura = () => {
       }
 
       const inputForAI =
-        trimmed ||
+        contentForMemory ||
         (files.length > 0 ? `Uploaded files: ${files.map((f) => f.name).join(', ')}` : '');
 
       try {
@@ -958,28 +1021,240 @@ export const useAura = () => {
     refreshAura,
     commitClaims,
     setLayout,
-    addTimelineEvent: (e: any) => setTimelineEvents((p) => [e, ...p]),
+    addTimelineEvent: (e: any) => {
+      setTimelineEvents((p) => [e, ...p]);
+      const timestamp = Date.now();
+      const category = Object.values(Category).includes(e?.category)
+        ? e.category
+        : Category.GENERAL;
+      const memoryItem: MemoryItem = {
+        id: `mem-event-${timestamp}`,
+        timestamp,
+        content: `Event added: ${e?.title || 'Untitled event'}`,
+        category,
+        sentiment: 'neutral',
+        extractedFacts: [],
+        ownerId: activeUserId,
+        extractionConfidence: 1,
+        metadata: {
+          type: 'event',
+          source: 'timeline',
+          version: 1,
+          payload: e,
+        },
+      };
+      appendMemoryItems([memoryItem]);
+      addAuditLog(ActionType.ARM_STRATEGY, 'Event Logged', e?.title || 'Event', memoryItem.id);
+      setTimeout(() => refreshAura(), 0);
+    },
     updateTimelineEvent: (id: any, u: any) =>
       setTimelineEvents((p) => p.map((e) => (e.id === id ? { ...e, ...u } : e))),
     deleteTimelineEvent: (id: any) => setTimelineEvents((p) => p.filter((e) => e.id !== id)),
-    activatePrepPlan: (p: any) => setRecommendations((prev) => [p, ...prev]),
+    activatePrepPlan: (p: any) => {
+      setRecommendations((prev) => [p, ...prev]);
+      const timestamp = Date.now();
+      const memoryItem: MemoryItem = {
+        id: `mem-prep-${timestamp}`,
+        timestamp,
+        content: `Prep plan activated: ${p?.title || 'Plan'}`,
+        category: p?.category || Category.GENERAL,
+        sentiment: 'neutral',
+        extractedFacts: [],
+        ownerId: activeUserId,
+        extractionConfidence: 1,
+        metadata: {
+          type: 'prep_plan',
+          source: 'recommendation',
+          version: 1,
+          payload: p,
+        },
+      };
+      appendMemoryItems([memoryItem]);
+      addAuditLog(
+        ActionType.ARM_STRATEGY,
+        'Prep Plan Activated',
+        p?.title || 'Plan',
+        memoryItem.id
+      );
+      setTimeout(() => refreshAura(), 0);
+    },
     setProfile,
     setRuleOfLife,
     setPrompts,
-    toggleTask: (id: string) =>
-      setDailyPlan((p) => p.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))),
+    toggleTask: (id: string) => {
+      const task = dailyPlan.find((t) => t.id === id);
+      setDailyPlan((p) => p.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)));
+      if (task && !task.completed) {
+        const timestamp = Date.now();
+        const category = Object.values(Category).includes(task.category)
+          ? task.category
+          : Category.GENERAL;
+        const memoryItem: MemoryItem = {
+          id: `mem-task-done-${timestamp}`,
+          timestamp,
+          content: `Task completed: ${task.title}`,
+          category,
+          sentiment: 'positive',
+          extractedFacts: [],
+          ownerId: activeUserId,
+          extractionConfidence: 1,
+          metadata: {
+            type: 'task_complete',
+            source: 'daily_plan',
+            version: 1,
+            payload: task,
+          },
+        };
+        appendMemoryItems([memoryItem]);
+        addAuditLog(ActionType.COMPLETE_TASK, 'Task Completed', task.title, memoryItem.id);
+        setTimeout(() => refreshAura(), 0);
+      }
+    },
     getVitalityScore: (c: any) => 85,
     dismissInsight: (i: any) => setInsights((p) => p.filter((ins) => ins.id !== i.id)),
     setTaskFeedback: (id: string, f: any) => {},
     setInsightFeedback: (id: string, f: any) => {},
-    createTask: (t: any) => setTasks((p) => [t, ...p]),
-    updateTask: (id: any, u: any) =>
-      setTasks((p) => p.map((t) => (t.id === id ? { ...t, ...u } : t))),
-    deleteTask: (id: any) => setTasks((p) => p.filter((t) => t.id !== id)),
-    createGoal: (g: any) => setGoals((p) => [g, ...p]),
-    updateGoal: (id: any, u: any) =>
-      setGoals((p) => p.map((g) => (g.id === id ? { ...g, ...u } : g))),
-    deleteGoal: (id: any) => setGoals((p) => p.filter((g) => g.id !== id)),
+    createTask: (t: any) => {
+      setTasks((p) => [t, ...p]);
+      const timestamp = Date.now();
+      const category = Object.values(Category).includes(t?.category)
+        ? t.category
+        : Category.GENERAL;
+      const memoryItem: MemoryItem = {
+        id: `mem-task-${timestamp}`,
+        timestamp,
+        content: `Task created: ${t?.title || 'Task'}`,
+        category,
+        sentiment: 'neutral',
+        extractedFacts: [],
+        ownerId: activeUserId,
+        extractionConfidence: 1,
+        metadata: {
+          type: 'task',
+          source: 'manual',
+          version: 1,
+          payload: t,
+        },
+      };
+      appendMemoryItems([memoryItem]);
+      addAuditLog(ActionType.TASK_CREATE, 'Task Created', t?.title || 'Task', memoryItem.id);
+      setTimeout(() => refreshAura(), 0);
+    },
+    updateTask: (id: any, u: any) => {
+      setTasks((p) => p.map((t) => (t.id === id ? { ...t, ...u } : t)));
+      const timestamp = Date.now();
+      const memoryItem: MemoryItem = {
+        id: `mem-task-update-${timestamp}`,
+        timestamp,
+        content: `Task updated: ${u?.title || id}`,
+        category: Object.values(Category).includes(u?.category) ? u.category : Category.GENERAL,
+        sentiment: 'neutral',
+        extractedFacts: [],
+        ownerId: activeUserId,
+        extractionConfidence: 1,
+        metadata: {
+          type: 'task_update',
+          source: 'manual',
+          version: 1,
+          payload: { id, ...u },
+        },
+      };
+      appendMemoryItems([memoryItem]);
+      addAuditLog(ActionType.TASK_CREATE, 'Task Updated', u?.title || id, memoryItem.id);
+      setTimeout(() => refreshAura(), 0);
+    },
+    deleteTask: (id: any) => {
+      setTasks((p) => p.filter((t) => t.id !== id));
+      const timestamp = Date.now();
+      const memoryItem: MemoryItem = {
+        id: `mem-task-delete-${timestamp}`,
+        timestamp,
+        content: `Task deleted: ${id}`,
+        category: Category.GENERAL,
+        sentiment: 'neutral',
+        extractedFacts: [],
+        ownerId: activeUserId,
+        extractionConfidence: 1,
+        metadata: {
+          type: 'task_delete',
+          source: 'manual',
+          version: 1,
+          payload: { id },
+        },
+      };
+      appendMemoryItems([memoryItem]);
+      addAuditLog(ActionType.TASK_CREATE, 'Task Deleted', id, memoryItem.id);
+      setTimeout(() => refreshAura(), 0);
+    },
+    createGoal: (g: any) => {
+      setGoals((p) => [g, ...p]);
+      const timestamp = Date.now();
+      const memoryItem: MemoryItem = {
+        id: `mem-goal-${timestamp}`,
+        timestamp,
+        content: `Goal created: ${g?.title || 'Goal'}`,
+        category: Object.values(Category).includes(g?.category) ? g.category : Category.GENERAL,
+        sentiment: 'neutral',
+        extractedFacts: [],
+        ownerId: activeUserId,
+        extractionConfidence: 1,
+        metadata: {
+          type: 'goal',
+          source: 'manual',
+          version: 1,
+          payload: g,
+        },
+      };
+      appendMemoryItems([memoryItem]);
+      addAuditLog(ActionType.ARM_STRATEGY, 'Goal Created', g?.title || 'Goal', memoryItem.id);
+      setTimeout(() => refreshAura(), 0);
+    },
+    updateGoal: (id: any, u: any) => {
+      setGoals((p) => p.map((g) => (g.id === id ? { ...g, ...u } : g)));
+      const timestamp = Date.now();
+      const memoryItem: MemoryItem = {
+        id: `mem-goal-update-${timestamp}`,
+        timestamp,
+        content: `Goal updated: ${u?.title || id}`,
+        category: Object.values(Category).includes(u?.category) ? u.category : Category.GENERAL,
+        sentiment: 'neutral',
+        extractedFacts: [],
+        ownerId: activeUserId,
+        extractionConfidence: 1,
+        metadata: {
+          type: 'goal_update',
+          source: 'manual',
+          version: 1,
+          payload: { id, ...u },
+        },
+      };
+      appendMemoryItems([memoryItem]);
+      addAuditLog(ActionType.ARM_STRATEGY, 'Goal Updated', u?.title || id, memoryItem.id);
+      setTimeout(() => refreshAura(), 0);
+    },
+    deleteGoal: (id: any) => {
+      setGoals((p) => p.filter((g) => g.id !== id));
+      const timestamp = Date.now();
+      const memoryItem: MemoryItem = {
+        id: `mem-goal-delete-${timestamp}`,
+        timestamp,
+        content: `Goal deleted: ${id}`,
+        category: Category.GENERAL,
+        sentiment: 'neutral',
+        extractedFacts: [],
+        ownerId: activeUserId,
+        extractionConfidence: 1,
+        metadata: {
+          type: 'goal_delete',
+          source: 'manual',
+          version: 1,
+          payload: { id },
+        },
+      };
+      appendMemoryItems([memoryItem]);
+      addAuditLog(ActionType.ARM_STRATEGY, 'Goal Deleted', id, memoryItem.id);
+      setTimeout(() => refreshAura(), 0);
+    },
     scheduleInsight: (i: any, d: any) => {},
     deleteFacts: (items: any) => {},
     addFamilyMember: (n: string) => {
@@ -988,6 +1263,8 @@ export const useAura = () => {
       return id;
     },
     removeFamilyMember: (id: string) => {},
+    updateMemoryItem,
+    deleteMemoryItem,
     deleteClaim,
     updateClaim,
     approveClaims: (ids: string[]) =>

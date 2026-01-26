@@ -394,12 +394,14 @@ const generateTasks = async (
         responseMimeType: 'application/json',
       },
     });
-    const tasks = JSON.parse(response.text || '[]');
+    const parsed = JSON.parse(response.text || '[]');
+    const tasks = Array.isArray(parsed) ? parsed : parsed?.tasks || [];
     return tasks.map((t: any) => ({ ...t, completed: false }));
   } catch (err) {
     if (!getOpenAIClient()) throw err;
     const textResult = await callOpenAI(toJsonPrompt(finalPrompt), { json: true });
-    const tasks = JSON.parse(textResult || '[]');
+    const parsed = JSON.parse(textResult || '[]');
+    const tasks = Array.isArray(parsed) ? parsed : parsed?.tasks || [];
     return tasks.map((t: any) => ({ ...t, completed: false }));
   }
 };
@@ -439,11 +441,13 @@ const generateInsights = async (
         responseMimeType: 'application/json',
       },
     });
-    return JSON.parse(response.text || '[]');
+    const parsed = JSON.parse(response.text || '[]');
+    return Array.isArray(parsed) ? parsed : parsed?.insights || [];
   } catch (err) {
     if (!getOpenAIClient()) throw err;
     const textResult = await callOpenAI(toJsonPrompt(finalPrompt), { json: true });
-    return JSON.parse(textResult || '[]');
+    const parsed = JSON.parse(textResult || '[]');
+    return Array.isArray(parsed) ? parsed : parsed?.insights || [];
   }
 };
 
@@ -481,11 +485,13 @@ const generateBlindSpots = async (
         responseMimeType: 'application/json',
       },
     });
-    return JSON.parse(response.text || '[]');
+    const parsed = JSON.parse(response.text || '[]');
+    return Array.isArray(parsed) ? parsed : parsed?.blindSpots || [];
   } catch (err) {
     if (!getOpenAIClient()) throw err;
     const textResult = await callOpenAI(toJsonPrompt(finalPrompt), { json: true });
-    return JSON.parse(textResult || '[]');
+    const parsed = JSON.parse(textResult || '[]');
+    return Array.isArray(parsed) ? parsed : parsed?.blindSpots || [];
   }
 };
 

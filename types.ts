@@ -186,7 +186,7 @@ export interface MemoryItem {
   extractionConfidence: number;
   metadata?: {
     type?: string;
-    payload?: Record<string, unknown> | FinanceMetrics;
+    payload?: unknown;
     source?: string;
     version?: number;
   };
