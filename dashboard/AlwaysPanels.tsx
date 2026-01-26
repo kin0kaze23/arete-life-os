@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MemoryEntry } from '../types';
+import { MemoryEntry } from '../data/types';
 
 type HabitItem = {
   id: string;

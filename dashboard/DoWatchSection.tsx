@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
-import { Skeleton } from '../SharedUI';
+import { Skeleton } from '../shared/SharedUI';
 
 type DoItem = {
   id: string;

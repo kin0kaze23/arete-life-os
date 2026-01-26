@@ -20,6 +20,25 @@ This file is intentionally short for fast session initialization.
 - If issue is recurring: update `TROUBLESHOOTING.md`
 - If commit fails due to local permissions, commit/push manually in terminal
 
+## Repo Map (Feature Folders)
+
+- `app/` shell + error boundary
+- `layout/` header/sidebar
+- `dashboard/` main dashboard UI
+- `vault/` KG + vault views
+- `stream/` life stream views
+- `command/` log bar + command palette/router
+- `chat/` chat UI
+- `settings/` settings + prompts + rule of life
+- `onboarding/` onboarding flow
+- `core/` orchestration (hooks)
+- `ai/` model orchestration
+- `data/` types + storage
+- `shared/` shared UI + tokens
+- `api/` serverless handlers
+
+Alias: `@/` maps to repo root. Folder barrels exist (`dashboard/index.ts`, `shared/index.ts`, etc.).
+
 ## AI Runtime (Server-Side Only)
 
 Set these in Vercel (Production + Preview as needed):

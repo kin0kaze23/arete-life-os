@@ -11,7 +11,7 @@ import type {
   TimelineEvent,
   UserProfile,
   FinanceMetrics,
-} from '../types';
+} from '../data/types';
 
 const HYPER_PERSONALIZED_PROMPT = `
 You are the Chief of Staff for a high-performance individual within the Areté framework. Your task is to provide hyper-personalized, tactical guidance based on a deep analysis of their Life OS data to achieve excellence (Areté).
