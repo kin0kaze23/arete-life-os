@@ -696,6 +696,6 @@ export default async function handler(req: any, res: any) {
   } catch (err) {
     const errorId = `gemini-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     console.error(`[${errorId}] Gemini request failed`, serializeError(err));
-    res.status(500).json({ error: 'Gemini request failed', id: errorId });
+    res.status(200).json({ error: 'Gemini request failed', id: errorId });
   }
 }

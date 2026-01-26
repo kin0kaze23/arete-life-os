@@ -69,13 +69,19 @@ OUTPUT SCHEMA:
 
 const callGemini = async <T>(action: string, payload: Record<string, unknown>, fallback: T) => {
   try {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return fallback;
+    }
     const response = await fetch('/api/gemini', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, payload }),
     });
-    if (!response.ok) throw new Error('Gemini request failed');
-    return (await response.json()) as T;
+    const json = (await response.json()) as T & { error?: string };
+    if (!response.ok || (json && typeof json === 'object' && 'error' in json)) {
+      return fallback;
+    }
+    return json as T;
   } catch (e) {
     return fallback;
   }
