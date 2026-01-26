@@ -7,6 +7,7 @@ export enum Category {
   SOCIAL = 'Social',
   MEALS = 'Meals',
   TRAVEL = 'Travel',
+  HABIT = 'Habit',
   GENERAL = 'General',
 }
 
@@ -183,8 +184,23 @@ export interface MemoryItem {
   sourceId?: string; // Link to Source
   ownerId: string | 'FAMILY_SHARED';
   extractionConfidence: number;
+  metadata?: {
+    type?: string;
+    payload?: Record<string, unknown> | FinanceMetrics;
+    source?: string;
+    version?: number;
+  };
 }
 export type MemoryEntry = MemoryItem;
+
+export interface FinanceMetrics {
+  income: number;
+  fixed: number;
+  variable: number;
+  dailyVariableBudget: number;
+  weeklyVariableBudget: number;
+  savingsRate: number;
+}
 
 export interface Recommendation {
   id: string;

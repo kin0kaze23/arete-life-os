@@ -266,6 +266,8 @@ export const getCategoryColor = (cat: Category) => {
       return 'text-cyan-400 border-cyan-500/20 bg-cyan-500/5';
     case Category.SPIRITUAL:
       return 'text-indigo-400 border-indigo-500/20 bg-indigo-500/5';
+    case Category.HABIT:
+      return 'text-violet-400 border-violet-500/20 bg-violet-500/5';
     default:
       return 'text-slate-400 border-slate-500/20 bg-slate-500/5';
   }

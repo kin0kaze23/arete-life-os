@@ -9,6 +9,7 @@ import {
   Recommendation,
   TimelineEvent,
   UserProfile,
+  FinanceMetrics,
 } from './types';
 
 const HYPER_PERSONALIZED_PROMPT = `
@@ -18,6 +19,8 @@ INPUT DATA:
 - ACTIVE_PROFILE: {{profile}}
 - MEMORY_CONTEXT: {{history}}
 - FAMILY_CONTEXT: {{family}}
+- FINANCE_METRICS: {{financeMetrics}}
+- MISSING_DATA: {{missingData}}
 - CURRENT_DATE: {{currentDate}}
 
 INSTRUCTIONS:
@@ -25,6 +28,9 @@ INSTRUCTIONS:
 2. VALUE ALIGNMENT: Check if tasks align with the user's Spiritual coreValues. Flag "Moral Friction" if they contradict.
 3. TACTICAL PRECISION: Provide an "Operating Manual" for every task. Never leave the user hanging.
 4. DEFINITION OF DONE (DoD): Specify exactly what "completed" looks like for every item.
+5. FINANCE NUMBERS: If FINANCE_METRICS is present, include daily/weekly budgets and savings rate in finance guidance.
+6. HEALTH SAFETY: If ACTIVE_PROFILE.health.conditions includes "fatty liver", provide non-diagnostic guidance (diet pattern, alcohol avoidance, activity targets) and suggest clinician follow-up for symptoms or abnormal labs.
+7. MISSING DATA: If MISSING_DATA is non-empty, include a "missingData" list with up to 3 items that would improve confidence.
 
 OUTPUT SCHEMA:
 {
@@ -40,7 +46,9 @@ OUTPUT SCHEMA:
       "inputs": ["Required tools, files, or people"],
       "definitionOfDone": "Clear verification criteria",
       "risks": ["Potential failure mode 1"],
-      "resonanceScore": 1-100 // How well this aligns with core values
+      "resonanceScore": 1-100, // How well this aligns with core values
+      "confidence": 0-100,
+      "missingData": ["string"]
     }
   ],
   "tasks": [
@@ -51,7 +59,9 @@ OUTPUT SCHEMA:
       "methodology": "The high-fidelity SOP string on HOW to execute this perfectly",
       "steps": ["Step 1", "Step 2"],
       "definitionOfDone": "Specific success signal",
-      "valueResonance": "High|Medium|Low"
+      "valueResonance": "High|Medium|Low",
+      "confidence": 0-100,
+      "missingData": ["string"]
     }
   ]
 }
@@ -71,6 +81,12 @@ const callGemini = async <T>(action: string, payload: Record<string, unknown>, f
   }
 };
 
+type PromptContext = {
+  familyMembers?: UserProfile[];
+  financeMetrics?: FinanceMetrics | null;
+  missingData?: string[];
+};
+
 export const askAura = async (
   text: string,
   history: MemoryEntry[],
@@ -87,11 +103,19 @@ export const generateDeepTasks = async (
   profile: UserProfile,
   history: MemoryEntry[],
   familyMembers: UserProfile[],
-  promptConfig: PromptConfig
+  promptConfig: PromptConfig,
+  context?: PromptContext
 ): Promise<{ recommendations: Recommendation[]; tasks: DailyTask[] }> =>
   callGemini(
     'generateDeepTasks',
-    { profile, history, familyMembers, promptConfig },
+    {
+      profile,
+      history,
+      familyMembers,
+      promptConfig,
+      financeMetrics: context?.financeMetrics,
+      missingData: context?.missingData,
+    },
     { recommendations: [], tasks: [] }
   );
 
@@ -141,21 +165,59 @@ export const processInput = async (
 export const generateTasks = async (
   history: MemoryEntry[],
   profile: UserProfile,
-  promptConfig: PromptConfig
-): Promise<DailyTask[]> => callGemini('generateTasks', { history, profile, promptConfig }, []);
+  promptConfig: PromptConfig,
+  context?: PromptContext
+): Promise<DailyTask[]> =>
+  callGemini(
+    'generateTasks',
+    {
+      history,
+      profile,
+      promptConfig,
+      familyMembers: context?.familyMembers,
+      financeMetrics: context?.financeMetrics,
+      missingData: context?.missingData,
+    },
+    []
+  );
 
 export const generateInsights = async (
   history: MemoryEntry[],
   profile: UserProfile,
-  promptConfig: PromptConfig
+  promptConfig: PromptConfig,
+  context?: PromptContext
 ): Promise<ProactiveInsight[]> =>
-  callGemini('generateInsights', { history, profile, promptConfig }, []);
+  callGemini(
+    'generateInsights',
+    {
+      history,
+      profile,
+      promptConfig,
+      familyMembers: context?.familyMembers,
+      financeMetrics: context?.financeMetrics,
+      missingData: context?.missingData,
+    },
+    []
+  );
 
 export const generateBlindSpots = async (
   history: MemoryEntry[],
   profile: UserProfile,
-  promptConfig: PromptConfig
-): Promise<BlindSpot[]> => callGemini('generateBlindSpots', { history, profile, promptConfig }, []);
+  promptConfig: PromptConfig,
+  context?: PromptContext
+): Promise<BlindSpot[]> =>
+  callGemini(
+    'generateBlindSpots',
+    {
+      history,
+      profile,
+      promptConfig,
+      familyMembers: context?.familyMembers,
+      financeMetrics: context?.financeMetrics,
+      missingData: context?.missingData,
+    },
+    []
+  );
 
 export const generateDailyPlan = async (
   profile: UserProfile,

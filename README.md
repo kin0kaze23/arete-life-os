@@ -19,3 +19,21 @@ View your app in AI Studio: https://ai.studio/apps/drive/1cuj7akXL5dISmQasbU6DwZ
    `npm run dev`
 
 On first launch, set a passphrase to encrypt local data. This passphrase is not recoverable.
+
+## Knowledge Graph ingestion (local-first)
+
+- Log Bar submissions flow through `useAura.logMemory`, which creates `Source` + `MemoryItem` nodes in the encrypted local vault.
+- File attachments are stored as blobs in IndexedDB (`fileStore.ts`) and referenced by `Source.storageKey` (no base64 at rest).
+- AI extraction runs after the KG write; if it fails, the log still persists and is flagged `needsReview` with notes.
+
+## Prompt structure
+
+- Prompt configs live in `geminiService.ts` (`DEFAULT_PROMPTS`) and are editable in-app.
+- Ingestion uses the `internalization` prompt; recommendations use `deepPlanning`.
+- Templates receive `{{input}}`, `{{history}}`, `{{profile}}`, and `{{family}}` as context.
+
+## Debugging ingestion
+
+- Watch for UI toasts and the Audit Log entries after each submission.
+- Confirm a new Memory item appears in the Vault, with Sources linking to any files.
+- If AI extraction fails, the log persists with `needsReview` + `extractionQualityNotes`.

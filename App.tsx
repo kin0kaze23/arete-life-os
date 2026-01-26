@@ -47,6 +47,7 @@ const App: React.FC = () => {
     message: string;
     type?: 'success' | 'info' | 'error';
   } | null>(null);
+  const [logError, setLogError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const isOnline = useOnlineStatus();
 
@@ -84,6 +85,7 @@ const App: React.FC = () => {
       showToast('Kernel link offline. Cannot sync signals.', 'error');
       return;
     }
+    setLogError(null);
     const inputToProcess = userInput.trim();
     if (!inputToProcess && (!files || files.length === 0)) return;
     if (activeTab === 'chat' && inputToProcess) {
@@ -101,9 +103,13 @@ const App: React.FC = () => {
       } else {
         showToast(processed.headline || 'Memory Internalized', 'success');
       }
-      setUserInput('');
+      if (!processed?.needsReview) {
+        setUserInput('');
+      }
     } catch (err: any) {
-      showToast('Internalization error', 'error');
+      const message = err?.message || 'Internalization error';
+      setLogError(message);
+      showToast(message, 'error');
     }
   };
 
@@ -205,10 +211,6 @@ const App: React.FC = () => {
                   {...(aura as any)}
                   memory={aura.memoryItems}
                   refreshAll={aura.refreshAura}
-                  onOpenProfile={() => {
-                    setActiveTab('vault');
-                    setVaultSubTab('identity');
-                  }}
                   onNavigate={setActiveTab as any}
                 />
               )}
@@ -316,6 +318,7 @@ const App: React.FC = () => {
           userInput={userInput}
           setUserInput={setUserInput}
           isProcessing={aura.isProcessing}
+          logError={logError}
           onLog={handleLog}
           onExport={aura.exportData}
           onReset={aura.clearAllData}

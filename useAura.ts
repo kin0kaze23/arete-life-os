@@ -22,6 +22,7 @@ import {
   ProposedUpdate,
   MemoryEntry,
   DashboardLayout,
+  FinanceMetrics,
 } from './types';
 import { deleteFile, putFile } from './fileStore';
 import {
@@ -52,6 +53,101 @@ const INITIAL_RULE_OF_LIFE: RuleOfLife = {
   weeklyRhythm: { startOfWeek: 'Monday', blockedTimes: [] },
   nonNegotiables: { sleepWindow: '11pm - 7am', sabbath: 'Sunday', devotion: 'Morning Calibration' },
   taskPreferences: { dailyCap: 3, energyOffset: 'Balanced', includeWeekends: false },
+};
+
+const parseNumber = (value: string) => {
+  const cleaned = value.replace(/[^0-9.-]/g, '');
+  if (!cleaned) return null;
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const computeFinanceMetrics = (profile: UserProfile): FinanceMetrics | null => {
+  const income = profile.finances.income ? parseNumber(profile.finances.income) : null;
+  const fixed = profile.finances.fixedCosts ? parseNumber(profile.finances.fixedCosts) : null;
+  const variable = profile.finances.variableCosts
+    ? parseNumber(profile.finances.variableCosts)
+    : null;
+  if (income === null || fixed === null || variable === null) return null;
+  const dailyVariableBudget = Math.round(variable / 30);
+  const weeklyVariableBudget = Math.round(variable / 4);
+  const savingsRate = Math.max(0, (income - (fixed + variable)) / income);
+  return {
+    income,
+    fixed,
+    variable,
+    dailyVariableBudget,
+    weeklyVariableBudget,
+    savingsRate: Math.round(savingsRate * 100),
+  };
+};
+
+const buildMissingData = (profile: UserProfile) => {
+  const missing: string[] = [];
+  if (!profile.finances.income) missing.push('monthly_income');
+  if (!profile.finances.fixedCosts) missing.push('monthly_fixed_expenses');
+  if (!profile.finances.variableCosts) missing.push('monthly_variable_expenses');
+  if (!profile.health.weight) missing.push('health_weight');
+  if (!profile.health.activityFrequency) missing.push('activity_frequency');
+  if (!profile.health.conditions || profile.health.conditions.length === 0)
+    missing.push('health_conditions');
+  if (!profile.relationship.socialEnergy) missing.push('social_energy');
+  if (!profile.spiritual.coreValues || profile.spiritual.coreValues.length === 0)
+    missing.push('core_values');
+  return missing;
+};
+
+const extractFinanceMetrics = (payload?: Record<string, unknown> | FinanceMetrics) => {
+  if (!payload) return null;
+  const income = payload.income;
+  const fixed = payload.fixed;
+  const variable = payload.variable;
+  const dailyVariableBudget = payload.dailyVariableBudget;
+  const weeklyVariableBudget = payload.weeklyVariableBudget;
+  const savingsRate = payload.savingsRate;
+  const isNumber = (val: unknown): val is number => typeof val === 'number' && Number.isFinite(val);
+  if (
+    !isNumber(income) ||
+    !isNumber(fixed) ||
+    !isNumber(variable) ||
+    !isNumber(dailyVariableBudget) ||
+    !isNumber(weeklyVariableBudget) ||
+    !isNumber(savingsRate)
+  ) {
+    return null;
+  }
+  return {
+    income,
+    fixed,
+    variable,
+    dailyVariableBudget,
+    weeklyVariableBudget,
+    savingsRate,
+  };
+};
+
+const detectHabit = (input: string) => {
+  const text = input.toLowerCase();
+  const isHabit =
+    text.includes('habit') ||
+    text.includes('every day') ||
+    text.includes('daily') ||
+    text.includes('each day') ||
+    text.includes('every morning') ||
+    text.includes('every night') ||
+    text.includes('weekly') ||
+    text.includes('every week') ||
+    text.includes('each week');
+  if (!isHabit) return null;
+  const frequency =
+    text.includes('weekly') || text.includes('every week') || text.includes('each week')
+      ? 'weekly'
+      : 'daily';
+  const title = input.replace(/^habit[:\s-]*/i, '').trim();
+  return {
+    title: title.length > 0 ? title : 'New habit',
+    frequency,
+  };
 };
 
 const createNewProfile = (
@@ -579,55 +675,159 @@ export const useAura = () => {
         addedMemoryIds.push(memoryItem.id);
       }
 
+      if (trimmed) {
+        const habit = detectHabit(trimmed);
+        if (habit) {
+          const habitItem: MemoryItem = {
+            id: `mem-habit-${timestamp}`,
+            timestamp,
+            content: habit.title,
+            category: Category.HABIT,
+            sentiment: 'neutral',
+            extractedFacts: [],
+            ownerId: activeUserId,
+            extractionConfidence: 1,
+            metadata: {
+              type: 'habit',
+              source: 'logbar',
+              version: 1,
+              payload: {
+                title: habit.title,
+                frequency: habit.frequency,
+                trigger: '',
+                desiredOutcome: '',
+                startDate: timestamp,
+                lastCompletedAt: null,
+                streak: null,
+              },
+            },
+          };
+          memoryAdds.push(habitItem);
+          addedMemoryIds.push(habitItem.id);
+        }
+      }
+
+      const financeMetrics = computeFinanceMetrics(profile);
+      if (financeMetrics) {
+        const latestMetricsItem = [...memoryItems, ...memoryAdds]
+          .filter((item) => item.metadata?.type === 'finance_metrics')
+          .sort((a, b) => b.timestamp - a.timestamp)[0];
+        const latestMetrics = extractFinanceMetrics(latestMetricsItem?.metadata?.payload);
+        const metricsChanged =
+          !latestMetrics ||
+          latestMetrics.income !== financeMetrics.income ||
+          latestMetrics.fixed !== financeMetrics.fixed ||
+          latestMetrics.variable !== financeMetrics.variable ||
+          latestMetrics.dailyVariableBudget !== financeMetrics.dailyVariableBudget ||
+          latestMetrics.weeklyVariableBudget !== financeMetrics.weeklyVariableBudget ||
+          latestMetrics.savingsRate !== financeMetrics.savingsRate;
+        if (metricsChanged) {
+          const metricsItem: MemoryItem = {
+            id: `mem-finance-${timestamp}`,
+            timestamp,
+            content: `Finance metrics snapshot: daily ${financeMetrics.dailyVariableBudget}, weekly ${financeMetrics.weeklyVariableBudget}, savings rate ${financeMetrics.savingsRate}%.`,
+            category: Category.FINANCE,
+            sentiment: 'neutral',
+            extractedFacts: [],
+            ownerId: activeUserId,
+            extractionConfidence: 1,
+            metadata: {
+              type: 'finance_metrics',
+              payload: financeMetrics,
+              source: 'derived',
+              version: 1,
+            },
+          };
+          memoryAdds.push(metricsItem);
+          addedMemoryIds.push(metricsItem.id);
+        }
+      }
+
       if (memoryAdds.length > 0) {
         setMemoryItems((prev) => [...memoryAdds, ...prev]);
       }
-
-      const filesForAI =
-        files.length > 0
-          ? await Promise.all(
-              files.map(
-                (file) =>
-                  new Promise<{ data: string; mimeType: string }>((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                      const result = reader.result as string;
-                      const base64 = result.split(',')[1];
-                      resolve({ data: base64, mimeType: file.type || 'application/octet-stream' });
-                    };
-                    reader.onerror = () => reject(reader.error);
-                    reader.readAsDataURL(file);
-                  })
-              )
-            )
-          : undefined;
 
       const inputForAI =
         trimmed ||
         (files.length > 0 ? `Uploaded files: ${files.map((f) => f.name).join(', ')}` : '');
 
-      const result = await processInput(
-        inputForAI,
-        memoryItems,
-        profile,
-        filesForAI,
-        prompts.find((p) => p.id === 'internalization')!,
-        familySpace.members
-      );
-      const newClaims: Claim[] = (result.facts || []).map((f: any, i: number) => ({
-        id: `claim-${timestamp}-${i}`,
-        sourceId: addedMemoryIds[0],
-        fact: f.fact,
-        type: 'FACT',
-        confidence: f.confidence || 0,
-        status: ClaimStatus.PROPOSED,
-        category: f.category || Category.GENERAL,
-        ownerId: f.ownerId || activeUserId,
-        timestamp,
-      }));
-      setClaims((prev) => [...newClaims, ...prev]);
-      addAuditLog(ActionType.INGEST_SIGNAL, 'Signal Ingested', inputForAI, addedMemoryIds[0]);
-      return { ...result, sourceId: addedMemoryIds[0] };
+      try {
+        const filesForAI =
+          files.length > 0
+            ? await Promise.all(
+                files.map(
+                  (file) =>
+                    new Promise<{ data: string; mimeType: string }>((resolve, reject) => {
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        const result = reader.result as string;
+                        const base64 = result.split(',')[1];
+                        resolve({
+                          data: base64,
+                          mimeType: file.type || 'application/octet-stream',
+                        });
+                      };
+                      reader.onerror = () => reject(reader.error);
+                      reader.readAsDataURL(file);
+                    })
+                )
+              )
+            : undefined;
+
+        const result = await processInput(
+          inputForAI,
+          memoryItems,
+          profile,
+          filesForAI,
+          prompts.find((p) => p.id === 'internalization')!,
+          familySpace.members
+        );
+        const newClaims: Claim[] = (result.facts || []).map((f: any, i: number) => ({
+          id: `claim-${timestamp}-${i}`,
+          sourceId: addedMemoryIds[0],
+          fact: f.fact,
+          type: 'FACT',
+          confidence: f.confidence || 0,
+          status: ClaimStatus.PROPOSED,
+          category: f.category || Category.GENERAL,
+          ownerId: f.ownerId || activeUserId,
+          timestamp,
+        }));
+        setClaims((prev) => [...newClaims, ...prev]);
+        addAuditLog(ActionType.INGEST_SIGNAL, 'Signal Ingested', inputForAI, addedMemoryIds[0]);
+        setTimeout(() => refreshAura(), 0);
+        return { ...result, sourceId: addedMemoryIds[0] };
+      } catch (err: any) {
+        const message = err?.message || 'AI processing failed.';
+        if (addedMemoryIds.length > 0) {
+          setMemoryItems((prev) =>
+            prev.map((item) =>
+              addedMemoryIds.includes(item.id)
+                ? {
+                    ...item,
+                    extractionConfidence: 0,
+                    extractionQualityNotes: [message],
+                  }
+                : item
+            )
+          );
+        }
+        addAuditLog(
+          ActionType.INGEST_SIGNAL,
+          'Signal Ingested (Needs Review)',
+          message,
+          addedMemoryIds[0]
+        );
+        setTimeout(() => refreshAura(), 0);
+        return {
+          headline: 'Signal logged. Needs review.',
+          needsReview: true,
+          missingFields: ['ai_processing'],
+          facts: [],
+          proposedUpdates: [],
+          sourceId: addedMemoryIds[0],
+        };
+      }
     } catch (err) {
       if (addedMemoryIds.length > 0) {
         setMemoryItems((prev) => prev.filter((m) => !addedMemoryIds.includes(m.id)));
@@ -671,9 +871,16 @@ export const useAura = () => {
     setIsGeneratingTasks(true);
     try {
       const prompt = prompts.find((p) => p.id === 'deepPlanning')!;
-      setTasks(await generateTasks(memoryItems, profile, prompt));
-      setInsights(await generateInsights(memoryItems, profile, prompt));
-      setBlindSpots(await generateBlindSpots(memoryItems, profile, prompt));
+      const financeMetrics = computeFinanceMetrics(profile);
+      const missingData = buildMissingData(profile);
+      const context = {
+        familyMembers: familySpace.members,
+        financeMetrics,
+        missingData,
+      };
+      setTasks(await generateTasks(memoryItems, profile, prompt, context));
+      setInsights(await generateInsights(memoryItems, profile, prompt, context));
+      setBlindSpots(await generateBlindSpots(memoryItems, profile, prompt, context));
     } finally {
       setIsGeneratingTasks(false);
     }

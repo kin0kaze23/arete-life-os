@@ -17,6 +17,7 @@ interface LogBarProps {
   userInput: string;
   setUserInput: (val: string) => void;
   isProcessing: boolean;
+  logError?: string | null;
   onLog: (e: React.FormEvent, files?: File[]) => void;
   onExport: () => void;
   onReset: () => void;
@@ -26,6 +27,7 @@ export const LogBar: React.FC<LogBarProps> = ({
   userInput,
   setUserInput,
   isProcessing,
+  logError,
   onLog,
   onExport,
   onReset,
@@ -37,9 +39,18 @@ export const LogBar: React.FC<LogBarProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [pendingClear, setPendingClear] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [now, setNow] = useState(() => new Date());
   const isOnline = useOnlineStatus();
 
   const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const showEveningAudit = now.getHours() >= 20 || now.getHours() < 5;
 
   const addFiles = (files: FileList) => {
     const next = Array.from(files).map((file) => {
@@ -69,14 +80,37 @@ export const LogBar: React.FC<LogBarProps> = ({
 
   useEffect(() => {
     if (!isProcessing && pendingClear) {
-      setSelectedFiles([]);
+      if (logError) {
+        setSelectedFiles((prev) =>
+          prev.map((file) =>
+            file.status === 'uploading' ? { ...file, status: 'error', error: logError } : file
+          )
+        );
+      } else {
+        setSelectedFiles([]);
+      }
       setPendingClear(false);
     }
-  }, [isProcessing, pendingClear]);
+  }, [isProcessing, pendingClear, logError]);
 
   return (
     <div className="p-6 bg-[#050505]/90 backdrop-blur-2xl border-t border-slate-800/50 relative z-50">
       <form onSubmit={handleSubmit} className="max-w-5xl mx-auto space-y-4 relative">
+        {showEveningAudit && (
+          <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 text-indigo-200 text-[10px] font-black uppercase tracking-widest">
+            <span>Evening audit pending</span>
+            <button
+              type="button"
+              onClick={() => {
+                setUserInput('/audit ');
+                inputRef.current?.focus();
+              }}
+              className="px-3 py-1 rounded-full border border-indigo-500/30 text-indigo-200 hover:bg-indigo-500/20 transition-all"
+            >
+              Open
+            </button>
+          </div>
+        )}
         <div className="flex flex-wrap gap-2">
           {selectedFiles.map((file, idx) => (
             <div
@@ -212,6 +246,7 @@ export const LogBar: React.FC<LogBarProps> = ({
               type="text"
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
+              ref={inputRef}
               placeholder={
                 isProcessing
                   ? 'Internalizing Signal...'
