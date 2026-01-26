@@ -160,6 +160,31 @@ git config user.name
 
 ---
 
+## Git Commit Fails with `index.lock` Permission Error
+
+**Symptoms:**
+
+- `git commit` fails with: `Unable to create '.git/index.lock': Operation not permitted`
+
+**Possible Causes:**
+
+- Another git process is running and holding the lock
+- Filesystem permissions or sandbox restrictions on `.git/`
+
+**Fix:**
+
+1. Check for a stale lock:
+   ```bash
+   ls -la .git/index.lock
+   ```
+2. If it exists and no other git process is running, remove it:
+   ```bash
+   rm .git/index.lock
+   ```
+3. Re-run the commit from your terminal (outside any restricted sandbox).
+
+---
+
 ## Debugging Checklist
 
 When something breaks on Vercel:

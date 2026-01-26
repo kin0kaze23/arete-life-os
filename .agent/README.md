@@ -17,6 +17,7 @@ This file is intentionally short for fast session initialization.
 - If prod issue: check Vercel logs for `[gemini-...]` error id
 - After fixing non-trivial issues: update `LEARNINGS.md`
 - If issue is recurring: update `TROUBLESHOOTING.md`
+- If commit fails due to local permissions, commit/push manually in terminal
 
 ## AI Runtime (Server-Side Only)
 

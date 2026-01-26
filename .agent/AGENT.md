@@ -8,6 +8,15 @@ Ship a production-ready Life OS app with stable core loops, premium dark UI, and
 
 Start with `./.agent/README.md` for the current context index and quick start.
 
+## Current Core Loop Status
+
+- Log Bar writes are atomic: KG write succeeds even if AI extraction fails (needsReview set).
+- Files are stored local-first in IndexedDB and referenced via `Source.storageKey`.
+- Finance metrics are derived on each log and stored as a `finance_metrics` MemoryItem.
+- Habit signals are classified into `Category.HABIT` with structured metadata.
+- Dashboard auto-refreshes after log ingestion to keep Do/Watch current.
+- Evening Audit appears as a small Log Bar reminder (no large dashboard card).
+
 ## Guardrails
 
 - main is always green and deployable
@@ -70,6 +79,9 @@ I will still ask for approval before:
 - Infra changes (CI, deployment, hosting, env policy)
 - Refactors or large structure changes
 - Dependency upgrades
+
+If a git commit fails due to local filesystem permissions (e.g., `.git/index.lock`), I will
+report it and ask you to run the commit/push manually in your terminal.
 
 ### 3) When I need your approval
 

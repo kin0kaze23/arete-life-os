@@ -131,6 +131,40 @@ Gemini requests intermittently failed on Vercel with 500s, including model error
 - Keep OpenAI fallback enabled and use reasoning effort `medium` by default.
 - Use error ids in logs to pinpoint failure types quickly.
 
+---
+
+## 2026-01-26: Core Loop Stability + Dashboard Declutter + Habits
+
+### Issue
+
+Core loop needed to be reliable (no silent failures), dashboard was noisy, and habits needed a real KG path.
+
+### Root Cause
+
+- Log ingestion mixed KG write and AI extraction, causing lost logs on AI failure.
+- Dashboard accumulated legacy widgets beyond the high‑signal panels.
+- Habit signals had no schema/category.
+
+### Solution
+
+- Split KG write from AI extraction; on AI failure, keep the log and mark `needsReview`.
+- Added automatic `refreshAura()` after log ingestion to keep Do/Watch current.
+- Decluttered dashboard to Do / Watch / Always Do / Always Watch / Domain Panels.
+- Added `Category.HABIT` + habit detection on input; stored as structured `MemoryItem` metadata.
+- Finance metrics derived on each log and stored as a `finance_metrics` MemoryItem.
+- Evening Audit moved to a small Log Bar reminder.
+
+### Key Learnings
+
+- **Never drop logs on AI failure** — mark and surface `needsReview` instead.
+- **Derived metrics belong in KG** for consistent UI + prompt grounding.
+- **Habit detection can be lightweight** (pattern-based) yet useful.
+
+### Prevention
+
+- Always run `npm run doctor` after core loop changes.
+- Keep .agent docs updated when changing ingestion or dashboard structure.
+
 ## Template for Future Entries
 
 ```markdown
