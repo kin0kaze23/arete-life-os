@@ -201,6 +201,127 @@ const buildFallbackIntent = (input: string): IntakeIntent => {
 const extractLinks = (input: string) =>
   input.match(/https?:\/\/[^\s)]+/gi)?.map((link) => link.trim()) ?? [];
 
+const isLikelyEvent = (input: string) =>
+  /\b(trip|travel|flight|meeting|appointment|doctor|dentist|wedding|birthday|conference|dinner|lunch|date|event|deadline|due|call|interview|exam|class|ceremony|party|workshop|retreat|summit)\b/i.test(
+    input
+  );
+
+const toIsoDate = (date: Date) => date.toISOString().slice(0, 10);
+
+const buildDate = (year: number, month: number, day: number) => {
+  const candidate = new Date(year, month - 1, day);
+  if (
+    candidate.getFullYear() === year &&
+    candidate.getMonth() === month - 1 &&
+    candidate.getDate() === day
+  ) {
+    return candidate;
+  }
+  return null;
+};
+
+const parseDateFromText = (input: string) => {
+  const text = input.toLowerCase();
+  const now = new Date();
+
+  if (text.includes('tomorrow')) {
+    const date = new Date(now);
+    date.setDate(date.getDate() + 1);
+    return toIsoDate(date);
+  }
+  const inDays = text.match(/\bin\s+(\d{1,2})\s+day/);
+  if (inDays) {
+    const date = new Date(now);
+    date.setDate(date.getDate() + Number(inDays[1]));
+    return toIsoDate(date);
+  }
+  const inWeeks = text.match(/\bin\s+(\d{1,2})\s+week/);
+  if (inWeeks) {
+    const date = new Date(now);
+    date.setDate(date.getDate() + Number(inWeeks[1]) * 7);
+    return toIsoDate(date);
+  }
+  const inMonths = text.match(/\bin\s+(\d{1,2})\s+month/);
+  if (inMonths) {
+    const date = new Date(now);
+    date.setMonth(date.getMonth() + Number(inMonths[1]));
+    return toIsoDate(date);
+  }
+  if (text.includes('next week')) {
+    const date = new Date(now);
+    date.setDate(date.getDate() + 7);
+    return toIsoDate(date);
+  }
+  if (text.includes('next month')) {
+    const date = new Date(now);
+    date.setMonth(date.getMonth() + 1);
+    return toIsoDate(date);
+  }
+
+  const isoMatch = text.match(/\b(20\d{2})[-/](\d{1,2})[-/](\d{1,2})\b/);
+  if (isoMatch) {
+    const date = buildDate(Number(isoMatch[1]), Number(isoMatch[2]), Number(isoMatch[3]));
+    return date ? toIsoDate(date) : null;
+  }
+
+  const usMatch = text.match(/\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?\b/);
+  if (usMatch) {
+    const month = Number(usMatch[1]);
+    const day = Number(usMatch[2]);
+    const rawYear = usMatch[3] ? Number(usMatch[3]) : now.getFullYear();
+    const year = rawYear < 100 ? 2000 + rawYear : rawYear;
+    let date = buildDate(year, month, day);
+    if (date && date < now && !usMatch[3]) {
+      date = buildDate(year + 1, month, day);
+    }
+    return date ? toIsoDate(date) : null;
+  }
+
+  const months = [
+    'january',
+    'february',
+    'march',
+    'april',
+    'may',
+    'june',
+    'july',
+    'august',
+    'september',
+    'october',
+    'november',
+    'december',
+  ];
+  const monthMatch = text.match(
+    /\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})(?:,?\s*(\d{4}))?\b/
+  );
+  if (monthMatch) {
+    const monthIndex = months.findIndex((m) => m.startsWith(monthMatch[1].slice(0, 3)));
+    const day = Number(monthMatch[2]);
+    const rawYear = monthMatch[3] ? Number(monthMatch[3]) : now.getFullYear();
+    let date = buildDate(rawYear, monthIndex + 1, day);
+    if (date && date < now && !monthMatch[3]) {
+      date = buildDate(rawYear + 1, monthIndex + 1, day);
+    }
+    return date ? toIsoDate(date) : null;
+  }
+
+  const reverseMonthMatch = text.match(
+    /\b(\d{1,2})\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s*(\d{4}))?\b/
+  );
+  if (reverseMonthMatch) {
+    const monthIndex = months.findIndex((m) => m.startsWith(reverseMonthMatch[2].slice(0, 3)));
+    const day = Number(reverseMonthMatch[1]);
+    const rawYear = reverseMonthMatch[3] ? Number(reverseMonthMatch[3]) : now.getFullYear();
+    let date = buildDate(rawYear, monthIndex + 1, day);
+    if (date && date < now && !reverseMonthMatch[3]) {
+      date = buildDate(rawYear + 1, monthIndex + 1, day);
+    }
+    return date ? toIsoDate(date) : null;
+  }
+
+  return null;
+};
+
 const createNewProfile = (
   id: string,
   name: string,
@@ -1106,6 +1227,44 @@ export const useAura = () => {
             .filter((item) => item.metadata?.type === 'habit')
             .map((item) => item.content.toLowerCase())
         );
+
+        const hasEventItem = intakeItems.some((item) => item.type === 'event');
+        if (!hasEventItem && contentForMemory && isLikelyEvent(contentForMemory)) {
+          const parsedDate = parseDateFromText(contentForMemory);
+          if (parsedDate) {
+            const title =
+              contentForMemory.length > 60 ? `${contentForMemory.slice(0, 60)}…` : contentForMemory;
+            const event: TimelineEvent = {
+              id: `event-${timestamp}-fallback`,
+              ownerId: activeUserId,
+              title,
+              date: parsedDate,
+              category: fallbackDomain,
+              description: contentForMemory,
+              createdAt: timestamp,
+              isManual: true,
+            };
+            timelineAdds.push(event);
+            intakeMemoryAdds.push({
+              id: `mem-event-${timestamp}-fallback`,
+              timestamp,
+              content: `Event: ${title} on ${parsedDate}`,
+              category: fallbackDomain,
+              sentiment: 'neutral',
+              extractedFacts: [],
+              ownerId: activeUserId,
+              extractionConfidence: intakeConfidence,
+              metadata: {
+                type: 'event',
+                source: 'logbar',
+                version: 1,
+                payload: event,
+              },
+            });
+          } else {
+            reviewQuestions.push('When is this event scheduled?');
+          }
+        }
 
         intakeItems.forEach((item, idx) => {
           const domain = normalizeCategory(item.domain);
