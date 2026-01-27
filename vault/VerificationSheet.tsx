@@ -11,9 +11,9 @@ import {
   Cpu,
   Zap,
 } from 'lucide-react';
-import { CategorizedFact, ProposedUpdate, UserProfile } from '../data/types';
+import { CategorizedFact, ProposedUpdate, UserProfile } from '@/data';
 import { ClaimItem } from './ClaimItem';
-import { DiffRow } from '../shared/DiffRow';
+import { DiffRow } from '@/shared';
 
 interface VerificationSheetProps {
   isOpen: boolean;

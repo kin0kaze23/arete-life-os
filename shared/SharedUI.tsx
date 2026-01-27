@@ -13,7 +13,8 @@ import {
   Sparkles,
   BrainCircuit,
 } from 'lucide-react';
-import { DailyTask, Category, UserProfile } from '../data/types';
+import { DailyTask, Category, UserProfile } from '@/data';
+import { tokens } from './design-tokens';
 
 export const NeuralProcessor: React.FC = () => (
   <div className="flex flex-col items-center justify-center p-12 space-y-6">
@@ -266,6 +267,8 @@ export const getCategoryColor = (cat: Category) => {
       return 'text-cyan-400 border-cyan-500/20 bg-cyan-500/5';
     case Category.SPIRITUAL:
       return 'text-indigo-400 border-indigo-500/20 bg-indigo-500/5';
+    case Category.PERSONAL:
+      return 'text-violet-400 border-violet-500/20 bg-violet-500/5';
     case Category.HABIT:
       return 'text-violet-400 border-violet-500/20 bg-violet-500/5';
     default:
@@ -334,6 +337,59 @@ export const ProfileCompletionRing: React.FC<{
           {completion.overall}%
         </span>
       )}
+    </div>
+  );
+};
+
+export const Button: React.FC<{
+  children: React.ReactNode;
+  size?: 'sm' | 'md' | 'lg';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  onClick?: () => void;
+  type?: 'button' | 'submit' | 'reset';
+  disabled?: boolean;
+  className?: string;
+}> = ({
+  children,
+  size = 'md',
+  variant = 'primary',
+  onClick,
+  type = 'button',
+  disabled,
+  className = '',
+}) => {
+  const sizeClass = tokens.button.sizes[size];
+  const variantClass = tokens.button.variants[variant];
+
+  return (
+    <button
+      onClick={onClick}
+      type={type}
+      disabled={disabled}
+      className={`${tokens.button.base} ${sizeClass} ${variantClass} ${tokens.radius.md} ${className}`}
+    >
+      {children}
+    </button>
+  );
+};
+
+export const Chip: React.FC<{
+  children: React.ReactNode;
+  color?: 'emerald' | 'rose' | 'indigo' | 'amber' | 'slate' | 'violet';
+  tooltip?: string;
+}> = ({ children, color = 'slate', tooltip }) => {
+  const colorClass = tokens.chip.variants[color];
+
+  if (!tooltip) {
+    return <span className={`${tokens.chip.base} ${colorClass}`}>{children}</span>;
+  }
+
+  return (
+    <div className="relative group">
+      <span className={`${tokens.chip.base} ${colorClass} cursor-help`}>{children}</span>
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-4 py-3 bg-slate-950 border border-white/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity z-50 w-64 pointer-events-none shadow-2xl">
+        <p className="text-[10px] text-slate-300 leading-relaxed">{tooltip}</p>
+      </div>
     </div>
   );
 };

@@ -11,8 +11,8 @@ import {
   Lock,
   Map,
 } from 'lucide-react';
-import { UserProfile, DailyTask, Goal, Recommendation, Category, BlindSpot } from '../data/types';
-import { BentoCard, getCategoryColor, RadialProgress, Skeleton } from '../shared/SharedUI';
+import { UserProfile, DailyTask, Goal, Recommendation, Category, BlindSpot } from '@/data';
+import { BentoCard, getCategoryColor, RadialProgress, Skeleton } from '@/shared';
 import { RecommendationsWidget } from './RecommendationsWidget';
 import { BlindSideRadarCard } from './BlindSideRadarCard';
 import { ReviewCard } from './ReviewCard';

@@ -1,7 +1,7 @@
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 import { X, Mic, ShieldCheck, Volume2, Loader2 } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
-import { MemoryEntry, UserProfile } from '../data/types';
+import { MemoryEntry, UserProfile } from '@/data';
 
 interface VoiceAdvisorProps {
   profile: UserProfile;

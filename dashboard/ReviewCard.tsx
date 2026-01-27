@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Recommendation, UserProfile } from '../data/types';
+import { Recommendation, UserProfile } from '@/data';
 import {
   AlertTriangle,
   Sparkles,
@@ -9,7 +9,7 @@ import {
   ArrowRight,
   ShieldCheck,
 } from 'lucide-react';
-import { getCategoryColor } from '../shared/SharedUI';
+import { getCategoryColor } from '@/shared';
 
 interface ReviewCardProps {
   recommendation: Recommendation;

@@ -1,4 +1,4 @@
-import { UserProfile, IntentType, Category } from '../data/types';
+import { UserProfile, IntentType, Category } from '@/data';
 
 /**
  * LogRouter handles the semantic mapping of raw input to specific users or shared spaces.

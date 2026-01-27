@@ -10,62 +10,10 @@ import {
   TimelineEvent,
   UserProfile,
   FinanceMetrics,
+  AlwaysChip,
+  RuleOfLife,
 } from '../data/types';
-
-const HYPER_PERSONALIZED_PROMPT = `
-You are the Chief of Staff for a high-performance individual within the Areté framework. Your task is to provide hyper-personalized, tactical guidance based on a deep analysis of their Life OS data to achieve excellence (Areté).
-
-INPUT DATA:
-- ACTIVE_PROFILE: {{profile}}
-- MEMORY_CONTEXT: {{history}}
-- FAMILY_CONTEXT: {{family}}
-- FINANCE_METRICS: {{financeMetrics}}
-- MISSING_DATA: {{missingData}}
-- CURRENT_DATE: {{currentDate}}
-
-INSTRUCTIONS:
-1. DATA-GROUNDED RATIONALE: Every recommendation MUST reference a specific fact from MEMORY_CONTEXT or a field in ACTIVE_PROFILE.
-2. VALUE ALIGNMENT: Check if tasks align with the user's Spiritual coreValues. Flag "Moral Friction" if they contradict.
-3. TACTICAL PRECISION: Provide an "Operating Manual" for every task. Never leave the user hanging.
-4. DEFINITION OF DONE (DoD): Specify exactly what "completed" looks like for every item.
-5. FINANCE NUMBERS: If FINANCE_METRICS is present, include daily/weekly budgets and savings rate in finance guidance.
-6. HEALTH SAFETY: If ACTIVE_PROFILE.health.conditions includes "fatty liver", provide non-diagnostic guidance (diet pattern, alcohol avoidance, activity targets) and suggest clinician follow-up for symptoms or abnormal labs.
-7. MISSING DATA: If MISSING_DATA is non-empty, include a "missingData" list with up to 3 items that would improve confidence.
-
-OUTPUT SCHEMA:
-{
-  "recommendations": [
-    {
-      "category": "Health|Finance|Relationships|Spiritual|Work",
-      "title": "Tactical Headline",
-      "description": "Short objective summary",
-      "impactScore": 1-10,
-      "rationale": "Direct citation from memory/profile",
-      "steps": ["Atomic step 1", "Atomic step 2"],
-      "estimatedTime": "e.g. 15 mins",
-      "inputs": ["Required tools, files, or people"],
-      "definitionOfDone": "Clear verification criteria",
-      "risks": ["Potential failure mode 1"],
-      "resonanceScore": 1-100, // How well this aligns with core values
-      "confidence": 0-100,
-      "missingData": ["string"]
-    }
-  ],
-  "tasks": [
-    {
-      "title": "Headline",
-      "category": "Domain",
-      "priority": "low|medium|high",
-      "methodology": "The high-fidelity SOP string on HOW to execute this perfectly",
-      "steps": ["Step 1", "Step 2"],
-      "definitionOfDone": "Specific success signal",
-      "valueResonance": "High|Medium|Low",
-      "confidence": 0-100,
-      "missingData": ["string"]
-    }
-  ]
-}
-`;
+import { HYPER_PERSONALIZED_PROMPT, LOG_BAR_INGEST_PROMPT } from './prompts';
 
 const callGemini = async <T>(action: string, payload: Record<string, unknown>, fallback: T) => {
   try {
@@ -160,11 +108,12 @@ export const processInput = async (
   activeProfile: UserProfile,
   files: any[] | undefined,
   promptConfig: PromptConfig,
-  familyMembers: UserProfile[] = []
+  familyMembers: UserProfile[] = [],
+  fileMeta?: { name?: string; mimeType: string; size?: number }[]
 ): Promise<any> =>
   callGemini(
     'processInput',
-    { input, history, activeProfile, files, promptConfig, familyMembers },
+    { input, history, activeProfile, files, promptConfig, familyMembers, fileMeta },
     {}
   );
 
@@ -239,15 +188,39 @@ export const generateDailyPlan = async (
     []
   );
 
+export interface DeepInitializationResult {
+  doItems: DailyTask[];
+  watchItems: BlindSpot[];
+  alwaysDo: AlwaysChip[];
+  alwaysWatch: AlwaysChip[];
+  domainRecommendations: Record<string, Recommendation[]>;
+  personalizedGreeting: string;
+}
+
+export const generateDeepInitialization = async (
+  profile: UserProfile,
+  ruleOfLife: RuleOfLife
+): Promise<DeepInitializationResult> =>
+  callGemini(
+    'generateDeepInitialization',
+    { profile, ruleOfLife },
+    {
+      doItems: [],
+      watchItems: [],
+      alwaysDo: [],
+      alwaysWatch: [],
+      domainRecommendations: {},
+      personalizedGreeting: `Welcome to Areté, ${profile.identify.name || 'there'}.`,
+    }
+  );
+
 export const DEFAULT_PROMPTS: PromptConfig[] = [
   {
     id: 'internalization',
     name: 'Neural Internalization',
     purpose: 'Extracts atomic facts and vault updates from user input for the Areté OS.',
-    template:
-      'Analyze: {{input}}. Resolve Owner: names/pronouns in {{family}}. Current Facts: {{history}}. Active: {{profile}}. Output facts and mutations.',
-    defaultTemplate:
-      'Analyze: {{input}}. Resolve Owner: names/pronouns in {{family}}. Current Facts: {{history}}. Active: {{profile}}. Output facts and mutations.',
+    template: LOG_BAR_INGEST_PROMPT,
+    defaultTemplate: LOG_BAR_INGEST_PROMPT,
   },
   {
     id: 'oracle',

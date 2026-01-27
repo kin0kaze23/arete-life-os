@@ -5,6 +5,7 @@ export enum Category {
   SPIRITUAL = 'Spiritual',
   WORK = 'Work',
   SOCIAL = 'Social',
+  PERSONAL = 'Personal',
   MEALS = 'Meals',
   TRAVEL = 'Travel',
   HABIT = 'Habit',
@@ -46,6 +47,35 @@ export enum ClaimStatus {
 }
 
 export type IntentType = 'QUERY' | 'TASK' | 'CONFIG' | 'MEMORY';
+export type IntakeIntent =
+  | 'memory'
+  | 'event'
+  | 'habit'
+  | 'health'
+  | 'finance'
+  | 'relationship'
+  | 'spiritual'
+  | 'profile_update'
+  | 'config_update'
+  | 'task_request'
+  | 'query'
+  | 'unknown';
+export type IntakeItemType =
+  | 'memory'
+  | 'event'
+  | 'task'
+  | 'task_request'
+  | 'habit'
+  | 'profile_update'
+  | 'config_update'
+  | 'health_record'
+  | 'finance_record'
+  | 'relationship_note'
+  | 'spiritual_note'
+  | 'document'
+  | 'link'
+  | 'needs_review';
+export type IntakeHorizon = 'now' | 'soon' | 'always' | 'unknown';
 export type RelationshipType =
   | 'Spouse'
   | 'Parent'
@@ -193,6 +223,43 @@ export interface MemoryItem {
 }
 export type MemoryEntry = MemoryItem;
 
+export interface IntakeNeedsReview {
+  questions: string[];
+  reason: string;
+}
+
+export interface IntakeEntityLink {
+  id: string;
+  type: 'claim' | 'source' | 'memory' | 'event' | 'task' | 'profile';
+}
+
+export interface IntakeItem {
+  id: string;
+  type: IntakeItemType;
+  intent: IntakeIntent;
+  domain: Category;
+  ownerId: string | 'FAMILY_SHARED';
+  horizon?: IntakeHorizon;
+  title?: string;
+  content: string;
+  confidence: number;
+  tags?: string[];
+  fields?: Record<string, unknown>;
+  sourceId?: string;
+  dedupeKey?: string;
+  needsReview?: IntakeNeedsReview;
+  links?: IntakeEntityLink[];
+}
+
+export interface IntakeResult {
+  intent: IntakeIntent;
+  items: IntakeItem[];
+  missingData: string[];
+  needsReview?: IntakeNeedsReview;
+  confidence: number;
+  notes?: string;
+}
+
 export interface FinanceMetrics {
   income: number;
   fixed: number;
@@ -216,6 +283,7 @@ export interface Recommendation {
   definitionOfDone: string;
   risks: string[];
   status: 'ACTIVE' | 'DISMISSED' | 'APPLIED';
+  userFeedback?: 'kept' | 'removed';
   needsReview: boolean;
   missingFields: string[];
   createdAt: number;
@@ -223,6 +291,15 @@ export interface Recommendation {
     claims: string[];
     sources: string[];
   };
+}
+
+export interface AlwaysChip {
+  id: string;
+  label: string;
+  rationale: string;
+  source: 'profile' | 'ruleOfLife' | 'health' | 'finance' | 'spiritual' | 'computed';
+  profileField?: string;
+  priority: 'high' | 'medium' | 'low';
 }
 
 export interface DailyTask {

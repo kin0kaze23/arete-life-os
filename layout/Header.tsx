@@ -1,7 +1,7 @@
 import React from 'react';
 import { ShieldCheck, Loader2, Mic, Search, Command } from 'lucide-react';
-import { UserProfile } from '../data/types';
-import { getProfileCompletion, ProfileCompletionRing, ActionTooltip } from '../shared/SharedUI';
+import { UserProfile } from '@/data';
+import { getProfileCompletion, ProfileCompletionRing, ActionTooltip } from '@/shared';
 
 interface HeaderProps {
   activeTab: string;

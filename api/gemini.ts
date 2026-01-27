@@ -1,5 +1,12 @@
 import { GoogleGenAI } from '@google/genai';
 import OpenAI from 'openai';
+import {
+  DOMAIN_PROMPTS,
+  HYPER_PERSONALIZED_PROMPT,
+  LOG_BAR_INGEST_PROMPT,
+  buildMemoryContext,
+} from '../ai/prompts';
+import { RecommendationSchema, TaskSchema, validateAIOutput } from '../ai/validators';
 import type {
   BlindSpot,
   DailyTask,
@@ -13,63 +20,12 @@ import type {
   FinanceMetrics,
 } from '../data/types';
 
-const HYPER_PERSONALIZED_PROMPT = `
-You are the Chief of Staff for a high-performance individual within the Areté framework. Your task is to provide hyper-personalized, tactical guidance based on a deep analysis of their Life OS data to achieve excellence (Areté).
-
-INPUT DATA:
-- ACTIVE_PROFILE: {{profile}}
-- MEMORY_CONTEXT: {{history}}
-- FAMILY_CONTEXT: {{family}}
-- FINANCE_METRICS: {{financeMetrics}}
-- MISSING_DATA: {{missingData}}
-- CURRENT_DATE: {{currentDate}}
-
-INSTRUCTIONS:
-1. DATA-GROUNDED RATIONALE: Every recommendation MUST reference a specific fact from MEMORY_CONTEXT or a field in ACTIVE_PROFILE.
-2. VALUE ALIGNMENT: Check if tasks align with the user's Spiritual coreValues. Flag "Moral Friction" if they contradict.
-3. TACTICAL PRECISION: Provide an "Operating Manual" for every task. Never leave the user hanging.
-4. DEFINITION OF DONE (DoD): Specify exactly what "completed" looks like for every item.
-5. FINANCE NUMBERS: If FINANCE_METRICS is present, include daily/weekly budgets and savings rate in finance guidance.
-6. HEALTH SAFETY: If ACTIVE_PROFILE.health.conditions includes "fatty liver", provide non-diagnostic guidance (diet pattern, alcohol avoidance, activity targets) and suggest clinician follow-up for symptoms or abnormal labs.
-7. MISSING DATA: If MISSING_DATA is non-empty, include a "missingData" list with up to 3 items that would improve confidence.
-
-OUTPUT SCHEMA:
-{
-  "recommendations": [
-    {
-      "category": "Health|Finance|Relationships|Spiritual|Work",
-      "title": "Tactical Headline",
-      "description": "Short objective summary",
-      "impactScore": 1-10,
-      "rationale": "Direct citation from memory/profile",
-      "steps": ["Atomic step 1", "Atomic step 2"],
-      "estimatedTime": "e.g. 15 mins",
-      "inputs": ["Required tools, files, or people"],
-      "definitionOfDone": "Clear verification criteria",
-      "risks": ["Potential failure mode 1"],
-      "resonanceScore": 1-100, // How well this aligns with core values
-      "confidence": 0-100,
-      "missingData": ["string"]
-    }
-  ],
-  "tasks": [
-    {
-      "title": "Headline",
-      "category": "Domain",
-      "priority": "low|medium|high",
-      "methodology": "The high-fidelity SOP string on HOW to execute this perfectly",
-      "steps": ["Step 1", "Step 2"],
-      "definitionOfDone": "Specific success signal",
-      "valueResonance": "High|Medium|Low",
-      "confidence": 0-100,
-      "missingData": ["string"]
-    }
-  ]
-}
-`;
-
 const DEFAULT_PRO_MODEL = 'gemini-3-pro-preview';
 const DEFAULT_FLASH_MODEL = 'gemini-3-flash-preview';
+
+const domainContext = Object.entries(DOMAIN_PROMPTS)
+  .map(([key, value]) => `${key.toUpperCase()}: ${value}`)
+  .join('\n');
 
 const getModel = (kind: 'pro' | 'flash') => {
   const raw = kind === 'pro' ? process.env.GEMINI_MODEL_PRO : process.env.GEMINI_MODEL_FLASH;
@@ -137,7 +93,7 @@ const askAura = async (
 ) => {
   const finalPrompt = fillTemplate(promptConfig.template || promptConfig.defaultTemplate, {
     profile: JSON.stringify(profile),
-    history: JSON.stringify(history.slice(-20)),
+    history: JSON.stringify(buildMemoryContext(history, [], 20)),
     input: text,
   });
 
@@ -187,16 +143,16 @@ const generateDeepTasks = async (
     role: m.role,
   }));
 
-  const finalPrompt = fillTemplate(promptConfig.template || HYPER_PERSONALIZED_PROMPT, {
+  const finalPrompt = `${fillTemplate(promptConfig.template || HYPER_PERSONALIZED_PROMPT, {
     profile: JSON.stringify(profile),
     family: JSON.stringify(memberContext),
     history: JSON.stringify(
-      history.slice(-30).map((m) => ({ content: m.content, facts: m.extractedFacts }))
+      buildMemoryContext(history, []).map((m) => ({ content: m.content, facts: m.extractedFacts }))
     ),
     financeMetrics: JSON.stringify(financeMetrics || null),
     missingData: JSON.stringify(missingData || []),
     currentDate: new Date().toISOString(),
-  });
+  })}\n\nDOMAIN FOCUS:\n${domainContext}`;
 
   try {
     const ai = getClient();
@@ -210,17 +166,25 @@ const generateDeepTasks = async (
     });
 
     const result = JSON.parse(response.text || '{}');
+    const rawRecs = Array.isArray(result.recommendations) ? result.recommendations : [];
+    const rawTasks = Array.isArray(result.tasks) ? result.tasks : [];
+    const validatedRecs = rawRecs
+      .map((rec: unknown) => validateAIOutput(RecommendationSchema, rec))
+      .filter(Boolean) as any[];
+    const validatedTasks = rawTasks
+      .map((task: unknown) => validateAIOutput(TaskSchema, task))
+      .filter(Boolean) as any[];
     const timestamp = Date.now();
 
     return {
-      recommendations: (result.recommendations || []).map((r: any) => ({
+      recommendations: validatedRecs.map((r: any) => ({
         ...r,
         id: `rec-${timestamp}-${Math.random().toString(36).substr(2, 5)}`,
         ownerId: profile.id,
         createdAt: timestamp,
         status: 'ACTIVE',
       })),
-      tasks: (result.tasks || []).map((t: any) => ({
+      tasks: validatedTasks.map((t: any) => ({
         ...t,
         id: `deep-task-${timestamp}-${Math.random().toString(36).substr(2, 5)}`,
         ownerId: profile.id,
@@ -232,16 +196,24 @@ const generateDeepTasks = async (
     if (!getOpenAIClient()) throw err;
     const textResult = await callOpenAI(toJsonPrompt(finalPrompt), { json: true });
     const result = JSON.parse(textResult || '{}');
+    const rawRecs = Array.isArray(result.recommendations) ? result.recommendations : [];
+    const rawTasks = Array.isArray(result.tasks) ? result.tasks : [];
+    const validatedRecs = rawRecs
+      .map((rec: unknown) => validateAIOutput(RecommendationSchema, rec))
+      .filter(Boolean) as any[];
+    const validatedTasks = rawTasks
+      .map((task: unknown) => validateAIOutput(TaskSchema, task))
+      .filter(Boolean) as any[];
     const timestamp = Date.now();
     return {
-      recommendations: (result.recommendations || []).map((r: any) => ({
+      recommendations: validatedRecs.map((r: any) => ({
         ...r,
         id: `rec-${timestamp}-${Math.random().toString(36).substr(2, 5)}`,
         ownerId: profile.id,
         createdAt: timestamp,
         status: 'ACTIVE',
       })),
-      tasks: (result.tasks || []).map((t: any) => ({
+      tasks: validatedTasks.map((t: any) => ({
         ...t,
         id: `deep-task-${timestamp}-${Math.random().toString(36).substr(2, 5)}`,
         ownerId: profile.id,
@@ -263,7 +235,7 @@ const generateEventPrepPlan = async (
 
     EVENT: ${JSON.stringify(event)}
     USER_PROFILE: ${JSON.stringify(profile)}
-    HISTORY_CONTEXT: ${JSON.stringify(history.slice(-15).map((m) => m.content))}
+    HISTORY_CONTEXT: ${JSON.stringify(buildMemoryContext(history, [], 15).map((m) => m.content))}
 
     RETURN ONLY JSON.
   `;
@@ -306,13 +278,64 @@ const generateEventPrepPlan = async (
   }
 };
 
+const generateDeepInitialization = async (
+  profile: UserProfile,
+  ruleOfLife: any
+): Promise<Record<string, any>> => {
+  const prompt = `
+You are performing FIRST IMPRESSION ANALYSIS for Areté Life OS.
+
+PROFILE DATA:
+${JSON.stringify(profile, null, 2)}
+
+RULE OF LIFE:
+${JSON.stringify(ruleOfLife, null, 2)}
+
+GOAL: Demonstrate deep understanding of this person. Make them feel "seen."
+
+ANALYSIS TASKS:
+1. Identify 3-5 immediate actionable tasks based on their specific profile
+2. Identify 2-3 blind spots or risks based on profile gaps
+3. Generate 4-6 personalized "Always Do" routines with specific rationale
+4. Generate 3-5 "Always Watch" guardrails based on their conditions, finances, values
+5. Generate 2-3 recommendations per domain (health, finance, personal, relationships, spiritual)
+6. Write a personalized greeting that references something SPECIFIC about them
+
+RETURN JSON ONLY with schema:
+{
+  "doItems": [],
+  "watchItems": [],
+  "alwaysDo": [],
+  "alwaysWatch": [],
+  "domainRecommendations": { "health": [], "finance": [], "personal": [], "relationships": [], "spiritual": [] },
+  "personalizedGreeting": "string"
+}
+  `;
+
+  try {
+    const ai = getClient();
+    const model = getModel('pro');
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: { responseMimeType: 'application/json' },
+    });
+    return JSON.parse(response.text || '{}');
+  } catch (err) {
+    if (!getOpenAIClient()) throw err;
+    const textResult = await callOpenAI(prompt);
+    return JSON.parse(textResult || '{}');
+  }
+};
+
 const processInput = async (
   input: string,
   history: MemoryEntry[],
   activeProfile: UserProfile,
   files: { data: string; mimeType: string }[] | undefined,
   promptConfig: PromptConfig,
-  familyMembers: UserProfile[] = []
+  familyMembers: UserProfile[] = [],
+  fileMeta: { name?: string; mimeType: string; size?: number }[] = []
 ): Promise<any> => {
   const memberContext = familyMembers.map((m) => ({
     id: m.id,
@@ -322,11 +345,16 @@ const processInput = async (
       activeProfile.relationships.find((r) => r.relatedToUserId === m.id)?.type || 'Self',
   }));
 
-  const finalPrompt = fillTemplate(promptConfig.template || promptConfig.defaultTemplate, {
+  const template =
+    promptConfig.template && promptConfig.template.includes('"items"')
+      ? promptConfig.template
+      : LOG_BAR_INGEST_PROMPT;
+  const finalPrompt = fillTemplate(template, {
     profile: JSON.stringify(activeProfile),
     family: JSON.stringify(memberContext),
-    history: JSON.stringify(history.slice(-10)),
+    history: JSON.stringify(buildMemoryContext(history, [], 10)),
     input,
+    fileMeta: JSON.stringify(fileMeta || []),
   });
 
   const parts: any[] = [{ text: finalPrompt }];
@@ -376,13 +404,14 @@ const generateTasks = async (
 
   const finalPrompt = fillTemplate(promptConfig.template || promptConfig.defaultTemplate, {
     profile: JSON.stringify(profile),
-    history: JSON.stringify(history.slice(-10)),
+    history: JSON.stringify(buildMemoryContext(history, [], 10)),
     family: JSON.stringify(memberContext),
     financeMetrics: JSON.stringify(financeMetrics || null),
     missingData: JSON.stringify(missingData || []),
     currentDate: new Date().toISOString(),
     input:
-      "Generate active tasks based on recent history and profile goals. Include a 'methodology' field explaining STRATEGICALLY how to complete the task accurately. Include 'valueResonance' (High/Medium/Low) compared to coreValues.",
+      "Generate active tasks based on recent history and profile goals. Include a 'methodology' field explaining STRATEGICALLY how to complete the task accurately. Include 'valueResonance' (High/Medium/Low) compared to coreValues.\n\nDOMAIN FOCUS:\n" +
+      domainContext,
   });
   try {
     const ai = getClient();
@@ -422,13 +451,14 @@ const generateInsights = async (
 
   const finalPrompt = fillTemplate(promptConfig.template || promptConfig.defaultTemplate, {
     profile: JSON.stringify(profile),
-    history: JSON.stringify(history.slice(-30)),
+    history: JSON.stringify(buildMemoryContext(history, [], 30)),
     family: JSON.stringify(memberContext),
     financeMetrics: JSON.stringify(financeMetrics || null),
     missingData: JSON.stringify(missingData || []),
     currentDate: new Date().toISOString(),
     input:
-      'Generate proactive insights for achieving excellence. Use google search if appropriate to find relevant news/trends in their field.',
+      'Generate proactive insights for achieving excellence. Use google search if appropriate to find relevant news/trends in their field.\n\nDOMAIN FOCUS:\n' +
+      domainContext,
   });
   try {
     const ai = getClient();
@@ -467,13 +497,14 @@ const generateBlindSpots = async (
 
   const finalPrompt = fillTemplate(promptConfig.template || promptConfig.defaultTemplate, {
     profile: JSON.stringify(profile),
-    history: JSON.stringify(history.slice(-30)),
+    history: JSON.stringify(buildMemoryContext(history, [], 30)),
     family: JSON.stringify(memberContext),
     financeMetrics: JSON.stringify(financeMetrics || null),
     missingData: JSON.stringify(missingData || []),
     currentDate: new Date().toISOString(),
     input:
-      'Analyze for potential blind spots. Be critical of discrepancies between stated values and logged behavior.',
+      'Analyze for potential blind spots. Be critical of discrepancies between stated values and logged behavior.\n\nDOMAIN FOCUS:\n' +
+      domainContext,
   });
   try {
     const ai = getClient();
@@ -619,6 +650,8 @@ export const handleGeminiAction = async (action: string, payload: any) => {
       );
     case 'generateEventPrepPlan':
       return await generateEventPrepPlan(payload.event, payload.profile, payload.history);
+    case 'generateDeepInitialization':
+      return await generateDeepInitialization(payload.profile, payload.ruleOfLife);
     case 'processInput':
       return await processInput(
         payload.input,
@@ -626,7 +659,8 @@ export const handleGeminiAction = async (action: string, payload: any) => {
         payload.activeProfile,
         payload.files,
         payload.promptConfig,
-        payload.familyMembers
+        payload.familyMembers,
+        payload.fileMeta
       );
     case 'generateTasks':
       return await generateTasks(

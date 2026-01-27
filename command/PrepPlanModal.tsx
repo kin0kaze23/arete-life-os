@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TimelineEvent, Recommendation, UserProfile, MemoryEntry } from '../data/types';
+import { TimelineEvent, Recommendation, UserProfile, MemoryEntry } from '@/data';
 import {
   X,
   Sparkles,
@@ -12,8 +12,8 @@ import {
   BrainCircuit,
   Flag,
 } from 'lucide-react';
-import { generateEventPrepPlan } from '../ai/geminiService';
-import { getCategoryColor } from '../shared/SharedUI';
+import { generateEventPrepPlan } from '@/ai/geminiService';
+import { getCategoryColor } from '@/shared';
 
 interface PrepPlanModalProps {
   event: TimelineEvent;

@@ -1,4 +1,4 @@
-import { Category, MemoryEntry, Source, UserProfile } from '../data/types';
+import { Category, MemoryEntry, Source, UserProfile } from '@/data';
 
 const isFilled = (value: unknown) => {
   if (Array.isArray(value)) return value.length > 0;
@@ -100,14 +100,25 @@ export const getCoverageScore = (
   categories: Category[]
 ) => {
   const profileScore = getProfileCoverage(profile, pillarId);
-  const memoryCount = getPillarMemory(memory, categories).length;
+  const pillarMemory = getPillarMemory(memory, categories);
+  const memoryCount = pillarMemory.length;
   const fileCount = getPillarSourceCount(memory, sources, categories);
-  const signalScore = Math.min(40, memoryCount * 2 + fileCount * 6);
+
+  const now = Date.now();
+  const decayDays = 30;
+  const weightedMemoryCount = pillarMemory.reduce((sum, item) => {
+    const daysOld = (now - item.timestamp) / (1000 * 60 * 60 * 24);
+    const decay = Math.max(0.1, 1 - daysOld / decayDays);
+    return sum + decay;
+  }, 0);
+
+  const signalScore = Math.min(40, weightedMemoryCount * 2 + fileCount * 6);
   return {
     total: Math.min(100, Math.round(profileScore * 0.6 + signalScore)),
     profileScore,
     memoryCount,
     fileCount,
+    freshness: memoryCount > 0 ? weightedMemoryCount / memoryCount : 0,
   };
 };
 

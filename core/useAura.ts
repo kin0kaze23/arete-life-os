@@ -1,38 +1,51 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  Category,
-  MemoryItem,
-  DailyTask,
-  UserProfile,
-  PromptConfig,
-  Goal,
-  AuditLogEntry,
   ActionType,
+  AuditLogEntry,
+  BlindSpot,
+  CategorizedFact,
+  Category,
   Claim,
   ClaimStatus,
+  DashboardLayout,
+  DailyTask,
   FamilySpace,
-  UserRole,
+  FinanceMetrics,
+  Goal,
+  IntakeHorizon,
+  IntakeIntent,
+  IntakeItem,
+  IntakeItemType,
+  IntakeNeedsReview,
+  IntakeResult,
+  MemoryEntry,
+  MemoryItem,
+  ProactiveInsight,
+  PromptConfig,
   Recommendation,
+  RuleOfLife,
   Source,
   TimelineEvent,
-  ProactiveInsight,
-  BlindSpot,
-  RuleOfLife,
-  CategorizedFact,
+  UserProfile,
+  UserRole,
   ProposedUpdate,
-  MemoryEntry,
-  DashboardLayout,
-  FinanceMetrics,
-} from '../data/types';
-import { deleteFile, putFile } from '../data/fileStore';
+  calculateClaimConfidence,
+  computeFinanceMetrics,
+  deleteFile,
+  extractFinanceMetricsFromMemory,
+  putFile,
+} from '@/data';
+import { contentHash } from '@/shared';
+import { LogRouter } from '@/command';
 import {
   processInput,
   generateDailyPlan,
   generateTasks,
   generateInsights,
   generateBlindSpots,
+  generateDeepInitialization,
   DEFAULT_PROMPTS,
-} from '../ai/geminiService';
+} from '@/ai/geminiService';
 import {
   clearVault,
   createVault,
@@ -42,7 +55,9 @@ import {
   importVault,
   saveVault,
   unlockVault,
-} from '../data/cryptoVault';
+  exportAllFiles,
+  importAllFiles,
+} from '@/data';
 
 const APP_VERSION = '3.2.0';
 const VAULT_INACTIVITY_MS = 15 * 60 * 1000;
@@ -53,33 +68,6 @@ const INITIAL_RULE_OF_LIFE: RuleOfLife = {
   weeklyRhythm: { startOfWeek: 'Monday', blockedTimes: [] },
   nonNegotiables: { sleepWindow: '11pm - 7am', sabbath: 'Sunday', devotion: 'Morning Calibration' },
   taskPreferences: { dailyCap: 3, energyOffset: 'Balanced', includeWeekends: false },
-};
-
-const parseNumber = (value: string) => {
-  const cleaned = value.replace(/[^0-9.-]/g, '');
-  if (!cleaned) return null;
-  const parsed = Number(cleaned);
-  return Number.isFinite(parsed) ? parsed : null;
-};
-
-const computeFinanceMetrics = (profile: UserProfile): FinanceMetrics | null => {
-  const income = profile.finances.income ? parseNumber(profile.finances.income) : null;
-  const fixed = profile.finances.fixedCosts ? parseNumber(profile.finances.fixedCosts) : null;
-  const variable = profile.finances.variableCosts
-    ? parseNumber(profile.finances.variableCosts)
-    : null;
-  if (income === null || fixed === null || variable === null) return null;
-  const dailyVariableBudget = Math.round(variable / 30);
-  const weeklyVariableBudget = Math.round(variable / 4);
-  const savingsRate = Math.max(0, (income - (fixed + variable)) / income);
-  return {
-    income,
-    fixed,
-    variable,
-    dailyVariableBudget,
-    weeklyVariableBudget,
-    savingsRate: Math.round(savingsRate * 100),
-  };
 };
 
 const buildMissingData = (profile: UserProfile) => {
@@ -97,35 +85,29 @@ const buildMissingData = (profile: UserProfile) => {
   return missing;
 };
 
-const extractFinanceMetrics = (payload?: unknown) => {
-  if (!payload || typeof payload !== 'object') return null;
-  const data = payload as Record<string, unknown>;
-  const income = data.income;
-  const fixed = data.fixed;
-  const variable = data.variable;
-  const dailyVariableBudget = data.dailyVariableBudget;
-  const weeklyVariableBudget = data.weeklyVariableBudget;
-  const savingsRate = data.savingsRate;
-  const isNumber = (val: unknown): val is number => typeof val === 'number' && Number.isFinite(val);
-  if (
-    !isNumber(income) ||
-    !isNumber(fixed) ||
-    !isNumber(variable) ||
-    !isNumber(dailyVariableBudget) ||
-    !isNumber(weeklyVariableBudget) ||
-    !isNumber(savingsRate)
-  ) {
-    return null;
+const inferCategory = (content: string, facts: CategorizedFact[]): Category => {
+  const text = content.toLowerCase();
+
+  if (text.match(/\b(health|sleep|weight|exercise|gym|doctor|medication|clinic)\b/))
+    return Category.HEALTH;
+  if (text.match(/\b(money|budget|spend|income|salary|invest|save|debt)\b/))
+    return Category.FINANCE;
+  if (text.match(/\b(family|friend|partner|relationship|social|date)\b/))
+    return Category.RELATIONSHIPS;
+  if (text.match(/\b(pray|church|meditat|spiritual|faith|god|devotion)\b/))
+    return Category.SPIRITUAL;
+  if (text.match(/\b(work|job|meeting|project|deadline|client|career)\b/)) return Category.WORK;
+  if (text.match(/\b(hobby|interest|goal|personal|self|learning)\b/)) return Category.PERSONAL;
+
+  if (facts.length > 0 && facts[0].category && facts[0].category !== Category.GENERAL) {
+    return facts[0].category;
   }
-  return {
-    income,
-    fixed,
-    variable,
-    dailyVariableBudget,
-    weeklyVariableBudget,
-    savingsRate,
-  };
+
+  return Category.GENERAL;
 };
+
+const normalizeCategory = (value: unknown): Category =>
+  Object.values(Category).includes(value as Category) ? (value as Category) : Category.GENERAL;
 
 const detectHabit = (input: string) => {
   if (input.trim().startsWith('/')) return null;
@@ -151,6 +133,73 @@ const detectHabit = (input: string) => {
     frequency,
   };
 };
+
+const normalizeIntakeIntent = (value: unknown): IntakeIntent => {
+  const allowed: IntakeIntent[] = [
+    'memory',
+    'event',
+    'habit',
+    'health',
+    'finance',
+    'relationship',
+    'spiritual',
+    'profile_update',
+    'config_update',
+    'task_request',
+    'query',
+    'unknown',
+  ];
+  if (typeof value !== 'string') return 'unknown';
+  return allowed.includes(value as IntakeIntent) ? (value as IntakeIntent) : 'unknown';
+};
+
+const normalizeIntakeType = (value: unknown): IntakeItemType => {
+  const allowed: IntakeItemType[] = [
+    'memory',
+    'event',
+    'task',
+    'task_request',
+    'habit',
+    'profile_update',
+    'config_update',
+    'health_record',
+    'finance_record',
+    'relationship_note',
+    'spiritual_note',
+    'document',
+    'link',
+    'needs_review',
+  ];
+  if (typeof value !== 'string') return 'memory';
+  return allowed.includes(value as IntakeItemType) ? (value as IntakeItemType) : 'memory';
+};
+
+const normalizeHorizon = (value: unknown): IntakeHorizon => {
+  const allowed: IntakeHorizon[] = ['now', 'soon', 'always', 'unknown'];
+  if (typeof value !== 'string') return 'unknown';
+  return allowed.includes(value as IntakeHorizon) ? (value as IntakeHorizon) : 'unknown';
+};
+
+const coerceConfidence = (value: unknown, fallback = 0.5) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) return fallback;
+  return Math.max(0, Math.min(1, value));
+};
+
+const buildNeedsReview = (reason: string, questions: string[]): IntakeNeedsReview => ({
+  reason,
+  questions: questions.filter((q) => typeof q === 'string' && q.trim().length > 0).slice(0, 3),
+});
+
+const buildFallbackIntent = (input: string): IntakeIntent => {
+  const classified = LogRouter.classifyIntent(input);
+  if (classified === 'QUERY') return 'query';
+  if (classified === 'TASK') return 'task_request';
+  if (classified === 'CONFIG') return 'config_update';
+  return 'memory';
+};
+
+const extractLinks = (input: string) =>
+  input.match(/https?:\/\/[^\s)]+/gi)?.map((link) => link.trim()) ?? [];
 
 const createNewProfile = (
   id: string,
@@ -355,6 +404,7 @@ const clearLegacyData = () => {
 
 export const useAura = () => {
   const keyRef = useRef<CryptoKey | null>(null);
+  const refreshTimeoutRef = useRef<number | null>(null);
   const [hasVault, setHasVault] = useState<boolean>(() =>
     typeof window !== 'undefined' ? hasEncryptedVault() : false
   );
@@ -569,7 +619,11 @@ export const useAura = () => {
 
   const appendMemoryItems = useCallback((items: MemoryItem[]) => {
     if (items.length === 0) return;
-    setMemoryItems((prev) => [...items, ...prev]);
+    setMemoryItems((prev) => {
+      const existingHashes = new Set(prev.map((item) => contentHash(item.content)));
+      const newItems = items.filter((item) => !existingHashes.has(contentHash(item.content)));
+      return [...newItems, ...prev];
+    });
   }, []);
 
   const updateMemoryItem = useCallback((id: string, updates: Partial<MemoryItem>) => {
@@ -597,6 +651,67 @@ export const useAura = () => {
     setMemoryItems((prev) => prev.filter((item) => item.id !== id));
   }, []);
 
+  const keepRecommendation = useCallback(
+    (id: string) => {
+      const rec = recommendations.find((r) => r.id === id);
+      if (!rec) return;
+      setRecommendations((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, userFeedback: 'kept' } : r))
+      );
+      const timestamp = Date.now();
+      const memoryItem: MemoryItem = {
+        id: `mem-rec-kept-${timestamp}`,
+        timestamp,
+        content: `Kept recommendation: ${rec.title}`,
+        category: rec.category,
+        sentiment: 'positive',
+        extractedFacts: [],
+        ownerId: activeUserId,
+        extractionConfidence: 1,
+        metadata: {
+          type: 'recommendation_feedback',
+          source: 'dashboard',
+          version: 1,
+          payload: { action: 'kept', recId: id, category: rec.category },
+        },
+      };
+      appendMemoryItems([memoryItem]);
+      addAuditLog(ActionType.APPROVE, 'Recommendation kept', rec.title, memoryItem.id);
+    },
+    [recommendations, activeUserId, appendMemoryItems, addAuditLog]
+  );
+
+  const removeRecommendation = useCallback(
+    (id: string) => {
+      const rec = recommendations.find((r) => r.id === id);
+      if (!rec) return;
+      setRecommendations((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, status: 'DISMISSED', userFeedback: 'removed' } : r))
+      );
+      const timestamp = Date.now();
+      const memoryItem: MemoryItem = {
+        id: `mem-rec-removed-${timestamp}`,
+        timestamp,
+        content: `Removed recommendation: ${rec.title}`,
+        category: rec.category,
+        sentiment: 'neutral',
+        extractedFacts: [],
+        ownerId: activeUserId,
+        extractionConfidence: 1,
+        metadata: {
+          type: 'recommendation_feedback',
+          source: 'dashboard',
+          version: 1,
+          payload: { action: 'removed', recId: id, category: rec.category },
+        },
+      };
+      appendMemoryItems([memoryItem]);
+      addAuditLog(ActionType.REJECT, 'Recommendation removed', rec.title, memoryItem.id);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [recommendations, activeUserId, appendMemoryItems, addAuditLog]
+  );
+
   const commitClaims = (sourceId: string, facts: CategorizedFact[], updates: ProposedUpdate[]) => {
     setClaims((prev) =>
       prev.map((c) => (c.sourceId === sourceId ? { ...c, status: ClaimStatus.COMMITTED } : c))
@@ -612,6 +727,7 @@ export const useAura = () => {
       });
     });
     addAuditLog(ActionType.APPROVE, 'Neural State Commited', `Source: ${sourceId}`);
+    debouncedRefreshAura();
   };
 
   const resolveConflict = (claimId: string, resolution: 'OVERWRITE' | 'KEEP_EXISTING') => {
@@ -651,6 +767,11 @@ export const useAura = () => {
     const addedMemoryIds: string[] = [];
     try {
       const files = attachedFiles || [];
+      const fileMeta = files.map((file) => ({
+        name: file.name,
+        mimeType: file.type || 'application/octet-stream',
+        size: file.size,
+      }));
       const newSources: Source[] = [];
       const memoryAdds: MemoryItem[] = [];
 
@@ -661,7 +782,7 @@ export const useAura = () => {
         }
         const sourceId = `${sourcePrefix}-${i}`;
         const storageKey = `file-${sourcePrefix}-${i}`;
-        await putFile(storageKey, file);
+        await putFile(storageKey, file, keyRef.current || undefined);
         const source: Source = {
           id: sourceId,
           storageKey,
@@ -684,6 +805,18 @@ export const useAura = () => {
           sourceId,
           ownerId: activeUserId,
           extractionConfidence: 0,
+          metadata: {
+            type: 'document',
+            source: 'logbar',
+            version: 1,
+            payload: {
+              name: file.name,
+              mimeType: file.type || 'application/octet-stream',
+              size: file.size,
+              uploadedAt: timestamp,
+              sourceId,
+            },
+          },
         });
         addedMemoryIds.push(`mem-${sourceId}`);
       }
@@ -696,13 +829,18 @@ export const useAura = () => {
       const isAuditEntry = trimmed.toLowerCase().startsWith('/audit');
       const auditContent = isAuditEntry ? trimmed.replace(/^\/audit\s*/i, '').trim() : '';
       const contentForMemory = isAuditEntry ? auditContent || 'Evening audit logged.' : trimmed;
+      const mainMemoryId = contentForMemory ? `mem-${timestamp}` : null;
+      const inferredCategory = contentForMemory
+        ? inferCategory(contentForMemory, [])
+        : Category.GENERAL;
+      const detectedHabit = contentForMemory ? detectHabit(contentForMemory) : null;
 
       if (contentForMemory) {
         const memoryItem: MemoryItem = {
-          id: `mem-${timestamp}`,
+          id: mainMemoryId!,
           timestamp,
           content: contentForMemory,
-          category: Category.GENERAL,
+          category: inferredCategory,
           sentiment: 'neutral',
           extractedFacts: [],
           sourceId: newSources.length === 1 ? newSources[0].id : undefined,
@@ -713,36 +851,34 @@ export const useAura = () => {
         addedMemoryIds.push(memoryItem.id);
       }
 
-      if (contentForMemory) {
-        const habit = detectHabit(contentForMemory);
-        if (habit) {
-          const habitItem: MemoryItem = {
-            id: `mem-habit-${timestamp}`,
-            timestamp,
-            content: habit.title,
-            category: Category.HABIT,
-            sentiment: 'neutral',
-            extractedFacts: [],
-            ownerId: activeUserId,
-            extractionConfidence: 1,
-            metadata: {
-              type: 'habit',
-              source: 'logbar',
-              version: 1,
-              payload: {
-                title: habit.title,
-                frequency: habit.frequency,
-                trigger: '',
-                desiredOutcome: '',
-                startDate: timestamp,
-                lastCompletedAt: null,
-                streak: null,
-              },
+      if (contentForMemory && detectedHabit) {
+        const habit = detectedHabit;
+        const habitItem: MemoryItem = {
+          id: `mem-habit-${timestamp}`,
+          timestamp,
+          content: habit.title,
+          category: Category.HABIT,
+          sentiment: 'neutral',
+          extractedFacts: [],
+          ownerId: activeUserId,
+          extractionConfidence: 1,
+          metadata: {
+            type: 'habit',
+            source: 'logbar',
+            version: 1,
+            payload: {
+              title: habit.title,
+              frequency: habit.frequency,
+              trigger: '',
+              desiredOutcome: '',
+              startDate: timestamp,
+              lastCompletedAt: null,
+              streak: null,
             },
-          };
-          memoryAdds.push(habitItem);
-          addedMemoryIds.push(habitItem.id);
-        }
+          },
+        };
+        memoryAdds.push(habitItem);
+        addedMemoryIds.push(habitItem.id);
       }
 
       if (isAuditEntry) {
@@ -772,10 +908,7 @@ export const useAura = () => {
 
       const financeMetrics = computeFinanceMetrics(profile);
       if (financeMetrics) {
-        const latestMetricsItem = [...memoryItems, ...memoryAdds]
-          .filter((item) => item.metadata?.type === 'finance_metrics')
-          .sort((a, b) => b.timestamp - a.timestamp)[0];
-        const latestMetrics = extractFinanceMetrics(latestMetricsItem?.metadata?.payload);
+        const latestMetrics = extractFinanceMetricsFromMemory([...memoryItems, ...memoryAdds]);
         const metricsChanged =
           !latestMetrics ||
           latestMetrics.income !== financeMetrics.income ||
@@ -810,9 +943,11 @@ export const useAura = () => {
         setMemoryItems((prev) => [...memoryAdds, ...prev]);
       }
 
-      const inputForAI =
-        contentForMemory ||
-        (files.length > 0 ? `Uploaded files: ${files.map((f) => f.name).join(', ')}` : '');
+      const fileSummary =
+        files.length > 0 ? `Attached files: ${files.map((f) => f.name).join(', ')}` : '';
+      const inputForAI = contentForMemory
+        ? `${contentForMemory}${fileSummary ? `\n\n${fileSummary}` : ''}`
+        : fileSummary;
 
       try {
         const filesForAI =
@@ -843,23 +978,478 @@ export const useAura = () => {
           profile,
           filesForAI,
           prompts.find((p) => p.id === 'internalization')!,
+          familySpace.members,
+          fileMeta
+        );
+        const rawFacts = Array.isArray(result?.facts) ? result.facts : [];
+        const rawUpdates = Array.isArray(result?.proposedUpdates) ? result.proposedUpdates : [];
+        const rawItems = Array.isArray(result?.items) ? result.items : [];
+        const fallbackOwnerId = LogRouter.resolveTargetUser(
+          contentForMemory || inputForAI || '',
+          activeUserId,
           familySpace.members
         );
-        const newClaims: Claim[] = (result.facts || []).map((f: any, i: number) => ({
+        const fallbackIntent = buildFallbackIntent(contentForMemory || inputForAI || '');
+        const fallbackDomain = contentForMemory
+          ? inferCategory(contentForMemory, rawFacts as CategorizedFact[])
+          : Category.GENERAL;
+        const intakeConfidence = coerceConfidence(result?.confidence, 0.6);
+
+        const normalizedItems: IntakeItem[] = rawItems
+          .filter((item: any) => item && typeof item === 'object')
+          .map((item: any, idx: number) => {
+            const content =
+              typeof item.content === 'string' && item.content.trim().length > 0
+                ? item.content.trim()
+                : contentForMemory || inputForAI || `Signal ${idx + 1}`;
+            const ownerId =
+              item.ownerId === 'FAMILY_SHARED'
+                ? 'FAMILY_SHARED'
+                : typeof item.ownerId === 'string' && item.ownerId.trim().length > 0
+                  ? item.ownerId
+                  : fallbackOwnerId;
+            const tags = Array.isArray(item.tags)
+              ? item.tags.filter(Boolean).map((tag: any) => String(tag))
+              : [];
+            const fields =
+              item.fields && typeof item.fields === 'object'
+                ? (item.fields as Record<string, unknown>)
+                : undefined;
+            return {
+              id: typeof item.id === 'string' && item.id.trim().length > 0 ? item.id : '',
+              type: normalizeIntakeType(item.type),
+              intent: normalizeIntakeIntent(item.intent || result?.intent || fallbackIntent),
+              domain: normalizeCategory(item.domain || fallbackDomain),
+              ownerId,
+              horizon: normalizeHorizon(item.horizon),
+              title: typeof item.title === 'string' ? item.title : undefined,
+              content,
+              confidence: coerceConfidence(item.confidence, intakeConfidence),
+              tags,
+              fields,
+              sourceId: typeof item.sourceId === 'string' ? item.sourceId : undefined,
+              dedupeKey: typeof item.dedupeKey === 'string' ? item.dedupeKey : contentHash(content),
+            };
+          })
+          .map((item, idx) => ({ ...item, id: item.id || `intake-${timestamp}-${idx}` }));
+
+        const fallbackItems: IntakeItem[] = [];
+        const baseContent = contentForMemory || inputForAI || '';
+        if (baseContent) {
+          fallbackItems.push({
+            id: `intake-${timestamp}-0`,
+            type: 'memory',
+            intent: fallbackIntent,
+            domain: fallbackDomain,
+            ownerId: fallbackOwnerId,
+            horizon: 'unknown',
+            title: undefined,
+            content: baseContent,
+            confidence: intakeConfidence,
+            tags: [],
+            fields: undefined,
+            dedupeKey: contentHash(baseContent),
+          });
+        }
+        const links = baseContent ? extractLinks(baseContent) : [];
+        links.forEach((link, idx) => {
+          fallbackItems.push({
+            id: `intake-link-${timestamp}-${idx}`,
+            type: 'link',
+            intent: 'memory',
+            domain: Category.GENERAL,
+            ownerId: fallbackOwnerId,
+            horizon: 'unknown',
+            title: 'Link',
+            content: link,
+            confidence: intakeConfidence,
+            tags: ['link'],
+            fields: { url: link },
+            dedupeKey: contentHash(link),
+          });
+        });
+        if (detectedHabit) {
+          fallbackItems.push({
+            id: `intake-habit-${timestamp}`,
+            type: 'habit',
+            intent: 'habit',
+            domain: Category.HABIT,
+            ownerId: fallbackOwnerId,
+            horizon: 'always',
+            title: detectedHabit.title,
+            content: detectedHabit.title,
+            confidence: intakeConfidence,
+            tags: ['habit'],
+            fields: { frequency: detectedHabit.frequency },
+            dedupeKey: contentHash(detectedHabit.title),
+          });
+        }
+
+        const intakeItems = normalizedItems.length > 0 ? normalizedItems : fallbackItems;
+        const intakeNeedsReview =
+          result?.needsReview && Array.isArray(result.needsReview?.questions)
+            ? buildNeedsReview(
+                String(result.needsReview?.reason || 'Needs clarification'),
+                result.needsReview.questions
+              )
+            : null;
+
+        const intakeMemoryAdds: MemoryItem[] = [];
+        const timelineAdds: TimelineEvent[] = [];
+        const taskAdds: DailyTask[] = [];
+        const derivedUpdates: ProposedUpdate[] = rawUpdates.filter(
+          (u: any) => u && typeof u === 'object'
+        );
+        const reviewQuestions: string[] = [];
+        const existingHabits = new Set(
+          [...memoryItems, ...memoryAdds]
+            .filter((item) => item.metadata?.type === 'habit')
+            .map((item) => item.content.toLowerCase())
+        );
+
+        intakeItems.forEach((item, idx) => {
+          const domain = normalizeCategory(item.domain);
+          const fields = item.fields || {};
+          const content = item.content || '';
+          const ownerId = item.ownerId || activeUserId;
+          const sourceId = item.sourceId;
+
+          if (item.type === 'document') {
+            if (sourceId) {
+              updateMemoryItem(`mem-${sourceId}`, {
+                category: domain,
+                extractionConfidence: item.confidence,
+                metadata: {
+                  type: 'document',
+                  payload: {
+                    ...(fields as Record<string, unknown>),
+                    title: item.title,
+                    tags: item.tags,
+                  },
+                },
+              });
+              return;
+            }
+            intakeMemoryAdds.push({
+              id: `mem-doc-${timestamp}-${idx}`,
+              timestamp,
+              content: item.title || content || 'Document',
+              category: domain,
+              sentiment: 'neutral',
+              extractedFacts: [],
+              ownerId,
+              extractionConfidence: item.confidence,
+              metadata: {
+                type: 'document',
+                source: 'logbar',
+                version: 1,
+                payload: fields,
+              },
+            });
+            return;
+          }
+
+          if (item.type === 'memory' && mainMemoryId && contentForMemory) {
+            updateMemoryItem(mainMemoryId, {
+              category: domain,
+              extractionConfidence: item.confidence,
+              metadata: {
+                type: 'memory',
+                payload: {
+                  ...(fields as Record<string, unknown>),
+                  tags: item.tags,
+                },
+              },
+            });
+            return;
+          }
+
+          if (item.type === 'event') {
+            const date =
+              typeof (fields as any).date === 'string'
+                ? (fields as any).date
+                : typeof (fields as any).startDate === 'string'
+                  ? (fields as any).startDate
+                  : typeof (fields as any).eventDate === 'string'
+                    ? (fields as any).eventDate
+                    : '';
+            if (!date) {
+              reviewQuestions.push('When is this event scheduled?');
+              return;
+            }
+            const title = item.title || content || 'New event';
+            const event: TimelineEvent = {
+              id: `event-${timestamp}-${idx}`,
+              ownerId: String(ownerId),
+              title,
+              date,
+              category: domain,
+              description: content || title,
+              createdAt: timestamp,
+              isManual: true,
+            };
+            timelineAdds.push(event);
+            const memoryId = `mem-event-${timestamp}-${idx}`;
+            intakeMemoryAdds.push({
+              id: memoryId,
+              timestamp,
+              content: `Event: ${title} on ${date}`,
+              category: domain,
+              sentiment: 'neutral',
+              extractedFacts: [],
+              ownerId,
+              extractionConfidence: item.confidence,
+              metadata: {
+                type: 'event',
+                source: 'logbar',
+                version: 1,
+                payload: event,
+              },
+            });
+            addAuditLog(ActionType.ARM_STRATEGY, 'Event Logged', title, memoryId);
+            return;
+          }
+
+          if (item.type === 'habit') {
+            const title = item.title || content || 'New habit';
+            const normalizedTitle = title.toLowerCase();
+            if (existingHabits.has(normalizedTitle)) return;
+            existingHabits.add(normalizedTitle);
+            intakeMemoryAdds.push({
+              id: `mem-habit-${timestamp}-${idx}`,
+              timestamp,
+              content: title,
+              category: Category.HABIT,
+              sentiment: 'neutral',
+              extractedFacts: [],
+              ownerId,
+              extractionConfidence: item.confidence,
+              metadata: {
+                type: 'habit',
+                source: 'logbar',
+                version: 1,
+                payload: {
+                  title,
+                  frequency: (fields as any).frequency || 'daily',
+                },
+              },
+            });
+            addAuditLog(ActionType.ARM_STRATEGY, 'Habit Logged', title);
+            return;
+          }
+
+          if (item.type === 'task' || item.type === 'task_request') {
+            const title = item.title || content || 'New task';
+            taskAdds.push({
+              id: `task-${timestamp}-${idx}`,
+              ownerId: String(ownerId),
+              title,
+              description: content || title,
+              category: domain,
+              priority: 'medium',
+              completed: false,
+              createdAt: timestamp,
+              steps: Array.isArray((fields as any).steps) ? (fields as any).steps : [],
+              inputs: Array.isArray((fields as any).inputs) ? (fields as any).inputs : [],
+              definitionOfDone: (fields as any).definitionOfDone,
+              risks: Array.isArray((fields as any).risks) ? (fields as any).risks : [],
+              links: {
+                claims: [],
+                sources: sourceId ? [sourceId] : [],
+                risks: [],
+                goals: [],
+              },
+            });
+            intakeMemoryAdds.push({
+              id: `mem-task-${timestamp}-${idx}`,
+              timestamp,
+              content: `Task requested: ${title}`,
+              category: domain,
+              sentiment: 'neutral',
+              extractedFacts: [],
+              ownerId,
+              extractionConfidence: item.confidence,
+              metadata: {
+                type: 'task_request',
+                source: 'logbar',
+                version: 1,
+                payload: {
+                  title,
+                  description: content,
+                  fields,
+                },
+              },
+            });
+            return;
+          }
+
+          if (item.type === 'profile_update' || item.type === 'config_update') {
+            const section = (fields as any).section;
+            const field = (fields as any).field;
+            const newValue = (fields as any).newValue;
+            if (section && field && newValue !== undefined) {
+              derivedUpdates.push({
+                id: `update-${timestamp}-${idx}`,
+                section,
+                field,
+                oldValue: '',
+                newValue: String(newValue),
+                reasoning: (fields as any).reasoning || 'User input update',
+                confidence: item.confidence,
+                targetUserId: String(ownerId),
+              });
+            } else {
+              reviewQuestions.push('Which profile field should be updated?');
+            }
+            intakeMemoryAdds.push({
+              id: `mem-update-${timestamp}-${idx}`,
+              timestamp,
+              content: `Profile update requested: ${content || item.title || 'Update'}`,
+              category: domain,
+              sentiment: 'neutral',
+              extractedFacts: [],
+              ownerId,
+              extractionConfidence: item.confidence,
+              metadata: {
+                type: item.type,
+                source: 'logbar',
+                version: 1,
+                payload: fields,
+              },
+            });
+            return;
+          }
+
+          if (
+            item.type === 'health_record' ||
+            item.type === 'finance_record' ||
+            item.type === 'relationship_note' ||
+            item.type === 'spiritual_note'
+          ) {
+            intakeMemoryAdds.push({
+              id: `mem-${item.type}-${timestamp}-${idx}`,
+              timestamp,
+              content: content || item.title || 'Record',
+              category: domain,
+              sentiment: 'neutral',
+              extractedFacts: [],
+              ownerId,
+              extractionConfidence: item.confidence,
+              metadata: {
+                type: item.type,
+                source: 'logbar',
+                version: 1,
+                payload: fields,
+              },
+            });
+            return;
+          }
+
+          if (item.type === 'link') {
+            const url = (fields as any).url || content;
+            if (!url) return;
+            intakeMemoryAdds.push({
+              id: `mem-link-${timestamp}-${idx}`,
+              timestamp,
+              content: url,
+              category: domain,
+              sentiment: 'neutral',
+              extractedFacts: [],
+              ownerId,
+              extractionConfidence: item.confidence,
+              metadata: {
+                type: 'link',
+                source: 'logbar',
+                version: 1,
+                payload: { url, tags: item.tags },
+              },
+            });
+          }
+        });
+
+        if (intakeMemoryAdds.length > 0) {
+          appendMemoryItems(intakeMemoryAdds);
+        }
+        if (timelineAdds.length > 0) {
+          setTimelineEvents((prev) => [...timelineAdds, ...prev]);
+        }
+        if (taskAdds.length > 0) {
+          setTasks((prev) => [...taskAdds, ...prev]);
+        }
+
+        const shouldReview =
+          intakeNeedsReview || reviewQuestions.length > 0 || intakeItems.length === 0;
+        if (shouldReview) {
+          const review =
+            intakeNeedsReview || buildNeedsReview('Needs clarification', reviewQuestions);
+          const reviewItem: MemoryItem = {
+            id: `mem-review-${timestamp}`,
+            timestamp,
+            content: `Needs review: ${contentForMemory || inputForAI}`,
+            category: Category.GENERAL,
+            sentiment: 'neutral',
+            extractedFacts: [],
+            ownerId: activeUserId,
+            extractionConfidence: 0,
+            metadata: {
+              type: 'needs_review',
+              source: 'logbar',
+              version: 1,
+              payload: review,
+            },
+          };
+          appendMemoryItems([reviewItem]);
+        }
+
+        if (
+          mainMemoryId &&
+          contentForMemory &&
+          !intakeItems.some((item) => item.type === 'memory')
+        ) {
+          const refinedCategory = inferCategory(contentForMemory, rawFacts as CategorizedFact[]);
+          setMemoryItems((prev) =>
+            prev.map((item) =>
+              item.id === mainMemoryId ? { ...item, category: refinedCategory } : item
+            )
+          );
+        }
+
+        const normalizedFacts = (rawFacts as any[]).filter(
+          (fact) => fact && typeof fact.fact === 'string'
+        );
+        const newClaims: Claim[] = normalizedFacts.map((f: any, i: number) => ({
           id: `claim-${timestamp}-${i}`,
           sourceId: addedMemoryIds[0],
           fact: f.fact,
           type: 'FACT',
-          confidence: f.confidence || 0,
+          confidence: calculateClaimConfidence(f, profile, claims),
           status: ClaimStatus.PROPOSED,
           category: f.category || Category.GENERAL,
           ownerId: f.ownerId || activeUserId,
           timestamp,
         }));
-        setClaims((prev) => [...newClaims, ...prev]);
+        if (newClaims.length > 0) {
+          setClaims((prev) => [...newClaims, ...prev]);
+        }
         addAuditLog(ActionType.INGEST_SIGNAL, 'Signal Ingested', inputForAI, addedMemoryIds[0]);
-        setTimeout(() => refreshAura(), 0);
-        return { ...result, sourceId: addedMemoryIds[0] };
+        debouncedRefreshAura();
+        return {
+          ...result,
+          facts: normalizedFacts,
+          proposedUpdates: derivedUpdates,
+          needsReview: shouldReview || result?.needsReview,
+          headline:
+            result?.headline || (shouldReview ? 'Signal logged. Needs review.' : 'Signal logged.'),
+          sourceId: addedMemoryIds[0],
+          intake: {
+            intent: normalizeIntakeIntent(result?.intent || fallbackIntent),
+            items: intakeItems,
+            missingData: Array.isArray(result?.missingData) ? result.missingData : [],
+            needsReview: intakeNeedsReview || undefined,
+            confidence: intakeConfidence,
+            notes: result?.notes,
+          } as IntakeResult,
+        };
       } catch (err: any) {
         const message = err?.message || 'AI processing failed.';
         if (addedMemoryIds.length > 0) {
@@ -881,7 +1471,7 @@ export const useAura = () => {
           message,
           addedMemoryIds[0]
         );
-        setTimeout(() => refreshAura(), 0);
+        debouncedRefreshAura();
         return {
           headline: 'Signal logged. Needs review.',
           needsReview: true,
@@ -924,7 +1514,8 @@ export const useAura = () => {
         ruleOfLife,
         prompts.find((p) => p.id === 'deepPlanning')!
       );
-      setDailyPlan(plan.slice(0, getDailyCap()));
+      const safePlan = Array.isArray(plan) ? plan : [];
+      setDailyPlan(safePlan.slice(0, getDailyCap()));
     } finally {
       setIsPlanningDay(false);
     }
@@ -941,13 +1532,99 @@ export const useAura = () => {
         financeMetrics,
         missingData,
       };
-      setTasks(await generateTasks(memoryItems, profile, prompt, context));
-      setInsights(await generateInsights(memoryItems, profile, prompt, context));
-      setBlindSpots(await generateBlindSpots(memoryItems, profile, prompt, context));
+      const nextTasks = await generateTasks(memoryItems, profile, prompt, context);
+      const nextInsights = await generateInsights(memoryItems, profile, prompt, context);
+      const nextBlindSpots = await generateBlindSpots(memoryItems, profile, prompt, context);
+      setTasks(Array.isArray(nextTasks) ? nextTasks : []);
+      setInsights(Array.isArray(nextInsights) ? nextInsights : []);
+      setBlindSpots(Array.isArray(nextBlindSpots) ? nextBlindSpots : []);
     } finally {
       setIsGeneratingTasks(false);
     }
   };
+
+  const runDeepInitialization = useCallback(async () => {
+    const result = await generateDeepInitialization(profile, ruleOfLife);
+    const timestamp = Date.now();
+
+    const deepTasks = (result.doItems || []).map((task, idx) => ({
+      id: `deep-task-${timestamp}-${idx}`,
+      ownerId: activeUserId,
+      title: task.title || 'New task',
+      description: task.description || task.why || '',
+      category: normalizeCategory(task.category),
+      priority: task.priority || 'medium',
+      completed: false,
+      createdAt: timestamp,
+      steps: task.steps || [],
+      inputs: task.inputs || [],
+      definitionOfDone: task.definitionOfDone,
+      risks: task.risks || [],
+      methodology: task.methodology,
+      why: task.why,
+      estimate_min: task.estimate_min,
+      energy: task.energy,
+    }));
+
+    const deepBlindSpots = (result.watchItems || []).map((spot: any, idx: number) => ({
+      id: `blind-${timestamp}-${idx}`,
+      ownerId: activeUserId,
+      createdAt: timestamp,
+      signal: spot.signal || spot.title || 'Risk detected',
+      why: spot.why || spot.description || 'Needs review.',
+      confidence: spot.confidence || 50,
+      severity: spot.severity || 'med',
+      actions: spot.actions || spot.steps || [],
+    }));
+
+    const domainRecs = Object.values(result.domainRecommendations || {}).flat();
+    const deepRecs = domainRecs.map((rec: any, idx: number) => ({
+      id: `rec-init-${timestamp}-${idx}`,
+      ownerId: activeUserId,
+      category: normalizeCategory(rec.category),
+      title: rec.title || 'Recommendation',
+      description: rec.description || '',
+      impactScore: rec.impactScore || 5,
+      rationale: rec.rationale || rec.why || '',
+      steps: rec.steps || [],
+      estimatedTime: rec.estimatedTime || '15m',
+      inputs: rec.inputs || [],
+      definitionOfDone: rec.definitionOfDone || '',
+      risks: rec.risks || [],
+      status: 'ACTIVE' as const,
+      needsReview: false,
+      missingFields: rec.missingData || [],
+      createdAt: timestamp,
+      evidenceLinks: rec.evidenceLinks || { claims: [], sources: [] },
+    }));
+
+    if (deepTasks.length > 0) setTasks((prev) => [...deepTasks, ...prev]);
+    if (deepBlindSpots.length > 0) setBlindSpots((prev) => [...deepBlindSpots, ...prev]);
+    if (deepRecs.length > 0) setRecommendations((prev) => [...deepRecs, ...prev]);
+
+    if (result.personalizedGreeting) {
+      addAuditLog(ActionType.SYSTEM, 'Initialization Complete', result.personalizedGreeting);
+    }
+
+    return result.personalizedGreeting;
+  }, [profile, ruleOfLife, activeUserId, addAuditLog, setTasks, setBlindSpots, setRecommendations]);
+
+  const debouncedRefreshAura = useCallback(() => {
+    if (refreshTimeoutRef.current) {
+      window.clearTimeout(refreshTimeoutRef.current);
+    }
+    refreshTimeoutRef.current = window.setTimeout(() => {
+      refreshAura();
+    }, 500);
+  }, [refreshAura]);
+
+  useEffect(() => {
+    return () => {
+      if (refreshTimeoutRef.current) {
+        window.clearTimeout(refreshTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return {
     isUnlocked,
@@ -993,10 +1670,18 @@ export const useAura = () => {
       applyVaultData(buildDefaultVault());
     },
     completeOnboarding: () => setIsOnboarded(true),
-    exportData: () => {
+    exportData: async () => {
       const payload = exportVault();
       if (!payload) return;
-      const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+      // Include encrypted files in export
+      const files = await exportAllFiles();
+      const fullBackup = {
+        ...payload,
+        files,
+        exportedAt: new Date().toISOString(),
+        version: APP_VERSION,
+      };
+      const blob = new Blob([JSON.stringify(fullBackup)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -1007,9 +1692,17 @@ export const useAura = () => {
     importData: async (f: File) => {
       try {
         const text = await f.text();
-        const parsed = JSON.parse(text) as { meta: string; vault: string };
+        const parsed = JSON.parse(text) as {
+          meta: string;
+          vault: string;
+          files?: { key: string; data: string }[];
+        };
         if (!parsed?.meta || !parsed?.vault) throw new Error('Invalid backup');
         importVault(parsed.meta, parsed.vault);
+        // Import files if present
+        if (parsed.files && Array.isArray(parsed.files)) {
+          await importAllFiles(parsed.files);
+        }
         setHasVault(true);
         setIsUnlocked(false);
         keyRef.current = null;
@@ -1019,6 +1712,9 @@ export const useAura = () => {
       }
     },
     refreshAura,
+    keepRecommendation,
+    removeRecommendation,
+    runDeepInitialization,
     commitClaims,
     setLayout,
     addTimelineEvent: (e: any) => {
@@ -1045,7 +1741,7 @@ export const useAura = () => {
       };
       appendMemoryItems([memoryItem]);
       addAuditLog(ActionType.ARM_STRATEGY, 'Event Logged', e?.title || 'Event', memoryItem.id);
-      setTimeout(() => refreshAura(), 0);
+      debouncedRefreshAura();
     },
     updateTimelineEvent: (id: any, u: any) =>
       setTimelineEvents((p) => p.map((e) => (e.id === id ? { ...e, ...u } : e))),
@@ -1076,7 +1772,7 @@ export const useAura = () => {
         p?.title || 'Plan',
         memoryItem.id
       );
-      setTimeout(() => refreshAura(), 0);
+      debouncedRefreshAura();
     },
     setProfile,
     setRuleOfLife,
@@ -1107,7 +1803,7 @@ export const useAura = () => {
         };
         appendMemoryItems([memoryItem]);
         addAuditLog(ActionType.COMPLETE_TASK, 'Task Completed', task.title, memoryItem.id);
-        setTimeout(() => refreshAura(), 0);
+        debouncedRefreshAura();
       }
     },
     getVitalityScore: (c: any) => 85,
@@ -1138,7 +1834,7 @@ export const useAura = () => {
       };
       appendMemoryItems([memoryItem]);
       addAuditLog(ActionType.TASK_CREATE, 'Task Created', t?.title || 'Task', memoryItem.id);
-      setTimeout(() => refreshAura(), 0);
+      debouncedRefreshAura();
     },
     updateTask: (id: any, u: any) => {
       setTasks((p) => p.map((t) => (t.id === id ? { ...t, ...u } : t)));
@@ -1161,7 +1857,7 @@ export const useAura = () => {
       };
       appendMemoryItems([memoryItem]);
       addAuditLog(ActionType.TASK_CREATE, 'Task Updated', u?.title || id, memoryItem.id);
-      setTimeout(() => refreshAura(), 0);
+      debouncedRefreshAura();
     },
     deleteTask: (id: any) => {
       setTasks((p) => p.filter((t) => t.id !== id));
@@ -1184,7 +1880,7 @@ export const useAura = () => {
       };
       appendMemoryItems([memoryItem]);
       addAuditLog(ActionType.TASK_CREATE, 'Task Deleted', id, memoryItem.id);
-      setTimeout(() => refreshAura(), 0);
+      debouncedRefreshAura();
     },
     createGoal: (g: any) => {
       setGoals((p) => [g, ...p]);
@@ -1207,7 +1903,7 @@ export const useAura = () => {
       };
       appendMemoryItems([memoryItem]);
       addAuditLog(ActionType.ARM_STRATEGY, 'Goal Created', g?.title || 'Goal', memoryItem.id);
-      setTimeout(() => refreshAura(), 0);
+      debouncedRefreshAura();
     },
     updateGoal: (id: any, u: any) => {
       setGoals((p) => p.map((g) => (g.id === id ? { ...g, ...u } : g)));
@@ -1230,7 +1926,7 @@ export const useAura = () => {
       };
       appendMemoryItems([memoryItem]);
       addAuditLog(ActionType.ARM_STRATEGY, 'Goal Updated', u?.title || id, memoryItem.id);
-      setTimeout(() => refreshAura(), 0);
+      debouncedRefreshAura();
     },
     deleteGoal: (id: any) => {
       setGoals((p) => p.filter((g) => g.id !== id));
@@ -1253,7 +1949,7 @@ export const useAura = () => {
       };
       appendMemoryItems([memoryItem]);
       addAuditLog(ActionType.ARM_STRATEGY, 'Goal Deleted', id, memoryItem.id);
-      setTimeout(() => refreshAura(), 0);
+      debouncedRefreshAura();
     },
     scheduleInsight: (i: any, d: any) => {},
     deleteFacts: (items: any) => {},

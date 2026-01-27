@@ -1,23 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useAura } from '../core/useAura';
-import { Sidebar } from '../layout/Sidebar';
-import { Header } from '../layout/Header';
-import { LogBar } from '../command/LogBar';
-import { VaultView } from '../vault/VaultView';
-import { ChatView } from '../chat/ChatView';
-import { LifeStreamView } from '../stream/LifeStreamView';
-import { DashboardView } from '../dashboard/DashboardView';
-import { MemoryVaultView } from '../vault/MemoryVaultView';
-import { SettingsView } from '../settings/SettingsView';
-import { OnboardingView } from '../onboarding/OnboardingView';
-import { VerificationSheet } from '../vault/VerificationSheet';
-import { CommandPalette } from '../command/CommandPalette';
-import { askAura } from '../ai/geminiService';
-import { ErrorBoundary } from './ErrorBoundary';
-import { VaultLockView } from '../vault/VaultLockView';
+import { useAura } from '@/core';
+import { Sidebar, Header } from '@/layout';
+import { LogBar, CommandPalette } from '@/command';
+import { VaultView, MemoryVaultView, VerificationSheet, VaultLockView } from '@/vault';
+import { ChatView } from '@/chat';
+import { LifeStreamView } from '@/stream';
+import { DashboardView } from '@/dashboard';
+import { SettingsView } from '@/settings';
+import { OnboardingView } from '@/onboarding';
+import { askAura } from '@/ai';
+import { ErrorBoundary } from '@/app/ErrorBoundary';
 import { X, CheckCircle2, User, Database, Settings } from 'lucide-react';
-import { CategorizedFact, ProposedUpdate } from '../data/types';
-import { useOnlineStatus, NetworkBanner } from '../shared/SharedUI';
+import { CategorizedFact, ProposedUpdate } from '@/data';
+import { useOnlineStatus, NetworkBanner } from '@/shared';
 
 const App: React.FC = () => {
   const aura = useAura();
@@ -101,7 +96,12 @@ const App: React.FC = () => {
         setCurrentSourceId(processed.sourceId);
         setIsSheetOpen(true);
       } else {
-        showToast(processed.headline || 'Memory Internalized', 'success');
+        const reviewQuestions = processed?.intake?.needsReview?.questions;
+        if (processed?.needsReview && reviewQuestions?.length) {
+          showToast(`Needs review: ${reviewQuestions[0]}`, 'info');
+        } else {
+          showToast(processed.headline || 'Memory Internalized', 'success');
+        }
       }
       if (!processed?.needsReview) {
         setUserInput('');
@@ -154,6 +154,7 @@ const App: React.FC = () => {
         setRuleOfLife={aura.setRuleOfLife}
         onComplete={aura.completeOnboarding}
         logMemory={async (input) => aura.logMemory(input)}
+        runDeepInitialization={aura.runDeepInitialization}
       />
     );
   }

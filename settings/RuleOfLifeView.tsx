@@ -15,14 +15,8 @@ import {
   List,
   Activity,
 } from 'lucide-react';
-import {
-  VaultInput,
-  VaultSelect,
-  VaultSlider,
-  ActionTooltip,
-  getCategoryColor,
-} from '../shared/SharedUI';
-import { RuleOfLife, Goal, Category } from '../data/types';
+import { VaultInput, VaultSelect, VaultSlider, ActionTooltip, getCategoryColor } from '@/shared';
+import { RuleOfLife, Goal, Category } from '@/data';
 
 interface RuleOfLifeViewProps {
   ruleOfLife: RuleOfLife;

@@ -27,8 +27,8 @@ import {
   ChipInput,
   VaultSlider,
   getProfileCompletion,
-} from '../shared/SharedUI';
-import { UserProfile, RelationshipContact, RuleOfLife, Category } from '../data/types';
+} from '@/shared';
+import { UserProfile, RelationshipContact, RuleOfLife, Category } from '@/data';
 
 interface VaultViewProps {
   profile: UserProfile;

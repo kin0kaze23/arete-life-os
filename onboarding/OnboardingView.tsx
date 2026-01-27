@@ -20,8 +20,8 @@ import {
   X,
   Info,
 } from 'lucide-react';
-import { VaultInput, VaultSelect, VaultSlider, ChipInput } from '../shared/SharedUI';
-import { UserProfile, RuleOfLife } from '../data/types';
+import { VaultInput, VaultSelect, VaultSlider, ChipInput } from '@/shared';
+import { UserProfile, RuleOfLife } from '@/data';
 
 const SUGGESTIONS = {
   status: [
@@ -158,6 +158,7 @@ interface OnboardingViewProps {
   setRuleOfLife: React.Dispatch<React.SetStateAction<RuleOfLife>>;
   onComplete: () => void;
   logMemory: (input: string) => Promise<any>;
+  runDeepInitialization?: () => Promise<string | void>;
 }
 
 export const OnboardingView: React.FC<OnboardingViewProps> = ({
@@ -167,6 +168,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
   setRuleOfLife,
   onComplete,
   logMemory,
+  runDeepInitialization,
 }) => {
   const [step, setStep] = useState(1);
   const [isFinishing, setIsFinishing] = useState(false);
@@ -187,6 +189,9 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
       await logMemory(
         'System Initialization sequence completed. Profile context fully calibrated.'
       );
+      if (runDeepInitialization) {
+        await runDeepInitialization();
+      }
       onComplete();
     } catch (err) {
       onComplete();

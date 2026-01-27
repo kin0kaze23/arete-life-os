@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { MessageSquare, BrainCircuit, ExternalLink, Wallet, Heart, TrendingUp } from 'lucide-react';
-import { EmptyState } from '../shared/EmptyState';
-import { NeuralProcessor } from '../shared/SharedUI';
+import { EmptyState, NeuralProcessor } from '@/shared';
 import ReactMarkdown from 'react-markdown';
 
 interface ChatViewProps {

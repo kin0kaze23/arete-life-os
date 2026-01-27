@@ -12,8 +12,8 @@ import {
   Package,
   Zap,
 } from 'lucide-react';
-import { Recommendation } from '../data/types';
-import { getCategoryColor } from '../shared/SharedUI';
+import { Recommendation } from '@/data';
+import { getCategoryColor } from '@/shared';
 
 interface RecommendationsWidgetProps {
   recommendations: Recommendation[];

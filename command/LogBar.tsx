@@ -11,7 +11,7 @@ import {
   Zap,
   Search,
 } from 'lucide-react';
-import { useOnlineStatus, ActionTooltip } from '../shared/SharedUI';
+import { useOnlineStatus, ActionTooltip } from '@/shared';
 
 interface LogBarProps {
   userInput: string;

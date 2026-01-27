@@ -14,8 +14,8 @@ import {
   Zap,
   HardDrive,
 } from 'lucide-react';
-import { VaultSection, VaultInput, VaultSelect, VaultSlider } from '../shared/SharedUI';
-import { ProactiveInsight, RuleOfLife } from '../data/types';
+import { VaultSection, VaultInput, VaultSelect, VaultSlider } from '@/shared';
+import { ProactiveInsight, RuleOfLife } from '@/data';
 
 interface SettingsViewProps {
   isDarkMode: boolean;

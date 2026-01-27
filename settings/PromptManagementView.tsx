@@ -1,5 +1,5 @@
 import React from 'react';
-import { PromptConfig } from '../data/types';
+import { PromptConfig } from '@/data';
 import { Terminal, Save, RotateCcw, HelpCircle, Code } from 'lucide-react';
 
 interface PromptManagementViewProps {

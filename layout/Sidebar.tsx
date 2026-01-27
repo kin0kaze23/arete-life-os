@@ -9,8 +9,8 @@ import {
   Database,
   Settings,
 } from 'lucide-react';
-import { FamilySpace } from '../data/types';
-import { AreteLogo } from '../shared/SharedUI';
+import { FamilySpace } from '@/data';
+import { AreteLogo } from '@/shared';
 
 interface SidebarProps {
   activeTab: string;

@@ -1,6 +1,6 @@
 import React from 'react';
-import { MemoryEntry } from '../data/types';
-import { getCategoryColor } from '../shared/SharedUI';
+import { MemoryEntry } from '@/data';
+import { EmptyState, getCategoryColor } from '@/shared';
 import {
   Hash,
   Target,
@@ -10,7 +10,6 @@ import {
   Microscope,
   Info,
 } from 'lucide-react';
-import { EmptyState } from '../shared/EmptyState';
 
 interface HistoryViewProps {
   memory: MemoryEntry[];

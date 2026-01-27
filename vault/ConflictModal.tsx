@@ -1,7 +1,7 @@
 import React from 'react';
 import { GitCompare, CheckCircle2, AlertTriangle, ArrowRight, Sparkles } from 'lucide-react';
-import { Category } from '../data/types';
-import { getCategoryColor } from '../shared/SharedUI';
+import { Category } from '@/data';
+import { getCategoryColor } from '@/shared';
 
 export interface ConflictData {
   id: string;

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { getProfileCompletion } from '../shared/SharedUI';
+import { getProfileCompletion } from '@/shared';
 import {
   DailyTask,
   UserProfile,
@@ -11,13 +11,18 @@ import {
   Recommendation,
   Source,
   FinanceMetrics,
-} from '../data/types';
+  AlwaysChip,
+  computeFinanceMetrics,
+  extractFinanceMetricsFromMemory,
+} from '@/data';
 import { DoWatchSection } from './DoWatchSection';
 import { AlwaysPanels } from './AlwaysPanels';
 import { DomainPanels } from './DomainPanels';
+import { EventPrepPopup } from './EventPrepPopup';
 import { SystemStatusFooter } from './SystemStatusFooter';
 import { corePillars } from './corePillars';
 import { getCoverageScore } from './domainUtils';
+import { UpcomingCalendar } from './UpcomingCalendar';
 
 interface DashboardViewProps {
   memory: MemoryEntry[];
@@ -36,6 +41,9 @@ interface DashboardViewProps {
   onNavigate: (tab: any) => void;
   updateMemoryItem?: (id: string, updates: Partial<MemoryEntry>) => void;
   deleteMemoryItem?: (id: string) => void;
+  keepRecommendation?: (id: string) => void;
+  removeRecommendation?: (id: string) => void;
+  activatePrepPlan?: (plan: Recommendation) => void;
   isPlanningDay: boolean;
   isGeneratingTasks: boolean;
 }
@@ -56,70 +64,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigate,
   updateMemoryItem,
   deleteMemoryItem,
+  keepRecommendation,
+  removeRecommendation,
+  activatePrepPlan,
   isPlanningDay,
   isGeneratingTasks,
 }) => {
   const [horizon, setHorizon] = useState<'now' | 'soon' | 'always'>('now');
+  const [activePrepEvent, setActivePrepEvent] = useState<TimelineEvent | null>(null);
 
   const completion = getProfileCompletion(profile);
 
-  const parseNumber = (value: string) => {
-    const cleaned = value.replace(/[^0-9.-]/g, '');
-    if (!cleaned) return null;
-    const parsed = Number(cleaned);
-    return Number.isFinite(parsed) ? parsed : null;
-  };
-
-  const extractFinanceMetrics = (payload?: unknown): FinanceMetrics | null => {
-    if (!payload || typeof payload !== 'object') return null;
-    const data = payload as Record<string, unknown>;
-    const { income, fixed, variable, dailyVariableBudget, weeklyVariableBudget, savingsRate } =
-      data;
-    const isNumber = (val: unknown): val is number =>
-      typeof val === 'number' && Number.isFinite(val);
-    if (
-      !isNumber(income) ||
-      !isNumber(fixed) ||
-      !isNumber(variable) ||
-      !isNumber(dailyVariableBudget) ||
-      !isNumber(weeklyVariableBudget) ||
-      !isNumber(savingsRate)
-    ) {
-      return null;
-    }
-    return {
-      income,
-      fixed,
-      variable,
-      dailyVariableBudget,
-      weeklyVariableBudget,
-      savingsRate,
-    };
-  };
-
   const financeMetrics = useMemo(() => {
-    const latestMetrics = memory
-      .filter((item) => item.metadata?.type === 'finance_metrics')
-      .sort((a, b) => b.timestamp - a.timestamp)[0];
-    const fromMemory = extractFinanceMetrics(latestMetrics?.metadata?.payload);
+    const fromMemory = extractFinanceMetricsFromMemory(memory);
     if (fromMemory) return fromMemory;
-    const income = profile.finances.income ? parseNumber(profile.finances.income) : null;
-    const fixed = profile.finances.fixedCosts ? parseNumber(profile.finances.fixedCosts) : null;
-    const variable = profile.finances.variableCosts
-      ? parseNumber(profile.finances.variableCosts)
-      : null;
-    if (income === null || fixed === null || variable === null) return null;
-    const dailyVariableBudget = Math.round(variable / 30);
-    const weeklyVariableBudget = Math.round(variable / 4);
-    const savingsRate = Math.max(0, (income - (fixed + variable)) / income);
-    return {
-      income,
-      fixed,
-      variable,
-      dailyVariableBudget,
-      weeklyVariableBudget,
-      savingsRate: Math.round(savingsRate * 100),
-    };
+    return computeFinanceMetrics(profile);
   }, [memory, profile.finances]);
 
   const hasFattyLiver = useMemo(
@@ -314,18 +273,53 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     () => getHorizonWatch(),
     [horizon, blindSpots, insights, timelineEvents, profile, financeMetrics, hasFattyLiver]
   );
-  const needsReviewCount = useMemo(
-    () => recommendations.filter((r) => r.needsReview).length,
-    [recommendations]
-  );
-  const alwaysDoChips = useMemo(() => {
-    const chips: string[] = [];
-    if (ruleOfLife?.nonNegotiables?.sleepWindow)
-      chips.push(`Sleep window: ${ruleOfLife.nonNegotiables.sleepWindow}`);
-    if (ruleOfLife?.nonNegotiables?.devotion) chips.push('Daily devotion');
-    if (ruleOfLife?.nonNegotiables?.sabbath) chips.push('Weekly sabbath');
-    if (profile.spiritual.coreValues?.length)
-      chips.push(`Core values: ${profile.spiritual.coreValues.slice(0, 3).join(', ')}`);
+  const needsReviewCount = useMemo(() => {
+    const recs = recommendations.filter((r) => r.needsReview).length;
+    const intake = memory.filter((item) => item.metadata?.type === 'needs_review').length;
+    return recs + intake;
+  }, [recommendations, memory]);
+  const alwaysDoChips = useMemo<AlwaysChip[]>(() => {
+    const chips: AlwaysChip[] = [];
+    if (ruleOfLife?.nonNegotiables?.sleepWindow) {
+      chips.push({
+        id: 'sleep-window',
+        label: `Sleep ${ruleOfLife.nonNegotiables.sleepWindow}`,
+        rationale: `Consistent sleep protects energy and recovery for your ${profile.personal.jobRole || 'daily focus'}.`,
+        source: 'health',
+        profileField: 'health.sleepTime',
+        priority: 'high',
+      });
+    }
+    if (ruleOfLife?.nonNegotiables?.devotion) {
+      chips.push({
+        id: 'devotion',
+        label: 'Daily devotion',
+        rationale: `Your rule of life includes devotion. Consistency reinforces your stated values.`,
+        source: 'spiritual',
+        profileField: 'spiritual.practicePulse',
+        priority: 'medium',
+      });
+    }
+    if (ruleOfLife?.nonNegotiables?.sabbath) {
+      chips.push({
+        id: 'sabbath',
+        label: 'Weekly sabbath',
+        rationale: `Your rule of life includes a weekly sabbath to reset and protect long-term pace.`,
+        source: 'spiritual',
+        profileField: 'spiritual.practicePulse',
+        priority: 'medium',
+      });
+    }
+    if (profile.spiritual.coreValues?.length) {
+      chips.push({
+        id: 'core-values',
+        label: `Values: ${profile.spiritual.coreValues.slice(0, 2).join(', ')}`,
+        rationale: `These core values should guide daily decisions and trade-offs.`,
+        source: 'profile',
+        profileField: 'spiritual.coreValues',
+        priority: 'high',
+      });
+    }
     return chips.slice(0, 6);
   }, [ruleOfLife, profile]);
 
@@ -346,20 +340,83 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     });
   }, [memory]);
 
-  const alwaysWatchChips = useMemo(() => {
-    const chips: string[] = [];
-    if (profile.health.conditions?.length)
-      chips.push(`Health watch: ${profile.health.conditions[0]}`);
-    if (hasFattyLiver) chips.push('Fatty liver: avoid alcohol + prioritize fiber + movement');
-    if (financeMetrics) {
-      chips.push(`Daily budget: ${financeMetrics.dailyVariableBudget}`);
-      chips.push(`Weekly budget: ${financeMetrics.weeklyVariableBudget}`);
-      chips.push(`Savings rate: ${financeMetrics.savingsRate}%`);
-      chips.push(`Today spend target: ${financeMetrics.dailyVariableBudget}`);
+  const alwaysWatchChips = useMemo<AlwaysChip[]>(() => {
+    const chips: AlwaysChip[] = [];
+    if (profile.health.conditions?.length) {
+      chips.push({
+        id: 'health-conditions',
+        label: `Health watch: ${profile.health.conditions[0]}`,
+        rationale: `You logged a health condition. Keep an eye on related signals and symptoms.`,
+        source: 'health',
+        profileField: 'health.conditions',
+        priority: 'high',
+      });
     }
-    if (profile.finances.fixedCosts) chips.push('Review fixed costs monthly');
-    if (profile.relationship.socialEnergy) chips.push('Monitor social energy');
-    if (blindSpots.length > 0) chips.push('Review blind spots weekly');
+    if (hasFattyLiver) {
+      chips.push({
+        id: 'fatty-liver',
+        label: 'Fatty liver support plan',
+        rationale: 'Limit alcohol, prioritize fiber, and keep light activity consistent.',
+        source: 'health',
+        profileField: 'health.conditions',
+        priority: 'high',
+      });
+    }
+    if (financeMetrics) {
+      chips.push({
+        id: 'daily-budget',
+        label: `Daily budget: ${financeMetrics.dailyVariableBudget}`,
+        rationale: `Stay within your daily variable spend to protect savings rate.`,
+        source: 'finance',
+        profileField: 'finances.variableCosts',
+        priority: 'high',
+      });
+      chips.push({
+        id: 'weekly-budget',
+        label: `Weekly budget: ${financeMetrics.weeklyVariableBudget}`,
+        rationale: `Weekly guardrail based on your monthly variable budget.`,
+        source: 'finance',
+        profileField: 'finances.variableCosts',
+        priority: 'medium',
+      });
+      chips.push({
+        id: 'savings-rate',
+        label: `Savings rate: ${financeMetrics.savingsRate}%`,
+        rationale: `Track savings rate weekly to maintain momentum.`,
+        source: 'finance',
+        profileField: 'finances.income',
+        priority: 'medium',
+      });
+    }
+    if (profile.finances.fixedCosts) {
+      chips.push({
+        id: 'fixed-costs',
+        label: 'Review fixed costs monthly',
+        rationale: `Fixed costs are the biggest lever for improving savings rate.`,
+        source: 'finance',
+        profileField: 'finances.fixedCosts',
+        priority: 'low',
+      });
+    }
+    if (profile.relationship.socialEnergy) {
+      chips.push({
+        id: 'social-energy',
+        label: 'Monitor social energy',
+        rationale: `Your energy baseline affects relationship quality and recovery.`,
+        source: 'profile',
+        profileField: 'relationship.socialEnergy',
+        priority: 'medium',
+      });
+    }
+    if (blindSpots.length > 0) {
+      chips.push({
+        id: 'blind-spots',
+        label: 'Review blind spots weekly',
+        rationale: `Weekly review keeps risks visible and actioned early.`,
+        source: 'computed',
+        priority: 'medium',
+      });
+    }
     return chips.slice(0, 6);
   }, [profile, blindSpots, financeMetrics, hasFattyLiver]);
 
@@ -391,6 +448,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         showLowConfidence={showLowConfidence}
       />
 
+      <UpcomingCalendar events={timelineEvents} onSelectEvent={setActivePrepEvent} />
+
       <AlwaysPanels
         alwaysDoChips={alwaysDoChips}
         alwaysWatchChips={alwaysWatchChips}
@@ -408,6 +467,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         profile={profile}
         financeMetrics={financeMetrics}
         hasFattyLiver={hasFattyLiver}
+        onKeepRecommendation={keepRecommendation}
+        onRemoveRecommendation={removeRecommendation}
+      />
+
+      <EventPrepPopup
+        event={activePrepEvent}
+        profile={profile}
+        memory={memory}
+        onClose={() => setActivePrepEvent(null)}
+        onActivate={(plan) => activatePrepPlan?.(plan)}
       />
 
       <SystemStatusFooter completion={completion.overall} />

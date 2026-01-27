@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
-import { Skeleton } from '../shared/SharedUI';
+import { Button, Skeleton } from '@/shared';
 
 type DoItem = {
   id: string;
@@ -98,12 +98,9 @@ export const DoWatchSection: React.FC<DoWatchSectionProps> = ({
               Needs Review · {needsReviewCount}
             </button>
           )}
-          <button
-            onClick={refreshAll}
-            className="px-6 py-3 rounded-2xl bg-slate-900 border border-white/5 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:border-indigo-500/30 transition-all"
-          >
+          <Button onClick={refreshAll} variant="secondary" className="rounded-2xl">
             Refresh Signals
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -118,12 +115,14 @@ export const DoWatchSection: React.FC<DoWatchSectionProps> = ({
               a file to improve accuracy.
             </p>
           </div>
-          <button
+          <Button
             onClick={() => onNavigate('vault')}
-            className="px-4 py-2 rounded-xl bg-amber-500 text-slate-900 text-[9px] font-black uppercase tracking-widest hover:bg-amber-400 transition-all"
+            variant="primary"
+            size="sm"
+            className="bg-amber-500 text-slate-900 hover:bg-amber-400"
           >
             Add Context
-          </button>
+          </Button>
         </div>
       )}
 
@@ -140,12 +139,14 @@ export const DoWatchSection: React.FC<DoWatchSectionProps> = ({
                     : 'Evergreen routines'}
               </p>
             </div>
-            <button
+            <Button
               onClick={planMyDay}
-              className="px-5 py-2 rounded-xl bg-white text-slate-900 text-[9px] font-black uppercase tracking-widest hover:bg-indigo-500 hover:text-white transition-all"
+              variant="primary"
+              size="sm"
+              className="bg-white text-slate-900 hover:bg-indigo-500 hover:text-white"
             >
               Plan My Day
-            </button>
+            </Button>
           </div>
 
           {isPlanningDay ? (

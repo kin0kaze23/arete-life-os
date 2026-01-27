@@ -6,8 +6,8 @@ import {
   UserProfile,
   TimelineEvent,
   Recommendation,
-} from '../data/types';
-import { getCategoryColor, VaultInput, VaultSelect } from '../shared/SharedUI';
+} from '@/data';
+import { EmptyState, getCategoryColor, VaultInput, VaultSelect } from '@/shared';
 import {
   Calendar,
   Clock,
@@ -36,8 +36,7 @@ import {
   Flag,
   ArrowRight,
 } from 'lucide-react';
-import { EmptyState } from '../shared/EmptyState';
-import { PrepPlanModal } from '../command/PrepPlanModal';
+import { PrepPlanModal } from '@/command/PrepPlanModal';
 
 interface TimelineViewProps {
   memory: MemoryEntry[];

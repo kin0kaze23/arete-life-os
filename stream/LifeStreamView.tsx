@@ -6,16 +6,12 @@ import {
   UserProfile,
   TimelineEvent,
   Recommendation,
-} from '../data/types';
-import { getCategoryColor } from '../shared/SharedUI';
+} from '@/data';
+import { EmptyState, getCategoryColor, getCategoryIcon } from '@/shared';
 import {
   Calendar,
   Clock,
   Hash,
-  Heart,
-  Wallet,
-  Users,
-  Compass,
   Briefcase,
   Coffee,
   Plane,
@@ -36,8 +32,7 @@ import {
   Database,
   FileText,
 } from 'lucide-react';
-import { EmptyState } from '../shared/EmptyState';
-import { PrepPlanModal } from '../command/PrepPlanModal';
+import { PrepPlanModal } from '@/command/PrepPlanModal';
 
 interface LifeStreamViewProps {
   memory: MemoryEntry[];
@@ -138,7 +133,7 @@ export const LifeStreamView: React.FC<LifeStreamViewProps> = ({
                 <div
                   className={`p-3 rounded-2xl ${getCategoryColor(event.category).split(' ')[0]} bg-opacity-20`}
                 >
-                  {getIconForCategory(event.category)}
+                  {getCategoryIcon(event.category)}
                 </div>
                 <div>
                   <div className="flex items-center gap-3 mb-1">
@@ -209,21 +204,4 @@ export const LifeStreamView: React.FC<LifeStreamViewProps> = ({
       </div>
     </div>
   );
-};
-
-const getIconForCategory = (cat: Category) => {
-  switch (cat) {
-    case Category.HEALTH:
-      return <Heart size={18} />;
-    case Category.FINANCE:
-      return <Wallet size={18} />;
-    case Category.RELATIONSHIPS:
-      return <Users size={18} />;
-    case Category.SPIRITUAL:
-      return <Compass size={18} />;
-    case Category.WORK:
-      return <Briefcase size={18} />;
-    default:
-      return <Hash size={18} />;
-  }
 };

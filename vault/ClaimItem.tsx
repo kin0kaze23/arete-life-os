@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Category } from '../data/types';
-import { getCategoryColor } from '../shared/SharedUI';
+import { Category } from '@/data';
+import { getCategoryColor } from '@/shared';
 import {
   FileText,
   Image,

@@ -10,7 +10,7 @@ import {
   ExternalLink,
   Download,
 } from 'lucide-react';
-import { SourceFile, CategorizedFact } from '../data/types';
+import { SourceFile, CategorizedFact } from '@/data';
 
 interface SourceViewerProps {
   files: SourceFile[];

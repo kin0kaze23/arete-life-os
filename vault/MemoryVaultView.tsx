@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { Claim, Category, Source, ClaimStatus, MemoryItem } from '../data/types';
+import { Claim, Category, Source, ClaimStatus, MemoryItem } from '@/data';
 import {
   Database,
   Search,
@@ -22,8 +22,8 @@ import {
   Edit3,
   Save,
 } from 'lucide-react';
-import { BentoCard, getCategoryColor, Skeleton } from '../shared/SharedUI';
-import { getFile } from '../data/fileStore';
+import { BentoCard, getCategoryColor, Skeleton } from '@/shared';
+import { getFile } from '@/data';
 
 interface MemoryVaultViewProps {
   claims: Claim[];
@@ -83,6 +83,8 @@ export const MemoryVaultView: React.FC<MemoryVaultViewProps> = ({
         return <Globe size={18} />;
       case Category.WORK:
         return <Briefcase size={18} />;
+      case Category.PERSONAL:
+        return <User size={18} />;
       default:
         return <Database size={18} />;
     }

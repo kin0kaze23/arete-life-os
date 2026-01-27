@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { MemoryEntry } from '../data/types';
+import { AlwaysChip, MemoryEntry } from '@/data';
+import { Chip } from '@/shared';
 
 type HabitItem = {
   id: string;
@@ -8,8 +9,8 @@ type HabitItem = {
 };
 
 interface AlwaysPanelsProps {
-  alwaysDoChips: string[];
-  alwaysWatchChips: string[];
+  alwaysDoChips: AlwaysChip[];
+  alwaysWatchChips: AlwaysChip[];
   habitItems: HabitItem[];
   onNavigate: (tab: any) => void;
   updateMemoryItem?: (id: string, updates: Partial<MemoryEntry>) => void;
@@ -64,12 +65,19 @@ export const AlwaysPanels: React.FC<AlwaysPanelsProps> = ({
         <div className="mt-4 flex flex-wrap gap-2">
           {alwaysDoChips.length > 0 ? (
             alwaysDoChips.map((chip) => (
-              <span
-                key={chip}
-                className="px-3 py-2 rounded-full bg-slate-900 text-[9px] font-black uppercase tracking-widest text-slate-400 border border-white/5"
+              <Chip
+                key={chip.id}
+                color={
+                  chip.priority === 'high'
+                    ? 'emerald'
+                    : chip.priority === 'medium'
+                      ? 'amber'
+                      : 'slate'
+                }
+                tooltip={chip.rationale}
               >
-                {chip}
-              </span>
+                {chip.label}
+              </Chip>
             ))
           ) : (
             <span className="text-[10px] text-slate-500">No routines captured yet.</span>
@@ -172,12 +180,15 @@ export const AlwaysPanels: React.FC<AlwaysPanelsProps> = ({
         <div className="mt-4 flex flex-wrap gap-2">
           {alwaysWatchChips.length > 0 ? (
             alwaysWatchChips.map((chip) => (
-              <span
-                key={chip}
-                className="px-3 py-2 rounded-full bg-rose-500/5 text-[9px] font-black uppercase tracking-widest text-rose-300 border border-rose-500/10"
+              <Chip
+                key={chip.id}
+                color={
+                  chip.priority === 'high' ? 'rose' : chip.priority === 'medium' ? 'amber' : 'slate'
+                }
+                tooltip={chip.rationale}
               >
-                {chip}
-              </span>
+                {chip.label}
+              </Chip>
             ))
           ) : (
             <span className="text-[10px] text-slate-500">No guardrails set yet.</span>

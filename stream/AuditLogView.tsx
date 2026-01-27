@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { AuditLogEntry, ActionType } from '../data/types';
+import { AuditLogEntry, ActionType } from '@/data';
 import {
   Search,
   Filter,
@@ -17,7 +17,7 @@ import {
   BrainCircuit,
   Fingerprint,
 } from 'lucide-react';
-import { ActionTooltip } from '../shared/SharedUI';
+import { ActionTooltip } from '@/shared';
 
 interface AuditLogViewProps {
   logs: AuditLogEntry[];

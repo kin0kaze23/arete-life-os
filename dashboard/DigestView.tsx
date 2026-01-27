@@ -15,11 +15,9 @@ import {
   CheckCircle2,
   XCircle,
 } from 'lucide-react';
-import { BentoCard, Skeleton, getCategoryColor } from '../shared/SharedUI';
-import { CategorizedFact, DailyTask, ProposedUpdate, Category } from '../data/types';
-import { EmptyState } from '../shared/EmptyState';
-import { ClaimItem } from '../vault/ClaimItem';
-import { DiffRow } from '../shared/DiffRow';
+import { BentoCard, Skeleton, getCategoryColor, EmptyState, DiffRow } from '@/shared';
+import { CategorizedFact, DailyTask, ProposedUpdate, Category } from '@/data';
+import { ClaimItem } from '@/vault/ClaimItem';
 
 interface DigestViewProps {
   claims: CategorizedFact[];

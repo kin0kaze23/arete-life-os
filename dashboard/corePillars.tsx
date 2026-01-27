@@ -1,6 +1,6 @@
 import React from 'react';
 import { Heart, Sparkles, User, Users, Wallet } from 'lucide-react';
-import { Category } from '../data/types';
+import { Category } from '@/data';
 
 export type CorePillar = {
   id: string;
@@ -28,7 +28,7 @@ export const corePillars: CorePillar[] = [
   {
     id: 'personal',
     title: 'Personal',
-    categories: [Category.GENERAL, Category.WORK, Category.SOCIAL],
+    categories: [Category.PERSONAL, Category.GENERAL, Category.WORK, Category.SOCIAL],
     icon: <User className="text-violet-400" size={18} />,
     accent: 'violet',
   },

@@ -8,9 +8,10 @@ import {
   Source,
   SourceFile,
   UserProfile,
-} from '../data/types';
-import { SourceViewer } from '../vault/SourceViewer';
-import { getFile } from '../data/fileStore';
+} from '@/data';
+import { SourceViewer } from '@/vault/SourceViewer';
+import { getFile } from '@/data';
+import { Button } from '@/shared';
 import { corePillars } from './corePillars';
 import {
   formatSignalTime,
@@ -28,6 +29,8 @@ interface DomainPanelsProps {
   profile: UserProfile;
   financeMetrics: FinanceMetrics | null;
   hasFattyLiver: boolean;
+  onKeepRecommendation?: (id: string) => void;
+  onRemoveRecommendation?: (id: string) => void;
 }
 
 export const DomainPanels: React.FC<DomainPanelsProps> = ({
@@ -38,6 +41,8 @@ export const DomainPanels: React.FC<DomainPanelsProps> = ({
   profile,
   financeMetrics,
   hasFattyLiver,
+  onKeepRecommendation,
+  onRemoveRecommendation,
 }) => {
   const [expandedRecId, setExpandedRecId] = useState<string | null>(null);
   const [drawerPillarId, setDrawerPillarId] = useState<string | null>(null);
@@ -173,38 +178,63 @@ export const DomainPanels: React.FC<DomainPanelsProps> = ({
                         ? (item.evidenceLinks?.sources?.length || 0) +
                           (item.evidenceLinks?.claims?.length || 0)
                         : 0;
+                    const isRec = 'impactScore' in item;
                     return (
-                      <button
+                      <div
                         key={id}
-                        onClick={() => setExpandedRecId(isExpanded ? null : id)}
                         className="w-full text-left p-4 rounded-2xl border border-white/5 bg-slate-900/60 hover:border-indigo-500/30 transition-all"
                       >
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="text-xs font-black text-white">{title}</p>
-                          <span className="text-[8px] uppercase tracking-widest text-slate-500">
-                            {isExpanded ? 'Hide' : 'View'}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-slate-400 mt-2 line-clamp-2">
-                          {description}
-                        </p>
-                        <div className="mt-3 flex items-center gap-2 text-[9px] uppercase tracking-widest text-slate-500">
-                          <span>{getPillarMemory(memory, pillar.categories).length} signals</span>
-                          <span>•</span>
-                          <span>{pillarSources.length} files</span>
-                          {evidenceCount > 0 && (
-                            <>
-                              <span>•</span>
-                              <span>{evidenceCount} evidence</span>
-                            </>
-                          )}
-                        </div>
-                        {isExpanded && (
-                          <p className="text-[10px] text-slate-500 mt-2">
-                            {rationale || 'Grounded in recent signals.'}
+                        <button
+                          onClick={() => setExpandedRecId(isExpanded ? null : id)}
+                          className="w-full text-left"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-xs font-black text-white">{title}</p>
+                            <span className="text-[8px] uppercase tracking-widest text-slate-500">
+                              {isExpanded ? 'Hide' : 'View'}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-2 line-clamp-2">
+                            {description}
                           </p>
+                          <div className="mt-3 flex items-center gap-2 text-[9px] uppercase tracking-widest text-slate-500">
+                            <span>{getPillarMemory(memory, pillar.categories).length} signals</span>
+                            <span>•</span>
+                            <span>{pillarSources.length} files</span>
+                            {evidenceCount > 0 && (
+                              <>
+                                <span>•</span>
+                                <span>{evidenceCount} evidence</span>
+                              </>
+                            )}
+                          </div>
+                          {isExpanded && (
+                            <p className="text-[10px] text-slate-500 mt-2">
+                              {rationale || 'Grounded in recent signals.'}
+                            </p>
+                          )}
+                        </button>
+                        {isRec && (
+                          <div className="mt-3 flex items-center gap-2 text-[9px] uppercase tracking-widest">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => onKeepRecommendation?.(id)}
+                              className="rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20"
+                            >
+                              Keep
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => onRemoveRecommendation?.(id)}
+                              className="rounded-full bg-rose-500/10 text-rose-300 border border-rose-500/20"
+                            >
+                              Remove
+                            </Button>
+                          </div>
                         )}
-                      </button>
+                      </div>
                     );
                   })
                 ) : (
