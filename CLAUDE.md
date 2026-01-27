@@ -9,7 +9,12 @@
 | Operating Manual  | [.agent/AGENT.md](.agent/AGENT.md)                     |
 | Troubleshooting   | [.agent/TROUBLESHOOTING.md](.agent/TROUBLESHOOTING.md) |
 | Session Learnings | [.agent/LEARNINGS.md](.agent/LEARNINGS.md)             |
+| Security Plan     | [.agent/SECURITY_PLAN.md](.agent/SECURITY_PLAN.md)     |
 | User Guide        | [guide/README.md](guide/README.md)                     |
+| Architecture      | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)           |
+| PRD               | [docs/PRD.md](docs/PRD.md)                             |
+| AI Prompt Flow    | [docs/AI_PROMPT_FLOW.md](docs/AI_PROMPT_FLOW.md)       |
+| Data Model        | [docs/DATA_MODEL.md](docs/DATA_MODEL.md)               |
 
 ## Project Overview
 
@@ -17,7 +22,9 @@
 
 - **Stack**: React 19, TypeScript, Vite, Tailwind (CDN)
 - **Deployment**: Vercel (auto-deploy from GitHub main branch)
-- **AI**: Google Gemini API
+- **AI**: Google Gemini API (primary), OpenAI (fallback)
+- **Encryption**: AES-256-GCM + PBKDF2 (100K iterations), zero-knowledge
+- **Storage**: localStorage (encrypted vault) + IndexedDB (encrypted files)
 
 ## Critical Knowledge (Read Before Acting)
 
@@ -86,14 +93,46 @@ To maintain context across sessions:
 
 ```
 .agent/
-├── AGENT.md           # Operating manual & protocols
-├── TROUBLESHOOTING.md # Common issues & solutions
-└── LEARNINGS.md       # Session-by-session discoveries
+├── AGENT.md              # Operating manual & protocols
+├── TROUBLESHOOTING.md    # Common issues & solutions
+├── LEARNINGS.md          # Session-by-session discoveries
+├── SECURITY_PLAN.md      # Security evaluation & roadmap
+├── IMPLEMENTATION_PLAN.md # Feature implementation plan
+├── CURRENT_STATUS.md     # Session status tracking
+└── README.md             # Quick reference index
+
+docs/
+├── ARCHITECTURE.md       # System architecture & data flow
+├── PRD.md                # Product requirements document
+├── AI_PROMPT_FLOW.md     # AI prompt interaction map
+├── DATA_MODEL.md         # Complete entity reference
+├── AI_OUTPUT_TEMPLATES.md # AI output format specs
+├── DASHBOARD_SPEC.md     # Dashboard component spec
+├── DEPLOYMENT.md         # Deployment guide
+├── DESIGN_SYSTEM_DARK.md # Design system principles
+├── DEVELOPMENT.md        # Developer setup guide
+├── LOG_BAR_PIPELINE.md   # Input pipeline spec
+├── LOG_BAR_SPEC.md       # LogBar feature spec
+├── PRODUCT_NORTH_STAR.md # Product vision
+├── SECRETS.md            # Secret management rules
+├── TEST_SCENARIOS.md     # QA test scenarios
+└── UX_JOURNEY.md         # User experience flows
 
 guide/
-├── README.md          # User guide index
-├── GETTING_STARTED.md # First-time setup
-├── DAILY_USAGE.md     # Daily workflows
-├── SECURITY.md        # Data protection guide
-└── FAQ.md             # Common questions
+├── README.md             # User guide index
+├── GETTING_STARTED.md    # First-time setup
+├── DAILY_USAGE.md        # Daily workflows
+├── SECURITY.md           # Data protection guide
+└── FAQ.md                # Common questions
 ```
+
+## Architecture Summary
+
+The app runs on a continuous **Ingest → Analyze → Display → Execute** core loop:
+
+1. **Ingest**: User logs signals via LogBar → AI extracts structured facts → User verifies
+2. **Analyze**: AI generates recommendations, blind spots, insights, daily plan
+3. **Display**: Dashboard shows Do/Watch/Always items across 5 life pillars
+4. **Execute**: User completes tasks, keeps/removes recs → feeds back into AI
+
+Central state lives in `useAura()` hook (core/useAura.ts). All data encrypted via AES-256-GCM in localStorage + IndexedDB. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
