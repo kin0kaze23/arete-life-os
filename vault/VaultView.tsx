@@ -265,7 +265,6 @@ export const VaultView: React.FC<VaultViewProps> = ({
     },
   ];
 
-
   return (
     <div className="flex flex-col lg:flex-row gap-8 h-[calc(100vh-140px)] animate-in fade-in duration-500">
       {/* LEFT SIDEBAR */}
@@ -291,10 +290,11 @@ export const VaultView: React.FC<VaultViewProps> = ({
             <button
               key={s.id}
               onClick={() => setActiveCategory(s.id)}
-              className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${activeCategory === s.id
-                ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20 scale-[1.02]'
-                : 'bg-slate-900/20 border-white/5 text-slate-400 hover:bg-slate-800 hover:text-indigo-400'
-                }`}
+              className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${
+                activeCategory === s.id
+                  ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20 scale-[1.02]'
+                  : 'bg-slate-900/20 border-white/5 text-slate-400 hover:bg-slate-800 hover:text-indigo-400'
+              }`}
             >
               <div className="flex items-center gap-3">
                 {React.cloneElement(s.icon as React.ReactElement<any>, { size: 16 })}
@@ -320,13 +320,18 @@ export const VaultView: React.FC<VaultViewProps> = ({
         <div className="max-w-3xl mx-auto space-y-8">
           <div className="p-8 bg-slate-900/20 border border-white/5 rounded-[2.5rem] relative overflow-hidden">
             <div className="absolute top-0 right-0 p-8 opacity-10">
-              {sections.find((s) => s.id === activeCategory)?.icon && React.cloneElement(sections.find((s) => s.id === activeCategory)!.icon as React.ReactElement<any>, { size: 100 })}
+              {sections.find((s) => s.id === activeCategory)?.icon &&
+                React.cloneElement(
+                  sections.find((s) => s.id === activeCategory)!.icon as React.ReactElement<any>,
+                  { size: 100 }
+                )}
             </div>
             <h2 className="text-3xl font-black text-white tracking-tighter mb-2 relative z-10">
               {sections.find((s) => s.id === activeCategory)?.title}
             </h2>
             <p className="text-slate-500 text-sm font-medium relative z-10">
-              Configure your {sections.find((s) => s.id === activeCategory)?.title.toLowerCase()} signals.
+              Configure your {sections.find((s) => s.id === activeCategory)?.title.toLowerCase()}{' '}
+              signals.
             </p>
           </div>
 

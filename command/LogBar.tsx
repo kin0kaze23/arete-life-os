@@ -46,7 +46,10 @@ export const LogBar: React.FC<LogBarProps> = ({
   const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
   const EVENT_TEMPLATES = [
-    { label: 'Schedule Event', template: 'Schedule event: [Title] at [Location] on [Date] at [Time]' },
+    {
+      label: 'Schedule Event',
+      template: 'Schedule event: [Title] at [Location] on [Date] at [Time]',
+    },
   ];
 
   useEffect(() => {
@@ -161,8 +164,9 @@ export const LogBar: React.FC<LogBarProps> = ({
         </div>
 
         <div
-          className={`flex items-center gap-4 relative rounded-2xl ${isDragging ? 'ring-2 ring-indigo-500/60 bg-indigo-500/5' : ''
-            }`}
+          className={`flex items-center gap-4 relative rounded-2xl ${
+            isDragging ? 'ring-2 ring-indigo-500/60 bg-indigo-500/5' : ''
+          }`}
           onDragEnter={(e) => {
             e.preventDefault();
             setIsDragging(true);

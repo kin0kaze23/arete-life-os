@@ -43,7 +43,8 @@ export const StatusSidebar: React.FC<StatusSidebarProps> = ({
       id: 'demo-1',
       title: 'Optimize Deep Work Block',
       description: 'Your focus metrics show fragmentation in morning sessions.',
-      rationale: 'Cognitive load is highest between 9AM-11AM. Protecting this window yields 3x productivity.',
+      rationale:
+        'Cognitive load is highest between 9AM-11AM. Protecting this window yields 3x productivity.',
       category: Category.WORK,
       impactScore: 9,
       status: 'ACTIVE',
@@ -62,7 +63,8 @@ export const StatusSidebar: React.FC<StatusSidebarProps> = ({
       id: 'demo-2',
       title: 'Hydration Interval',
       description: 'Bio-rhythm suggests energy dip in 20 mins.',
-      rationale: 'Dehydration acts as a lead indicator for fatigue. Pre-emptive intake prevents the crash.',
+      rationale:
+        'Dehydration acts as a lead indicator for fatigue. Pre-emptive intake prevents the crash.',
       category: Category.HEALTH,
       impactScore: 8,
       status: 'ACTIVE',
@@ -76,7 +78,7 @@ export const StatusSidebar: React.FC<StatusSidebarProps> = ({
       missingFields: [],
       createdAt: Date.now(),
       evidenceLinks: { claims: [], sources: [] },
-    }
+    },
   ];
 
   const displayRecs = recommendations.length > 0 ? recommendations : demoRecs;
@@ -206,9 +208,7 @@ export const StatusSidebar: React.FC<StatusSidebarProps> = ({
           </div>
         </div>
         <div>
-          <h3 className="text-sm font-black text-white uppercase tracking-tight">
-            Life Status
-          </h3>
+          <h3 className="text-sm font-black text-white uppercase tracking-tight">Life Status</h3>
           <p className="text-[10px] text-slate-500 font-medium">Insights & Signals</p>
         </div>
       </div>
@@ -222,7 +222,9 @@ export const StatusSidebar: React.FC<StatusSidebarProps> = ({
               <Zap size={16} className="text-white" fill="currentColor" />
             </div>
             <div className="flex-1">
-              <h4 className="text-xs font-black text-white uppercase tracking-wider mb-1">System Audit</h4>
+              <h4 className="text-xs font-black text-white uppercase tracking-wider mb-1">
+                System Audit
+              </h4>
               <p className="text-[10px] text-indigo-200 leading-relaxed mb-3">
                 Daily cycle complete. Initiate closing protocol to consolidate memory and metrics.
               </p>
@@ -230,7 +232,8 @@ export const StatusSidebar: React.FC<StatusSidebarProps> = ({
                 onClick={() => onLog?.('/audit Closing the day.')}
                 className="w-full py-2 bg-indigo-500 hover:bg-indigo-400 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all shadow-lg text-left pl-3 flex items-center justify-between group/btn"
               >
-                Initiate Protocol <div className="pr-3 group-hover/btn:translate-x-1 transition-transform">→</div>
+                Initiate Protocol{' '}
+                <div className="pr-3 group-hover/btn:translate-x-1 transition-transform">→</div>
               </button>
             </div>
           </div>
@@ -238,7 +241,7 @@ export const StatusSidebar: React.FC<StatusSidebarProps> = ({
       )}
 
       {/* 2. Critical Risks (Pinned) */}
-      {(highRisks.length > 0) && (
+      {highRisks.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-rose-500 pl-1">
             <AlertTriangle size={12} />

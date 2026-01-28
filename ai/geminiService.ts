@@ -121,7 +121,7 @@ export const processInput = async (
       promptConfig,
       familyMembers,
       fileMeta,
-      currentDate: new Date().toISOString()
+      currentDate: new Date().toISOString(),
     },
     {}
   );

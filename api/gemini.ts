@@ -542,7 +542,7 @@ const generateDailyPlan = async (
     goals: JSON.stringify(goals),
     blindSpots: JSON.stringify(blindSpots),
     ruleOfLife: JSON.stringify(ruleOfLife),
-    history: JSON.stringify(buildMemoryContext(history, [], 20).map(m => m.content)),
+    history: JSON.stringify(buildMemoryContext(history, [], 20).map((m) => m.content)),
     coreValues: profile.spiritual.coreValues.join(', '),
   });
 

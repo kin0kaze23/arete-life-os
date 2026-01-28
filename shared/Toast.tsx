@@ -11,7 +11,14 @@ interface ToastProps {
   actionLabel?: string;
 }
 
-export const Toast: React.FC<ToastProps> = ({ message, type = 'success', isVisible, onClose, onAction, actionLabel }) => {
+export const Toast: React.FC<ToastProps> = ({
+  message,
+  type = 'success',
+  isVisible,
+  onClose,
+  onAction,
+  actionLabel,
+}) => {
   useEffect(() => {
     if (isVisible) {
       const timer = setTimeout(onClose, 3000);

@@ -16,7 +16,9 @@ export const UpcomingCalendar: React.FC<UpcomingCalendarProps> = ({ events, onSe
     return (
       <div className="flex flex-col items-center justify-center h-40 text-slate-500 border border-dashed border-slate-800 rounded-2xl bg-slate-900/10">
         <Calendar size={20} className="mb-2 opacity-30" />
-        <span className="text-[10px] uppercase font-black tracking-widest opacity-50">Zero Horizon Events</span>
+        <span className="text-[10px] uppercase font-black tracking-widest opacity-50">
+          Zero Horizon Events
+        </span>
       </div>
     );
   }
@@ -35,19 +37,24 @@ export const UpcomingCalendar: React.FC<UpcomingCalendarProps> = ({ events, onSe
     return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   };
 
-  const grouped = upcomingEvents.reduce((acc, event) => {
-    const label = getGroupLabel(new Date(event.date));
-    if (!acc[label]) acc[label] = [];
-    acc[label].push(event);
-    return acc;
-  }, {} as Record<string, TimelineEvent[]>);
+  const grouped = upcomingEvents.reduce(
+    (acc, event) => {
+      const label = getGroupLabel(new Date(event.date));
+      if (!acc[label]) acc[label] = [];
+      acc[label].push(event);
+      return acc;
+    },
+    {} as Record<string, TimelineEvent[]>
+  );
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       {Object.entries(grouped).map(([group, groupEvents]) => (
         <div key={group} className="space-y-4">
           <div className="flex items-center gap-3">
-            <h4 className="text-[10px] uppercase font-black tracking-[0.2em] text-indigo-500/80 drop-shadow-[0_0_8px_rgba(99,102,241,0.3)]">{group}</h4>
+            <h4 className="text-[10px] uppercase font-black tracking-[0.2em] text-indigo-500/80 drop-shadow-[0_0_8px_rgba(99,102,241,0.3)]">
+              {group}
+            </h4>
             <div className="h-px flex-1 bg-gradient-to-r from-indigo-500/20 to-transparent" />
           </div>
 
@@ -68,7 +75,9 @@ export const UpcomingCalendar: React.FC<UpcomingCalendarProps> = ({ events, onSe
                   {/* Date Pillar */}
                   <div className="flex flex-col items-center justify-center min-w-[3.5rem] py-1 bg-slate-900/40 rounded-xl border border-white/5 group-hover:border-indigo-500/20 transition-colors">
                     <span className="text-lg font-black text-white leading-none mb-0.5">{day}</span>
-                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 group-hover:text-indigo-400 transition-colors">{month}</span>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 group-hover:text-indigo-400 transition-colors">
+                      {month}
+                    </span>
                   </div>
 
                   {/* Content */}
@@ -92,7 +101,9 @@ export const UpcomingCalendar: React.FC<UpcomingCalendarProps> = ({ events, onSe
                       {event.fields?.location && (
                         <div className="flex items-center gap-1.5 text-slate-500">
                           <MapPin size={10} className="text-slate-600" />
-                          <span className="text-[10px] font-medium tracking-tight truncate max-w-[120px]">{event.fields.location}</span>
+                          <span className="text-[10px] font-medium tracking-tight truncate max-w-[120px]">
+                            {event.fields.location}
+                          </span>
                         </div>
                       )}
                     </div>

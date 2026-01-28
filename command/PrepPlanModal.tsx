@@ -102,13 +102,19 @@ export const PrepPlanModal: React.FC<PrepPlanModalProps> = ({
                 {/* Simplified Event Title Section */}
                 <div className="bg-slate-900/40 border border-white/5 rounded-3xl p-6">
                   <div className="flex items-center gap-2 mb-3">
-                    <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase border ${getCategoryColor(event.category)}`}>
+                    <span
+                      className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase border ${getCategoryColor(event.category)}`}
+                    >
                       {event.category}
                     </span>
                     <div className="flex items-center gap-3 text-[10px] text-slate-500 font-bold">
-                      <span className="flex items-center gap-1"><Calendar size={10} /> {new Date(event.date).toLocaleDateString()}</span>
+                      <span className="flex items-center gap-1">
+                        <Calendar size={10} /> {new Date(event.date).toLocaleDateString()}
+                      </span>
                       {event.fields?.location && (
-                        <span className="flex items-center gap-1 truncate max-w-[150px]"><MapPin size={10} /> {event.fields.location}</span>
+                        <span className="flex items-center gap-1 truncate max-w-[150px]">
+                          <MapPin size={10} /> {event.fields.location}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -127,7 +133,9 @@ export const PrepPlanModal: React.FC<PrepPlanModalProps> = ({
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
                     <ArrowUpRight size={14} className="text-indigo-500" />
-                    <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Tactical Roadmap</h5>
+                    <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                      Tactical Roadmap
+                    </h5>
                   </div>
                   <div className="space-y-3">
                     {plan.steps?.map((step, i) => (
@@ -147,7 +155,9 @@ export const PrepPlanModal: React.FC<PrepPlanModalProps> = ({
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <CheckCircle size={14} className="text-emerald-500" />
-                    <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Success Criteria</h5>
+                    <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                      Success Criteria
+                    </h5>
                   </div>
                   <div className="p-5 bg-emerald-500/5 border border-emerald-500/10 rounded-3xl">
                     <p className="text-[11px] text-emerald-200/70 font-medium leading-relaxed italic">
@@ -164,13 +174,17 @@ export const PrepPlanModal: React.FC<PrepPlanModalProps> = ({
         <div className="px-8 py-6 bg-[#08090C] border-t border-white/5 flex justify-between items-center">
           <div className="flex items-center gap-6">
             <div className="flex flex-col">
-              <span className="text-[8px] font-black uppercase text-slate-600 tracking-widest mb-0.5">Time</span>
+              <span className="text-[8px] font-black uppercase text-slate-600 tracking-widest mb-0.5">
+                Time
+              </span>
               <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5 whitespace-nowrap">
                 <Clock size={10} className="text-indigo-500" /> {plan?.estimatedTime || '---'}
               </span>
             </div>
             <div className="flex flex-col">
-              <span className="text-[8px] font-black uppercase text-slate-600 tracking-widest mb-0.5">Resources</span>
+              <span className="text-[8px] font-black uppercase text-slate-600 tracking-widest mb-0.5">
+                Resources
+              </span>
               <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5 whitespace-nowrap">
                 <Package size={10} className="text-indigo-500" /> {plan?.inputs?.[0] || 'Standard'}
               </span>

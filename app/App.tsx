@@ -59,7 +59,12 @@ const App: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeydown);
   }, []);
 
-  const showToast = (message: string, type: 'success' | 'info' | 'error' = 'info', onAction?: () => void, actionLabel?: string) => {
+  const showToast = (
+    message: string,
+    type: 'success' | 'info' | 'error' = 'info',
+    onAction?: () => void,
+    actionLabel?: string
+  ) => {
     setToast({ message, type, onAction, actionLabel });
     setTimeout(() => setToast(null), 5000);
   };
@@ -194,7 +199,7 @@ const App: React.FC = () => {
                   {...(aura as any)}
                   toggleTask={(id) => {
                     aura.toggleTask(id);
-                    const task = aura.dailyPlan.find(t => t.id === id);
+                    const task = aura.dailyPlan.find((t) => t.id === id);
                     if (task && !task.completed) {
                       showToast('Task Optimized', 'success', aura.undoTaskAction, 'Undo');
                     }
@@ -264,7 +269,7 @@ const App: React.FC = () => {
                   updateTimelineEvent={aura.updateTimelineEvent}
                   deleteTimelineEvent={aura.deleteTimelineEvent}
                   activatePrepPlan={aura.activatePrepPlan}
-                  onDeleteFacts={() => { }}
+                  onDeleteFacts={() => {}}
                 />
               )}
               {activeTab === 'chat' && (
@@ -280,7 +285,7 @@ const App: React.FC = () => {
                   isDarkMode={isDarkMode}
                   ruleOfLife={aura.ruleOfLife}
                   setRuleOfLife={aura.setRuleOfLife}
-                  toggleDarkMode={() => { }}
+                  toggleDarkMode={() => {}}
                   exportData={aura.exportData}
                   importData={aura.importData}
                   clearAllData={aura.clearAllData}

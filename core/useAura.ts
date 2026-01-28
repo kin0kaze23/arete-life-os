@@ -477,7 +477,7 @@ const readLegacyLayouts = (activeUserId: string) => {
       if (raw) {
         try {
           layouts[userId] = JSON.parse(raw);
-        } catch { }
+        } catch {}
       }
     }
   });
@@ -578,7 +578,10 @@ export const useAura = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPlanningDay, setIsPlanningDay] = useState(false);
   const [isGeneratingTasks, setIsGeneratingTasks] = useState(false);
-  const [lastAction, setLastAction] = useState<{ type: 'complete' | 'delete'; task: DailyTask } | null>(null);
+  const [lastAction, setLastAction] = useState<{
+    type: 'complete' | 'delete';
+    task: DailyTask;
+  } | null>(null);
 
   const ensureArray = <T>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : []);
 
@@ -756,13 +759,13 @@ export const useAura = () => {
           value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
         const mergedMetadata = updates.metadata
           ? {
-            ...item.metadata,
-            ...updates.metadata,
-            payload: {
-              ...toRecord(item.metadata?.payload),
-              ...toRecord(updates.metadata?.payload),
-            },
-          }
+              ...item.metadata,
+              ...updates.metadata,
+              payload: {
+                ...toRecord(item.metadata?.payload),
+                ...toRecord(updates.metadata?.payload),
+              },
+            }
           : item.metadata;
         return { ...item, ...updates, metadata: mergedMetadata };
       })
@@ -857,9 +860,9 @@ export const useAura = () => {
       prev.map((c) =>
         c.id === claimId
           ? {
-            ...c,
-            status: resolution === 'OVERWRITE' ? ClaimStatus.COMMITTED : ClaimStatus.ARCHIVED,
-          }
+              ...c,
+              status: resolution === 'OVERWRITE' ? ClaimStatus.COMMITTED : ClaimStatus.ARCHIVED,
+            }
           : c
       )
     );
@@ -1075,23 +1078,23 @@ export const useAura = () => {
         const filesForAI =
           files.length > 0
             ? await Promise.all(
-              files.map(
-                (file) =>
-                  new Promise<{ data: string; mimeType: string }>((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                      const result = reader.result as string;
-                      const base64 = result.split(',')[1];
-                      resolve({
-                        data: base64,
-                        mimeType: file.type || 'application/octet-stream',
-                      });
-                    };
-                    reader.onerror = () => reject(reader.error);
-                    reader.readAsDataURL(file);
-                  })
+                files.map(
+                  (file) =>
+                    new Promise<{ data: string; mimeType: string }>((resolve, reject) => {
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        const result = reader.result as string;
+                        const base64 = result.split(',')[1];
+                        resolve({
+                          data: base64,
+                          mimeType: file.type || 'application/octet-stream',
+                        });
+                      };
+                      reader.onerror = () => reject(reader.error);
+                      reader.readAsDataURL(file);
+                    })
+                )
               )
-            )
             : undefined;
 
         const result = await processInput(
@@ -1211,9 +1214,9 @@ export const useAura = () => {
         const intakeNeedsReview =
           result?.needsReview && Array.isArray(result.needsReview?.questions)
             ? buildNeedsReview(
-              String(result.needsReview?.reason || 'Needs clarification'),
-              result.needsReview.questions
-            )
+                String(result.needsReview?.reason || 'Needs clarification'),
+                result.needsReview.questions
+              )
             : null;
 
         const intakeMemoryAdds: MemoryItem[] = [];
@@ -1363,8 +1366,10 @@ export const useAura = () => {
                 location: typeof location === 'string' ? location : undefined,
               },
               metadata: {
-                isPriority: title.toLowerCase().includes('important') || title.toLowerCase().includes('urgent'),
-              }
+                isPriority:
+                  title.toLowerCase().includes('important') ||
+                  title.toLowerCase().includes('urgent'),
+              },
             };
             timelineAdds.push(event);
             const memoryId = `mem-event-${timestamp}-${idx}`;
@@ -1617,7 +1622,11 @@ export const useAura = () => {
               const section = u.section as keyof UserProfile;
               return {
                 ...prev,
-                [section]: { ...(prev as any)[section], [u.field]: u.newValue, lastUpdated: Date.now() },
+                [section]: {
+                  ...(prev as any)[section],
+                  [u.field]: u.newValue,
+                  lastUpdated: Date.now(),
+                },
               };
             });
           });
@@ -1649,10 +1658,10 @@ export const useAura = () => {
             prev.map((item) =>
               addedMemoryIds.includes(item.id)
                 ? {
-                  ...item,
-                  extractionConfidence: 0,
-                  extractionQualityNotes: [message],
-                }
+                    ...item,
+                    extractionConfidence: 0,
+                    extractionQualityNotes: [message],
+                  }
                 : item
             )
           );
@@ -2008,17 +2017,17 @@ export const useAura = () => {
       if (!lastAction) return;
       const { type, task } = lastAction;
       if (type === 'complete') {
-        setDailyPlan(p => p.map(t => t.id === task.id ? { ...t, completed: false } : t));
+        setDailyPlan((p) => p.map((t) => (t.id === task.id ? { ...t, completed: false } : t)));
       } else if (type === 'delete') {
-        setDailyPlan(p => [...p, task]);
-        setTasks(p => [...p, task]);
+        setDailyPlan((p) => [...p, task]);
+        setTasks((p) => [...p, task]);
       }
       setLastAction(null);
     },
     getVitalityScore: (c: any) => 85,
     dismissInsight: (i: any) => setInsights((p) => p.filter((ins) => ins.id !== i.id)),
-    setTaskFeedback: (id: string, f: any) => { },
-    setInsightFeedback: (id: string, f: any) => { },
+    setTaskFeedback: (id: string, f: any) => {},
+    setInsightFeedback: (id: string, f: any) => {},
     createTask: (t: any) => {
       setTasks((p) => [t, ...p]);
       const timestamp = Date.now();
@@ -2069,7 +2078,7 @@ export const useAura = () => {
       debouncedRefreshAura();
     },
     deleteTask: (id: any) => {
-      const task = dailyPlan.find(t => t.id === id) || tasks.find(t => t.id === id);
+      const task = dailyPlan.find((t) => t.id === id) || tasks.find((t) => t.id === id);
       if (task) setLastAction({ type: 'delete', task });
 
       setTasks((p) => p.filter((t) => t.id !== id));
@@ -2164,14 +2173,14 @@ export const useAura = () => {
       addAuditLog(ActionType.ARM_STRATEGY, 'Goal Deleted', id, memoryItem.id);
       debouncedRefreshAura();
     },
-    scheduleInsight: (i: any, d: any) => { },
-    deleteFacts: (items: any) => { },
+    scheduleInsight: (i: any, d: any) => {},
+    deleteFacts: (items: any) => {},
     addFamilyMember: (n: string) => {
       const id = `user-${Date.now()}`;
       setFamilySpace((prev) => ({ ...prev, members: [...prev.members, createNewProfile(id, n)] }));
       return id;
     },
-    removeFamilyMember: (id: string) => { },
+    removeFamilyMember: (id: string) => {},
     updateMemoryItem,
     deleteMemoryItem,
     deleteClaim,
