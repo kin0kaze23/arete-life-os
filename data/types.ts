@@ -308,6 +308,7 @@ export interface DailyTask {
   title: string;
   description: string;
   why?: string;
+  benefits?: string;
   reasoning?: string;
   methodology?: string;
   estimate_min?: number;
@@ -394,11 +395,19 @@ export interface TimelineEvent {
   id: string;
   ownerId: string;
   title: string;
-  date: string;
+  date: string; // ISO string
   category: Category;
   description: string;
   createdAt: number;
   isManual: boolean;
+  fields?: {
+    location?: string;
+    people?: string[];
+  };
+  metadata?: {
+    isPriority?: boolean;
+    prepStatus?: 'pending' | 'ready';
+  };
 }
 
 export interface RelationshipContact {

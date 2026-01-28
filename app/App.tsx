@@ -12,7 +12,7 @@ import { askAura } from '@/ai';
 import { ErrorBoundary } from '@/app/ErrorBoundary';
 import { X, CheckCircle2, User, Database, Settings } from 'lucide-react';
 import { CategorizedFact, ProposedUpdate } from '@/data';
-import { useOnlineStatus, NetworkBanner } from '@/shared';
+import { useOnlineStatus, NetworkBanner, Toast } from '@/shared';
 
 const App: React.FC = () => {
   const aura = useAura();
@@ -41,6 +41,8 @@ const App: React.FC = () => {
   const [toast, setToast] = useState<{
     message: string;
     type?: 'success' | 'info' | 'error';
+    onAction?: () => void;
+    actionLabel?: string;
   } | null>(null);
   const [logError, setLogError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -57,8 +59,8 @@ const App: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeydown);
   }, []);
 
-  const showToast = (message: string, type: 'success' | 'info' | 'error' = 'info') => {
-    setToast({ message, type });
+  const showToast = (message: string, type: 'success' | 'info' | 'error' = 'info', onAction?: () => void, actionLabel?: string) => {
+    setToast({ message, type, onAction, actionLabel });
     setTimeout(() => setToast(null), 5000);
   };
 
@@ -89,23 +91,10 @@ const App: React.FC = () => {
       return;
     }
     try {
-      const processed = (await aura.logMemory(inputToProcess, files)) as any;
-      if (processed.facts?.length || processed.proposedUpdates?.length) {
-        setPendingFacts(processed.facts || []);
-        setPendingUpdates(processed.proposedUpdates || []);
-        setCurrentSourceId(processed.sourceId);
-        setIsSheetOpen(true);
-      } else {
-        const reviewQuestions = processed?.intake?.needsReview?.questions;
-        if (processed?.needsReview && reviewQuestions?.length) {
-          showToast(`Needs review: ${reviewQuestions[0]}`, 'info');
-        } else {
-          showToast(processed.headline || 'Memory Internalized', 'success');
-        }
-      }
-      if (!processed?.needsReview) {
-        setUserInput('');
-      }
+      // Instant Log: Skip verification
+      await aura.logMemory(inputToProcess, undefined, true);
+      setUserInput('');
+      showToast('Memory Internialized', 'success');
     } catch (err: any) {
       const message = err?.message || 'Internalization error';
       setLogError(message);
@@ -168,6 +157,7 @@ const App: React.FC = () => {
         activeUserId={aura.activeUserId}
         onSwitchUser={(id) => aura.setActiveUserId(id)}
         onAddMember={(name) => aura.addFamilyMember(name)}
+        onCapture={() => setIsCommandPaletteOpen(true)}
       />
 
       <main className="flex-1 flex flex-col overflow-hidden relative">
@@ -184,22 +174,14 @@ const App: React.FC = () => {
           onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
         />
 
-        {toast && (
-          <div className="absolute top-24 left-1/2 -translate-x-1/2 z-[60] animate-in fade-in slide-in-from-top-4 duration-300">
-            <div
-              className={`px-6 py-3.5 rounded-full shadow-2xl flex items-center gap-4 border backdrop-blur-md ${toast.type === 'error' ? 'bg-rose-600 border-rose-400/30' : 'bg-indigo-600 border-white/10'}`}
-            >
-              {toast.type === 'success' && <CheckCircle2 size={20} className="text-emerald-400" />}
-              <span className="text-sm font-bold">{toast.message}</span>
-              <button
-                onClick={() => setToast(null)}
-                className="ml-1 hover:bg-white/20 p-1 rounded-full"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          </div>
-        )}
+        <Toast
+          message={toast?.message || ''}
+          type={toast?.type as 'success' | 'info' | 'error'}
+          isVisible={!!toast}
+          onClose={() => setToast(null)}
+          onAction={toast?.onAction}
+          actionLabel={toast?.actionLabel}
+        />
 
         <div className="flex-1 overflow-y-auto p-6 md:p-10 no-scrollbar">
           <ErrorBoundary>
@@ -210,9 +192,21 @@ const App: React.FC = () => {
               {activeTab === 'dashboard' && (
                 <DashboardView
                   {...(aura as any)}
+                  toggleTask={(id) => {
+                    aura.toggleTask(id);
+                    const task = aura.dailyPlan.find(t => t.id === id);
+                    if (task && !task.completed) {
+                      showToast('Task Optimized', 'success', aura.undoTaskAction, 'Undo');
+                    }
+                  }}
+                  deleteTask={(id) => {
+                    aura.deleteTask(id);
+                    showToast('Task Purged', 'info', aura.undoTaskAction, 'Undo');
+                  }}
                   memory={aura.memoryItems}
                   refreshAll={aura.refreshAura}
                   onNavigate={setActiveTab as any}
+                  logMemory={handleLog}
                 />
               )}
               {activeTab === 'vault' && (
@@ -270,7 +264,7 @@ const App: React.FC = () => {
                   updateTimelineEvent={aura.updateTimelineEvent}
                   deleteTimelineEvent={aura.deleteTimelineEvent}
                   activatePrepPlan={aura.activatePrepPlan}
-                  onDeleteFacts={() => {}}
+                  onDeleteFacts={() => { }}
                 />
               )}
               {activeTab === 'chat' && (
@@ -286,7 +280,7 @@ const App: React.FC = () => {
                   isDarkMode={isDarkMode}
                   ruleOfLife={aura.ruleOfLife}
                   setRuleOfLife={aura.setRuleOfLife}
-                  toggleDarkMode={() => {}}
+                  toggleDarkMode={() => { }}
                   exportData={aura.exportData}
                   importData={aura.importData}
                   clearAllData={aura.clearAllData}

@@ -113,7 +113,16 @@ export const processInput = async (
 ): Promise<any> =>
   callGemini(
     'processInput',
-    { input, history, activeProfile, files, promptConfig, familyMembers, fileMeta },
+    {
+      input,
+      history,
+      activeProfile,
+      files,
+      promptConfig,
+      familyMembers,
+      fileMeta,
+      currentDate: new Date().toISOString()
+    },
     {}
   );
 
@@ -180,11 +189,12 @@ export const generateDailyPlan = async (
   goals: Goal[],
   blindSpots: BlindSpot[],
   ruleOfLife: any,
-  promptConfig: PromptConfig
+  promptConfig: PromptConfig,
+  history: MemoryEntry[]
 ): Promise<DailyTask[]> =>
   callGemini(
     'generateDailyPlan',
-    { profile, timeline, goals, blindSpots, ruleOfLife, promptConfig },
+    { profile, timeline, goals, blindSpots, ruleOfLife, promptConfig, history },
     []
   );
 

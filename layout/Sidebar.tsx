@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import {
   LayoutDashboard,
-  Activity,
-  BrainCircuit,
+  Database,
+  BookOpen, // Changed from Activity for Journal
+  MessageSquare, // Changed from BrainCircuit for Assistant
+  Settings,
   Plus,
   X,
   Check,
-  Database,
-  Settings,
 } from 'lucide-react';
 import { FamilySpace } from '@/data';
 import { AreteLogo } from '@/shared';
@@ -19,6 +19,7 @@ interface SidebarProps {
   activeUserId: string;
   onSwitchUser: (id: string) => void;
   onAddMember?: (name: string) => void;
+  onCapture?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -28,6 +29,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeUserId,
   onSwitchUser,
   onAddMember,
+  onCapture,
 }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState('');
@@ -42,12 +44,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <nav className="w-20 md:w-64 bg-[#08090C] border-r border-slate-800/50 flex flex-col items-center md:items-stretch p-4 gap-8 transition-all h-full">
+    <nav className="w-20 md:w-64 bg-[#08090C] border-r border-slate-800/50 flex flex-col items-center md:items-stretch p-4 gap-6 transition-all h-full">
       <div
         className="flex items-center gap-3 px-2 mt-2 group cursor-pointer"
         onClick={() => setActiveTab('dashboard')}
       >
-        <AreteLogo size={42} />
+        <AreteLogo size={36} />
         <div className="hidden md:flex flex-col">
           <span className="font-black text-sm tracking-tighter text-white uppercase group-hover:text-indigo-400 transition-colors">
             Areté OS
@@ -71,7 +73,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               }`}
             >
               <div
-                className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${
+                className={`w-6 h-6 rounded-lg flex items-center justify-center font-black text-[10px] shrink-0 ${
                   activeUserId === member.id
                     ? 'bg-indigo-600 text-white'
                     : 'bg-slate-800 text-slate-400'
@@ -84,66 +86,43 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </span>
             </button>
           ))}
-
-          {!isAdding ? (
-            <button
-              onClick={() => setIsAdding(true)}
-              className="flex items-center gap-3 p-2 rounded-xl border border-dashed border-slate-800 text-slate-600 hover:text-slate-400 hover:border-slate-700 transition-all w-full group"
-            >
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-900/50">
-                <Plus size={14} />
-              </div>
-              <span className="hidden md:block text-[8px] font-black uppercase tracking-widest">
-                Add Node
-              </span>
-            </button>
-          ) : (
-            <form onSubmit={handleAddSubmit} className="relative">
-              <input
-                autoFocus
-                type="text"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="Name..."
-                className="w-full bg-slate-950 border border-indigo-500/50 rounded-xl px-3 py-2 text-[10px] text-white outline-none"
-              />
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                <button type="submit" className="text-emerald-500">
-                  <Check size={12} />
-                </button>
-                <button type="button" onClick={() => setIsAdding(false)} className="text-slate-600">
-                  <X size={12} />
-                </button>
-              </div>
-            </form>
-          )}
         </div>
       </div>
 
-      <div className="flex flex-col gap-1 w-full mt-4">
+      <button
+        onClick={onCapture}
+        className="w-full bg-slate-100 hover:bg-white text-slate-900 rounded-xl p-3 flex items-center justify-center gap-2 transition-all shadow-lg shadow-white/5 group border border-transparent hover:scale-[1.02] active:scale-[0.98]"
+      >
+        <Plus size={18} className="text-slate-900" />
+        <span className="hidden md:block font-black uppercase tracking-widest text-[10px]">
+          Capture
+        </span>
+      </button>
+
+      <div className="flex flex-col gap-1 w-full mt-2">
         <NavButton
           active={activeTab === 'dashboard'}
           onClick={() => setActiveTab('dashboard')}
           icon={<LayoutDashboard size={18} />}
-          label="Command Center"
+          label="Dashboard"
         />
         <NavButton
           active={activeTab === 'vault'}
           onClick={() => setActiveTab('vault')}
           icon={<Database size={18} />}
-          label="The Vault"
+          label="My Life"
         />
         <NavButton
           active={activeTab === 'stream'}
           onClick={() => setActiveTab('stream')}
-          icon={<Activity size={18} />}
-          label="Life Stream"
+          icon={<BookOpen size={18} />}
+          label="Journal"
         />
         <NavButton
           active={activeTab === 'chat'}
           onClick={() => setActiveTab('chat')}
-          icon={<BrainCircuit size={18} />}
-          label="Neural Oracle"
+          icon={<MessageSquare size={18} />}
+          label="Assistant"
         />
       </div>
 
@@ -152,7 +131,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           active={activeTab === 'settings'}
           onClick={() => setActiveTab('settings')}
           icon={<Settings size={18} />}
-          label="Operational Hub"
+          label="Settings"
         />
       </div>
     </nav>
@@ -169,11 +148,15 @@ const NavButton: React.FC<{
     onClick={onClick}
     className={`flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all w-full group ${
       active
-        ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
-        : 'text-slate-500 hover:bg-slate-900 hover:text-slate-300'
+        ? 'bg-white/5 text-white border border-white/10 shadow-lg shadow-black/20'
+        : 'text-slate-500 hover:bg-white/5 hover:text-slate-300 border border-transparent'
     }`}
   >
-    <div className={`${active ? 'text-indigo-400' : 'group-hover:text-slate-300'}`}>{icon}</div>
-    <span className="hidden md:block font-bold text-[11px] uppercase tracking-widest">{label}</span>
+    <div className={`transition-colors ${active ? 'text-indigo-400' : 'group-hover:text-white'}`}>
+      {icon}
+    </div>
+    <span className="hidden md:block font-bold text-[11px] uppercase tracking-widest transition-opacity duration-300">
+      {label}
+    </span>
   </button>
 );

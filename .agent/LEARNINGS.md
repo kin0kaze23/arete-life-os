@@ -165,28 +165,30 @@ Core loop needed to be reliable (no silent failures), dashboard was noisy, and h
 - Always run `npm run doctor` after core loop changes.
 - Keep .agent docs updated when changing ingestion or dashboard structure.
 
-## Template for Future Entries
+---
 
-```markdown
-## YYYY-MM-DD: Brief Title
+## 2026-01-27: UI/UX Aesthetic Overhaul (Linear-Style / Intelligence First)
 
 ### Issue
 
-[What went wrong]
-
-### Root Cause
-
-[Why it happened]
+Dashboard was visually cluttered (too many borders, glass panels). User input flow was ambiguous (Log Bar vs Dashboard Input). "Widgets" hid improved recommendations (e.g. Finance alerts hidden in small cards).
 
 ### Solution
 
-[What fixed it]
+- **Nomenclature Upgrade:** Simpler terms ("Dashboard", "Assistant").
+- **Focus Engine (Left Col):** Read-only "Execution View" (Task + Habits). Removing input reinforced "Log Bar is King".
+- **Intelligence Feed (Right Col):** Pivoted from "Status Widgets" to a **Feed of Recommendations**.
+  - If Recs exist -> Render list of actions.
+  - If Recs empty -> Render minimal Status Card.
+- **Visuals:** High contrast, low border density (Linear style).
+- **Upcoming Timeline:** Moved to left column, styled as a list to match tasks.
 
 ### Key Learnings
 
-[What to remember]
+- **Don Norman (Feedback):** If the system has a recommendation (feedback), it must be immediately visible, not hidden behind a click or a small icon.
+- **Lists vs Cards:** For high-density information (like tasks or feed items), a clean list is often superior to a grid of cards.
+- **Input Constraint:** Removing secondary input methods clarifies the primary input method (Log Bar).
 
 ### Prevention
 
-[How to avoid in future]
-```
+- Avoid "Widgetization" (Dashboard widgets) for content that flows (Recs, Tasks). Use Feed/List patterns instead.

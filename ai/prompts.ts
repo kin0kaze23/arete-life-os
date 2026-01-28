@@ -55,13 +55,15 @@ INPUT DATA:
 - FAMILY_CONTEXT: {{family}}
 - INPUT: {{input}}
 - FILES_META: {{fileMeta}}
+- CURRENT_DATE: {{currentDate}}
 
 RULES:
 1. Do NOT invent facts. If uncertain, create a Needs Review item with 1-3 clarifying questions.
 2. Prefer concise, structured outputs. Use numbers/dates only if explicitly present.
 3. Always assign: intent, item type, domain, ownerId, confidence (0-1).
-4. If input implies future date/time, create an event item (type: event).
-5. If input implies a routine ("daily", "weekly"), create a habit item (type: habit).
+4. If input implies future date/time, create an event item (type: event). Resolve relative dates (e.g., "tomorrow", "next Friday") using the provided CURRENT_DATE.
+5. For events, explicitly extract "location" and "time" into fields if mentioned. If "today" or "tomorrow" is mentioned, resolve to absolute YYYY-MM-DD.
+6. If input implies a routine ("daily", "weekly"), create a habit item (type: habit).
 6. If input is a link or file-only, create document/link items with metadata.
 7. If profile/config updates are implied, emit profile_update/config_update items and propose updates.
 
@@ -80,7 +82,7 @@ OUTPUT JSON ONLY (no markdown), schema:
       "content": "raw or cleaned content",
       "confidence": 0.0,
       "tags": ["string"],
-      "fields": { "date": "YYYY-MM-DD", "amount": 123, "location": "string", "people": ["string"] },
+      "fields": { "date": "YYYY-MM-DD", "time": "HH:MM", "amount": 123, "location": "string", "people": ["string"] },
       "sourceId": "source_id_if_file",
       "dedupeKey": "string"
     }
@@ -109,6 +111,55 @@ export const DOMAIN_PROMPTS: Record<string, string> = {
     'Focus on practice consistency, value alignment, and meaning. Respect the user worldview.',
   personal: 'Focus on career development, skill building, interests, and role alignment.',
 };
+
+export const DAILY_PLAN_PROMPT = `
+You are the Areté Chief of Staff. Your goal is to synthesize a hyper-personalized, high-fidelity "Daily Mission" for the user.
+
+INPUT DATA:
+- ACTIVE_PROFILE: {{profile}} (Dimensions: Health, Finance, Relationships, Spiritual, Personal)
+- RECENT_MEMORY: {{history}}
+- TIMELINE_HORIZON: {{timeline}}
+- GOALS: {{goals}}
+- BLIND_SPOTS: {{blindSpots}}
+- RULE_OF_LIFE: {{ruleOfLife}}
+
+INSTRUCTIONS:
+1. STRATEGIC PRIORITIZATION: Identify the #1 "High-Impact Highlight" that moves the needle on the user's core goals or addresses a critical risk.
+2. DIMENSIONAL BALANCE: Ensure the focus list touches on multiple dimensions (e.g. Health + Work) but remains executable (max 5-8 items).
+3. STRATEGIC RATIONALE ("WHY"): For every task, explain WHY this is the priority today, referencing specific profile data or recent logs.
+4. OPERATING METHODOLOGY ("HOW"): Provide a "how-to" tip for achieving excellence in this specific task.
+5. VALUE RESONANCE: Mark how the task aligns with coreValues: {{coreValues}}.
+6. HYPER-PERSONALIZATION: Research and inject specific, real-world data based on the user's Profile/Location (e.g., Singapore). 
+   - Health tasks -> Research specific local clinics/specialists (e.g. at Gleneagles, Mount Elizabeth).
+   - Finance tasks -> Reference specific local banks (DBS, UOB) or tools.
+   - Work tasks -> Use specific tools/workflows suitable for their context.
+   - Inject phone numbers, addresses, or specific names into milestones.
+
+OUTPUT SCHEMA:
+Return an array of DailyTask objects:
+[
+  {
+    "title": "Clear action-oriented title",
+    "description": "Short summary",
+    "why": "Strategic rationale (Why today?)",
+    "benefits": "Tangible benefit (How does this help me achieve my goals/excellence?)",
+    "reasoning": "Deeper logic referencing memory/profile",
+    "steps": [
+      "Step 1: HIGH-FIDELITY action (e.g. Call Mount Elizabeth Clinic at +65 6735 5000)",
+      "Step 2: HIGH-FIDELITY action"
+    ],
+    "definitionOfDone": "Clear observable state/result (e.g. Appointment scheduled in GCal)",
+    "methodology": "Strategic heuristic or operating mindset (brief)",
+    "estimate_min": 60,
+    "category": "Work|Health|...",
+    "priority": "high|medium|low",
+    "start_time": "HH:MM",
+    "end_time": "HH:MM"
+  }
+]
+
+RETURN JSON ARRAY ONLY.
+`;
 
 export const buildMemoryContext = (
   memory: MemoryEntry[],

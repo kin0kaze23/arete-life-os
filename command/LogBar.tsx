@@ -45,6 +45,10 @@ export const LogBar: React.FC<LogBarProps> = ({
 
   const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
+  const EVENT_TEMPLATES = [
+    { label: 'Schedule Event', template: 'Schedule event: [Title] at [Location] on [Date] at [Time]' },
+  ];
+
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(timer);
@@ -112,6 +116,24 @@ export const LogBar: React.FC<LogBarProps> = ({
           </div>
         )}
         <div className="flex flex-wrap gap-2">
+          {selectedFiles.length === 0 && !userInput && (
+            <div className="flex flex-wrap gap-2 mb-2 animate-in fade-in slide-in-from-bottom-1 duration-500">
+              {EVENT_TEMPLATES.map((tmpl, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => {
+                    setUserInput(tmpl.template);
+                    inputRef.current?.focus();
+                  }}
+                  className="px-3 py-1.5 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] hover:border-indigo-500/30 text-[10px] font-bold text-slate-400 hover:text-indigo-300 transition-all flex items-center gap-2 group"
+                >
+                  <Sparkles size={10} className="text-slate-600 group-hover:text-indigo-400" />
+                  {tmpl.label}
+                </button>
+              ))}
+            </div>
+          )}
           {selectedFiles.map((file, idx) => (
             <div
               key={idx}
@@ -139,9 +161,8 @@ export const LogBar: React.FC<LogBarProps> = ({
         </div>
 
         <div
-          className={`flex items-center gap-4 relative rounded-2xl ${
-            isDragging ? 'ring-2 ring-indigo-500/60 bg-indigo-500/5' : ''
-          }`}
+          className={`flex items-center gap-4 relative rounded-2xl ${isDragging ? 'ring-2 ring-indigo-500/60 bg-indigo-500/5' : ''
+            }`}
           onDragEnter={(e) => {
             e.preventDefault();
             setIsDragging(true);

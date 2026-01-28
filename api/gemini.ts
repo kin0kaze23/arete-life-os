@@ -4,6 +4,7 @@ import {
   DOMAIN_PROMPTS,
   HYPER_PERSONALIZED_PROMPT,
   LOG_BAR_INGEST_PROMPT,
+  DAILY_PLAN_PROMPT,
   buildMemoryContext,
 } from '../ai/prompts';
 import { RecommendationSchema, TaskSchema, validateAIOutput } from '../ai/validators';
@@ -532,28 +533,22 @@ const generateDailyPlan = async (
   goals: Goal[],
   blindSpots: BlindSpot[],
   ruleOfLife: any,
-  promptConfig: PromptConfig
+  promptConfig: PromptConfig,
+  history: MemoryEntry[] = []
 ): Promise<DailyTask[]> => {
-  const prompt = `
-    Synthesize a time-blocked "Daily Mission".
-    MANDATORY: Rank tasks by their resonance with the user's Core Values: ${profile.spiritual.coreValues.join(', ')}.
-    Include high-fidelity "methodology" for every task.
-    Slot into specific start/end times.
-    RETURN AN ARRAY OF DailyTask OBJECTS.
-  `;
-
-  const finalPrompt = fillTemplate(promptConfig.template || promptConfig.defaultTemplate, {
+  const finalPrompt = fillTemplate(promptConfig.template || DAILY_PLAN_PROMPT, {
     profile: JSON.stringify(profile),
     timeline: JSON.stringify(timeline),
     goals: JSON.stringify(goals),
     blindSpots: JSON.stringify(blindSpots),
     ruleOfLife: JSON.stringify(ruleOfLife),
-    input: prompt,
+    history: JSON.stringify(buildMemoryContext(history, [], 20).map(m => m.content)),
+    coreValues: profile.spiritual.coreValues.join(', '),
   });
 
   try {
     const ai = getClient();
-    const model = getModel('flash');
+    const model = getModel('pro'); // Use Pro for strategic planning
     const response = await ai.models.generateContent({
       model,
       contents: finalPrompt,
@@ -696,7 +691,8 @@ export const handleGeminiAction = async (action: string, payload: any) => {
         payload.goals,
         payload.blindSpots,
         payload.ruleOfLife,
-        payload.promptConfig
+        payload.promptConfig,
+        payload.history
       );
     default:
       throw new Error('Unknown action');
