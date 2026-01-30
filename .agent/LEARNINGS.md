@@ -569,3 +569,25 @@ Perceived latency remained high due to repeated vault persistence and conservati
 
 - Keep perf markers in place and track SLOs for first log vs subsequent logs.
 - Maintain Pro escalation criteria and schema-validation gate for daily batch.
+
+---
+
+## 2026-01-30: Agent Automation + UI Safety Framework
+
+### Summary
+
+Implemented a portable agent workflow system with automation discovery, UI safety guardrails, CI checks, and latency/cost baselines.
+
+### Key Learnings
+
+- **Cost guardrails must be net-new only** to avoid false positives on refactors.
+- **Approvals should be centralized** in a regex allowlist for cost-neutral AI call refactors.
+- **UI smoke tests are more stable** when they target `data-testid` anchors instead of text content.
+- **Code-splitting across major views** removes build chunk warnings and reduces load risk.
+- **Single wrapper scripts** reduce cognitive overhead and ensure consistent safety checks.
+
+### Prevention / Process
+
+- Use `./scripts/run-ui-safe.sh` for UI/UX changes.
+- Use `.agent/COST_APPROVALS.md` for known cost-neutral AI call additions.
+- CI guardrails enforce cost/architecture checks on core changes.

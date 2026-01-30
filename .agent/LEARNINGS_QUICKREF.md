@@ -2,6 +2,11 @@
 
 Updated: 2026-01-30
 
+- [2026-01-30] **Cost guardrails must be net-new only** to avoid false positives on refactors.
+- [2026-01-30] **Approvals should be centralized** in a regex allowlist for cost-neutral AI call refactors.
+- [2026-01-30] **UI smoke tests are more stable** when they target `data-testid` anchors instead of text content.
+- [2026-01-30] **Code-splitting across major views** removes build chunk warnings and reduces load risk.
+- [2026-01-30] **Single wrapper scripts** reduce cognitive overhead and ensure consistent safety checks.
 - [2026-01-29] **Batching + cadence** cuts cost without losing quality when outputs are structured and validated.
 - [2026-01-29] **Deterministic parsing** is safe when confidence‑gated and combined with AI fallback.
 - [2026-01-29] **Feature-flagged routing** lets us prepare for multi‑provider without destabilizing core loops.
@@ -17,8 +22,3 @@ Updated: 2026-01-30
 - [2026-01-28] 80-line inline functions → hard to debug
 - [2026-01-28] Extracted modules with logging → easy to trace
 - [2026-01-28] Each module can be tested independently
-- [2026-01-28] Arrow functions: `const fn = () => {}` — not hoisted
-- [2026-01-28] Function declarations: `function fn() {}` — hoisted
-- [2026-01-28] For utilities called during initialization, use `function`
-- [2026-01-28] Hard refresh (`Cmd+Shift+R`) is not enough if server is stale
-- [2026-01-28] Clear localStorage if vault state is corrupted
