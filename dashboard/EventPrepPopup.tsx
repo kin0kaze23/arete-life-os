@@ -7,7 +7,7 @@ interface EventPrepPopupProps {
   profile: UserProfile;
   memory: MemoryEntry[];
   onClose: () => void;
-  onActivate: (plan: Recommendation) => void;
+  onActivate: (plan: Recommendation, eventId?: string) => void;
 }
 
 export const EventPrepPopup: React.FC<EventPrepPopupProps> = ({
@@ -24,7 +24,7 @@ export const EventPrepPopup: React.FC<EventPrepPopupProps> = ({
       profile={profile}
       history={memory}
       onClose={onClose}
-      onActivate={onActivate}
+      onActivate={(plan, id) => onActivate(plan, id)}
     />
   );
 };

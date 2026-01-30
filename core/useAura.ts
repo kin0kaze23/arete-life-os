@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ActionType,
+  AlwaysChip,
   AuditLogEntry,
   BlindSpot,
   CategorizedFact,
@@ -16,7 +17,6 @@ import {
   IntakeIntent,
   IntakeItem,
   IntakeItemType,
-  IntakeNeedsReview,
   IntakeResult,
   MemoryEntry,
   MemoryItem,
@@ -40,11 +40,10 @@ import { LogRouter } from '@/command';
 import {
   processInput,
   generateDailyPlan,
-  generateTasks,
-  generateInsights,
-  generateBlindSpots,
+  generateDeepTasks,
   generateDeepInitialization,
   DEFAULT_PROMPTS,
+  dailyIntelligenceBatch,
 } from '@/ai/geminiService';
 import {
   clearVault,
@@ -58,9 +57,36 @@ import {
   exportAllFiles,
   importAllFiles,
 } from '@/data';
+import { isLikelyEvent, parseDateTimeFromText, extractLinks } from './eventUtils';
+import { parseLogDeterministically } from './logParser';
 
 const APP_VERSION = '3.2.0';
 const VAULT_INACTIVITY_MS = 15 * 60 * 1000;
+const PERF_MARKERS = {
+  logStart: 'arete-log-start',
+  logAiEnd: 'arete-ai-initial-end',
+  refreshStart: 'arete-refresh-start',
+  refreshEnd: 'arete-refresh-end',
+  persistStart: 'arete-persist-start',
+  persistEnd: 'arete-persist-end',
+};
+
+const markPerf = (name: string) => {
+  if (typeof performance === 'undefined' || typeof performance.mark !== 'function') return;
+  performance.mark(name);
+};
+
+const measurePerf = (name: string, start: string, end: string) => {
+  if (typeof performance === 'undefined' || typeof performance.measure !== 'function') return;
+  try {
+    performance.measure(name, start, end);
+  } finally {
+    if (typeof performance.clearMarks === 'function') {
+      performance.clearMarks(start);
+      performance.clearMarks(end);
+    }
+  }
+};
 
 const INITIAL_RULE_OF_LIFE: RuleOfLife = {
   season: { name: 'Growth', intensity: 5, context: 'Standard operational focus.' },
@@ -185,141 +211,12 @@ const coerceConfidence = (value: unknown, fallback = 0.5) => {
   return Math.max(0, Math.min(1, value));
 };
 
-const buildNeedsReview = (reason: string, questions: string[]): IntakeNeedsReview => ({
-  reason,
-  questions: questions.filter((q) => typeof q === 'string' && q.trim().length > 0).slice(0, 3),
-});
-
 const buildFallbackIntent = (input: string): IntakeIntent => {
   const classified = LogRouter.classifyIntent(input);
   if (classified === 'QUERY') return 'query';
   if (classified === 'TASK') return 'task_request';
   if (classified === 'CONFIG') return 'config_update';
   return 'memory';
-};
-
-const extractLinks = (input: string) =>
-  input.match(/https?:\/\/[^\s)]+/gi)?.map((link) => link.trim()) ?? [];
-
-const isLikelyEvent = (input: string) =>
-  /\b(trip|travel|flight|meeting|appointment|doctor|dentist|wedding|birthday|conference|dinner|lunch|date|event|deadline|due|call|interview|exam|class|ceremony|party|workshop|retreat|summit)\b/i.test(
-    input
-  );
-
-const toIsoDate = (date: Date) => date.toISOString().slice(0, 10);
-
-const buildDate = (year: number, month: number, day: number) => {
-  const candidate = new Date(year, month - 1, day);
-  if (
-    candidate.getFullYear() === year &&
-    candidate.getMonth() === month - 1 &&
-    candidate.getDate() === day
-  ) {
-    return candidate;
-  }
-  return null;
-};
-
-const parseDateFromText = (input: string) => {
-  const text = input.toLowerCase();
-  const now = new Date();
-
-  if (text.includes('tomorrow')) {
-    const date = new Date(now);
-    date.setDate(date.getDate() + 1);
-    return toIsoDate(date);
-  }
-  const inDays = text.match(/\bin\s+(\d{1,2})\s+day/);
-  if (inDays) {
-    const date = new Date(now);
-    date.setDate(date.getDate() + Number(inDays[1]));
-    return toIsoDate(date);
-  }
-  const inWeeks = text.match(/\bin\s+(\d{1,2})\s+week/);
-  if (inWeeks) {
-    const date = new Date(now);
-    date.setDate(date.getDate() + Number(inWeeks[1]) * 7);
-    return toIsoDate(date);
-  }
-  const inMonths = text.match(/\bin\s+(\d{1,2})\s+month/);
-  if (inMonths) {
-    const date = new Date(now);
-    date.setMonth(date.getMonth() + Number(inMonths[1]));
-    return toIsoDate(date);
-  }
-  if (text.includes('next week')) {
-    const date = new Date(now);
-    date.setDate(date.getDate() + 7);
-    return toIsoDate(date);
-  }
-  if (text.includes('next month')) {
-    const date = new Date(now);
-    date.setMonth(date.getMonth() + 1);
-    return toIsoDate(date);
-  }
-
-  const isoMatch = text.match(/\b(20\d{2})[-/](\d{1,2})[-/](\d{1,2})\b/);
-  if (isoMatch) {
-    const date = buildDate(Number(isoMatch[1]), Number(isoMatch[2]), Number(isoMatch[3]));
-    return date ? toIsoDate(date) : null;
-  }
-
-  const usMatch = text.match(/\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?\b/);
-  if (usMatch) {
-    const month = Number(usMatch[1]);
-    const day = Number(usMatch[2]);
-    const rawYear = usMatch[3] ? Number(usMatch[3]) : now.getFullYear();
-    const year = rawYear < 100 ? 2000 + rawYear : rawYear;
-    let date = buildDate(year, month, day);
-    if (date && date < now && !usMatch[3]) {
-      date = buildDate(year + 1, month, day);
-    }
-    return date ? toIsoDate(date) : null;
-  }
-
-  const months = [
-    'january',
-    'february',
-    'march',
-    'april',
-    'may',
-    'june',
-    'july',
-    'august',
-    'september',
-    'october',
-    'november',
-    'december',
-  ];
-  const monthMatch = text.match(
-    /\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})(?:,?\s*(\d{4}))?\b/
-  );
-  if (monthMatch) {
-    const monthIndex = months.findIndex((m) => m.startsWith(monthMatch[1].slice(0, 3)));
-    const day = Number(monthMatch[2]);
-    const rawYear = monthMatch[3] ? Number(monthMatch[3]) : now.getFullYear();
-    let date = buildDate(rawYear, monthIndex + 1, day);
-    if (date && date < now && !monthMatch[3]) {
-      date = buildDate(rawYear + 1, monthIndex + 1, day);
-    }
-    return date ? toIsoDate(date) : null;
-  }
-
-  const reverseMonthMatch = text.match(
-    /\b(\d{1,2})\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s*(\d{4}))?\b/
-  );
-  if (reverseMonthMatch) {
-    const monthIndex = months.findIndex((m) => m.startsWith(reverseMonthMatch[2].slice(0, 3)));
-    const day = Number(reverseMonthMatch[1]);
-    const rawYear = reverseMonthMatch[3] ? Number(reverseMonthMatch[3]) : now.getFullYear();
-    let date = buildDate(rawYear, monthIndex + 1, day);
-    if (date && date < now && !reverseMonthMatch[3]) {
-      date = buildDate(rawYear + 1, monthIndex + 1, day);
-    }
-    return date ? toIsoDate(date) : null;
-  }
-
-  return null;
 };
 
 const createNewProfile = (
@@ -346,7 +243,7 @@ const createNewProfile = (
     ethnicity: '',
     lastUpdated: Date.now(),
   },
-  personal: { status: '', jobRole: '', company: '', interests: [], lastUpdated: Date.now() },
+  personal: { jobRole: '', company: '', interests: [], lastUpdated: Date.now() },
   health: {
     height: '',
     weight: '',
@@ -368,6 +265,7 @@ const createNewProfile = (
     lastUpdated: Date.now(),
   },
   relationship: {
+    relationshipStatus: 'Single',
     livingArrangement: '',
     socialEnergy: '',
     dailyCommitments: [],
@@ -416,6 +314,8 @@ type VaultData = {
   ruleOfLife: RuleOfLife;
   prompts: PromptConfig[];
   layouts: Record<string, DashboardLayout>;
+  alwaysDo?: AlwaysChip[];
+  alwaysWatch?: AlwaysChip[];
 };
 
 const LEGACY_KEYS = [
@@ -455,6 +355,8 @@ const buildDefaultVault = (): VaultData => ({
   ruleOfLife: INITIAL_RULE_OF_LIFE,
   prompts: DEFAULT_PROMPTS,
   layouts: { [INITIAL_PROFILE.id]: DEFAULT_LAYOUT },
+  alwaysDo: [],
+  alwaysWatch: [],
 });
 
 const detectLegacyData = () => {
@@ -526,6 +428,10 @@ const clearLegacyData = () => {
 export const useAura = () => {
   const keyRef = useRef<CryptoKey | null>(null);
   const refreshTimeoutRef = useRef<number | null>(null);
+  const vaultSaveTimeoutRef = useRef<number | null>(null);
+  const memoryHashIndexRef = useRef<Set<string>>(new Set());
+  const lastDailyBatchRef = useRef<number | null>(null);
+  const lastDeepTasksRef = useRef<number | null>(null);
   const [hasVault, setHasVault] = useState<boolean>(() =>
     typeof window !== 'undefined' ? hasEncryptedVault() : false
   );
@@ -540,6 +446,19 @@ export const useAura = () => {
   const [activeUserId, setActiveUserId] = useState<string>(INITIAL_PROFILE.id);
   const [profile, setProfile] = useState<UserProfile>(INITIAL_PROFILE);
   const [storageUsage, setStorageUsage] = useState<number>(0);
+
+  const rebuildMemoryHashIndex = useCallback((items: MemoryItem[]) => {
+    memoryHashIndexRef.current = new Set(items.map((item) => contentHash(item.content)));
+  }, []);
+
+  const ensureMemoryHashIndex = useCallback(
+    (items: MemoryItem[]) => {
+      if (memoryHashIndexRef.current.size !== items.length) {
+        rebuildMemoryHashIndex(items);
+      }
+    },
+    [rebuildMemoryHashIndex]
+  );
 
   useEffect(() => {
     setFamilySpace((prev) => ({
@@ -574,6 +493,8 @@ export const useAura = () => {
     [INITIAL_PROFILE.id]: DEFAULT_LAYOUT,
   });
   const [layout, setLayout] = useState<DashboardLayout>(DEFAULT_LAYOUT);
+  const [alwaysDo, setAlwaysDo] = useState<AlwaysChip[]>([]);
+  const [alwaysWatch, setAlwaysWatch] = useState<AlwaysChip[]>([]);
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPlanningDay, setIsPlanningDay] = useState(false);
@@ -584,32 +505,53 @@ export const useAura = () => {
   } | null>(null);
 
   const ensureArray = <T>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : []);
+  const mergePrompts = (value?: PromptConfig[]) => {
+    const existing = Array.isArray(value) ? value : [];
+    const byId = new Map(existing.map((prompt) => [prompt.id, prompt]));
+    return DEFAULT_PROMPTS.map((prompt) => byId.get(prompt.id) || prompt);
+  };
 
-  const applyVaultData = useCallback((data: VaultData) => {
-    setIsOnboarded(data.isOnboarded);
-    setFamilySpace(data.familySpace);
-    setActiveUserId(data.activeUserId);
-    const nextProfile =
-      data.familySpace.members.find((m) => m.id === data.activeUserId) ||
-      data.familySpace.members[0];
-    setProfile(nextProfile);
-    setSources(ensureArray<Source>(data.sources));
-    setMemoryItems(ensureArray<MemoryItem>(data.memoryItems));
-    setClaims(ensureArray<Claim>(data.claims));
-    setTasks(ensureArray<DailyTask>(data.tasks));
-    setRecommendations(ensureArray<Recommendation>(data.recommendations));
-    setGoals(ensureArray<Goal>(data.goals));
-    setAuditLogs(ensureArray<AuditLogEntry>(data.auditLogs));
-    setTimelineEvents(ensureArray<TimelineEvent>(data.timelineEvents));
-    setInsights(ensureArray<ProactiveInsight>(data.insights));
-    setBlindSpots(ensureArray<BlindSpot>(data.blindSpots));
-    setDailyPlan(ensureArray<DailyTask>(data.dailyPlan));
-    setRuleOfLife(data.ruleOfLife || INITIAL_RULE_OF_LIFE);
-    setPrompts(data.prompts?.length ? data.prompts : DEFAULT_PROMPTS);
-    setLayouts(data.layouts || { [data.activeUserId]: DEFAULT_LAYOUT });
-    setLayout((data.layouts && data.layouts[data.activeUserId]) || DEFAULT_LAYOUT);
-    setStorageUsage(getVaultStorageUsage());
-  }, []);
+  const applyVaultData = useCallback(
+    (data: VaultData) => {
+      setIsOnboarded(data.isOnboarded);
+
+      // Migration: Ensure all members have relationships array (legacy vaults may not have this)
+      data.familySpace.members.forEach((member) => {
+        if (!Array.isArray(member.relationships)) {
+          member.relationships = [];
+        }
+      });
+
+      setFamilySpace(data.familySpace);
+      setActiveUserId(data.activeUserId);
+      const nextProfile =
+        data.familySpace.members.find((m) => m.id === data.activeUserId) ||
+        data.familySpace.members[0];
+
+      setProfile(nextProfile);
+      setSources(ensureArray<Source>(data.sources));
+      const nextMemoryItems = ensureArray<MemoryItem>(data.memoryItems);
+      setMemoryItems(nextMemoryItems);
+      rebuildMemoryHashIndex(nextMemoryItems);
+      setClaims(ensureArray<Claim>(data.claims));
+      setTasks(ensureArray<DailyTask>(data.tasks));
+      setRecommendations(ensureArray<Recommendation>(data.recommendations));
+      setGoals(ensureArray<Goal>(data.goals));
+      setAuditLogs(ensureArray<AuditLogEntry>(data.auditLogs));
+      setTimelineEvents(ensureArray<TimelineEvent>(data.timelineEvents));
+      setInsights(ensureArray<ProactiveInsight>(data.insights));
+      setBlindSpots(ensureArray<BlindSpot>(data.blindSpots));
+      setDailyPlan(ensureArray<DailyTask>(data.dailyPlan));
+      setRuleOfLife(data.ruleOfLife || INITIAL_RULE_OF_LIFE);
+      setPrompts(mergePrompts(data.prompts));
+      setLayouts(data.layouts || { [data.activeUserId]: DEFAULT_LAYOUT });
+      setLayout((data.layouts && data.layouts[data.activeUserId]) || DEFAULT_LAYOUT);
+      setAlwaysDo(ensureArray<AlwaysChip>(data.alwaysDo));
+      setAlwaysWatch(ensureArray<AlwaysChip>(data.alwaysWatch));
+      setStorageUsage(getVaultStorageUsage());
+    },
+    [rebuildMemoryHashIndex]
+  );
 
   const unlock = useCallback(async (passphrase: string) => {
     setLockError(null);
@@ -669,6 +611,8 @@ export const useAura = () => {
       ruleOfLife,
       prompts,
       layouts,
+      alwaysDo,
+      alwaysWatch,
     }),
     [
       isOnboarded,
@@ -688,25 +632,62 @@ export const useAura = () => {
       ruleOfLife,
       prompts,
       layouts,
+      alwaysDo,
+      alwaysWatch,
     ]
   );
 
-  const lockVault = useCallback(async () => {
-    if (keyRef.current) {
+  const saveVaultNow = useCallback(async () => {
+    if (!keyRef.current) return;
+    markPerf(PERF_MARKERS.persistStart);
+    try {
       await saveVault(keyRef.current, getVaultSnapshot());
+    } finally {
+      markPerf(PERF_MARKERS.persistEnd);
+      measurePerf('arete-persist', PERF_MARKERS.persistStart, PERF_MARKERS.persistEnd);
+      setStorageUsage(getVaultStorageUsage());
     }
+  }, [getVaultSnapshot]);
+
+  const scheduleVaultSave = useCallback(() => {
+    if (!isUnlocked || !keyRef.current) return;
+    if (vaultSaveTimeoutRef.current) {
+      window.clearTimeout(vaultSaveTimeoutRef.current);
+    }
+    vaultSaveTimeoutRef.current = window.setTimeout(() => {
+      void saveVaultNow();
+    }, 1000);
+  }, [isUnlocked, saveVaultNow]);
+
+  const lockVault = useCallback(async () => {
+    if (vaultSaveTimeoutRef.current) {
+      window.clearTimeout(vaultSaveTimeoutRef.current);
+      vaultSaveTimeoutRef.current = null;
+    }
+    await saveVaultNow();
     keyRef.current = null;
     setIsUnlocked(false);
     setLockError('Session locked due to inactivity.');
     applyVaultData(buildDefaultVault());
-  }, [getVaultSnapshot, applyVaultData]);
+  }, [saveVaultNow, applyVaultData]);
 
   useEffect(() => {
-    if (!isUnlocked || !keyRef.current) return;
-    saveVault(keyRef.current, getVaultSnapshot()).then(() =>
-      setStorageUsage(getVaultStorageUsage())
-    );
-  }, [isUnlocked, getVaultSnapshot]);
+    if (!isUnlocked) return;
+    scheduleVaultSave();
+  }, [isUnlocked, getVaultSnapshot, scheduleVaultSave]);
+
+  useEffect(() => {
+    if (!isUnlocked) return;
+    const handleUnload = () => {
+      if (vaultSaveTimeoutRef.current) {
+        window.clearTimeout(vaultSaveTimeoutRef.current);
+        vaultSaveTimeoutRef.current = null;
+      }
+      void saveVaultNow();
+    };
+    window.addEventListener('beforeunload', handleUnload);
+    return () => window.removeEventListener('beforeunload', handleUnload);
+  }, [isUnlocked, saveVaultNow]);
 
   useEffect(() => {
     if (!isUnlocked) return;
@@ -742,14 +723,22 @@ export const useAura = () => {
     [activeUserId]
   );
 
-  const appendMemoryItems = useCallback((items: MemoryItem[]) => {
-    if (items.length === 0) return;
-    setMemoryItems((prev) => {
-      const existingHashes = new Set(prev.map((item) => contentHash(item.content)));
-      const newItems = items.filter((item) => !existingHashes.has(contentHash(item.content)));
-      return [...newItems, ...prev];
-    });
-  }, []);
+  const appendMemoryItems = useCallback(
+    (items: MemoryItem[]) => {
+      if (items.length === 0) return;
+      setMemoryItems((prev) => {
+        ensureMemoryHashIndex(prev);
+        const newItems = items.filter((item) => {
+          const hash = contentHash(item.content);
+          if (memoryHashIndexRef.current.has(hash)) return false;
+          memoryHashIndexRef.current.add(hash);
+          return true;
+        });
+        return newItems.length > 0 ? [...newItems, ...prev] : prev;
+      });
+    },
+    [ensureMemoryHashIndex]
+  );
 
   const updateMemoryItem = useCallback((id: string, updates: Partial<MemoryItem>) => {
     setMemoryItems((prev) =>
@@ -772,9 +761,18 @@ export const useAura = () => {
     );
   }, []);
 
-  const deleteMemoryItem = useCallback((id: string) => {
-    setMemoryItems((prev) => prev.filter((item) => item.id !== id));
-  }, []);
+  const deleteMemoryItem = useCallback(
+    (id: string) => {
+      setMemoryItems((prev) => {
+        const next = prev.filter((item) => item.id !== id);
+        if (next.length !== prev.length) {
+          rebuildMemoryHashIndex(next);
+        }
+        return next;
+      });
+    },
+    [rebuildMemoryHashIndex]
+  );
 
   const keepRecommendation = useCallback(
     (id: string) => {
@@ -841,16 +839,30 @@ export const useAura = () => {
     setClaims((prev) =>
       prev.map((c) => (c.sourceId === sourceId ? { ...c, status: ClaimStatus.COMMITTED } : c))
     );
-    updates.forEach((u) => {
+    if (updates.length > 0) {
+      const updateTimestamp = Date.now();
       setProfile((prev) => {
-        if (u.targetUserId && u.targetUserId !== prev.id) return prev;
-        const section = u.section as keyof UserProfile;
-        return {
-          ...prev,
-          [section]: { ...(prev as any)[section], [u.field]: u.newValue, lastUpdated: Date.now() },
-        };
+        let next = prev;
+        let changed = false;
+        for (const u of updates) {
+          if (u.targetUserId && u.targetUserId !== prev.id) continue;
+          const section = u.section as keyof UserProfile;
+          if (!changed) {
+            next = { ...prev };
+            changed = true;
+          }
+          next = {
+            ...next,
+            [section]: {
+              ...(next as any)[section],
+              [u.field]: u.newValue,
+              lastUpdated: updateTimestamp,
+            },
+          };
+        }
+        return changed ? next : prev;
       });
-    });
+    }
     addAuditLog(ActionType.APPROVE, 'Neural State Commited', `Source: ${sourceId}`);
     debouncedRefreshAura();
   };
@@ -883,7 +895,8 @@ export const useAura = () => {
     addAuditLog(ActionType.PROFILE_UPDATE, 'Knowledge Point Refined', `ID: ${id}`);
   };
 
-  const logMemory = async (input: string, attachedFiles?: File[], skipVerification = false) => {
+  const logMemory = async (input: string, attachedFiles?: File[], skipVerification = true) => {
+    markPerf(PERF_MARKERS.logStart);
     setIsProcessing(true);
     const timestamp = Date.now();
     const sourcePrefix = `src-${timestamp}`;
@@ -1065,7 +1078,13 @@ export const useAura = () => {
       }
 
       if (memoryAdds.length > 0) {
-        setMemoryItems((prev) => [...memoryAdds, ...prev]);
+        setMemoryItems((prev) => {
+          ensureMemoryHashIndex(prev);
+          for (const item of memoryAdds) {
+            memoryHashIndexRef.current.add(contentHash(item.content));
+          }
+          return [...memoryAdds, ...prev];
+        });
       }
 
       const fileSummary =
@@ -1097,15 +1116,29 @@ export const useAura = () => {
               )
             : undefined;
 
-        const result = await processInput(
-          inputForAI,
-          memoryItems,
-          profile,
-          filesForAI,
-          prompts.find((p) => p.id === 'internalization')!,
-          familySpace.members,
-          fileMeta
-        );
+        const deterministicInput = contentForMemory || inputForAI || '';
+        const deterministic =
+          filesForAI && filesForAI.length > 0
+            ? null
+            : parseLogDeterministically(deterministicInput, {
+                ownerId: activeUserId,
+                currentDate: new Date().toLocaleDateString('en-CA'),
+              });
+
+        const result =
+          deterministic && deterministic.confidence >= 0.7
+            ? deterministic
+            : await processInput(
+                inputForAI,
+                memoryItems,
+                profile,
+                filesForAI,
+                prompts.find((p) => p.id === 'internalization')!,
+                familySpace.members,
+                fileMeta
+              );
+        markPerf(PERF_MARKERS.logAiEnd);
+        measurePerf('arete-initial-ai', PERF_MARKERS.logStart, PERF_MARKERS.logAiEnd);
         const rawFacts = Array.isArray(result?.facts) ? result.facts : [];
         const rawUpdates = Array.isArray(result?.proposedUpdates) ? result.proposedUpdates : [];
         const rawItems = Array.isArray(result?.items) ? result.items : [];
@@ -1211,21 +1244,12 @@ export const useAura = () => {
         }
 
         const intakeItems = normalizedItems.length > 0 ? normalizedItems : fallbackItems;
-        const intakeNeedsReview =
-          result?.needsReview && Array.isArray(result.needsReview?.questions)
-            ? buildNeedsReview(
-                String(result.needsReview?.reason || 'Needs clarification'),
-                result.needsReview.questions
-              )
-            : null;
-
         const intakeMemoryAdds: MemoryItem[] = [];
         const timelineAdds: TimelineEvent[] = [];
         const taskAdds: DailyTask[] = [];
         const derivedUpdates: ProposedUpdate[] = rawUpdates.filter(
           (u: any) => u && typeof u === 'object'
         );
-        const reviewQuestions: string[] = [];
         const existingHabits = new Set(
           [...memoryItems, ...memoryAdds]
             .filter((item) => item.metadata?.type === 'habit')
@@ -1234,25 +1258,26 @@ export const useAura = () => {
 
         const hasEventItem = intakeItems.some((item) => item.type === 'event');
         if (!hasEventItem && contentForMemory && isLikelyEvent(contentForMemory)) {
-          const parsedDate = parseDateFromText(contentForMemory);
-          if (parsedDate) {
+          const parsedDateTime = parseDateTimeFromText(contentForMemory);
+          if (parsedDateTime) {
             const title =
               contentForMemory.length > 60 ? `${contentForMemory.slice(0, 60)}…` : contentForMemory;
             const event: TimelineEvent = {
               id: `event-${timestamp}-fallback`,
               ownerId: activeUserId,
               title,
-              date: parsedDate,
+              date: parsedDateTime,
               category: fallbackDomain,
               description: contentForMemory,
               createdAt: timestamp,
               isManual: true,
+              fields: {},
             };
             timelineAdds.push(event);
             intakeMemoryAdds.push({
               id: `mem-event-${timestamp}-fallback`,
               timestamp,
-              content: `Event: ${title} on ${parsedDate}`,
+              content: `Event: ${title} on ${parsedDateTime}`,
               category: fallbackDomain,
               sentiment: 'neutral',
               extractedFacts: [],
@@ -1265,8 +1290,6 @@ export const useAura = () => {
                 payload: event,
               },
             });
-          } else {
-            reviewQuestions.push('When is this event scheduled?');
           }
         }
 
@@ -1349,7 +1372,6 @@ export const useAura = () => {
             }
 
             if (!date) {
-              reviewQuestions.push('When is this event scheduled?');
               return;
             }
             const title = item.title || content || 'New event';
@@ -1423,15 +1445,20 @@ export const useAura = () => {
 
           if (item.type === 'task' || item.type === 'task_request') {
             const title = item.title || content || 'New task';
+            const aiPriority = (fields as any).priority;
+            const dueDateStr = (fields as any).date;
+            // Convert YYYY-MM-DD string to timestamp if present
+            const dueAt = dueDateStr ? new Date(dueDateStr).getTime() : undefined;
             taskAdds.push({
               id: `task-${timestamp}-${idx}`,
               ownerId: String(ownerId),
               title,
               description: content || title,
               category: domain,
-              priority: 'medium',
+              priority: aiPriority === 'high' || aiPriority === 'low' ? aiPriority : 'medium',
               completed: false,
               createdAt: timestamp,
+              due_at: dueAt,
               steps: Array.isArray((fields as any).steps) ? (fields as any).steps : [],
               inputs: Array.isArray((fields as any).inputs) ? (fields as any).inputs : [],
               definitionOfDone: (fields as any).definitionOfDone,
@@ -1481,8 +1508,6 @@ export const useAura = () => {
                 confidence: item.confidence,
                 targetUserId: String(ownerId),
               });
-            } else {
-              reviewQuestions.push('Which profile field should be updated?');
             }
             intakeMemoryAdds.push({
               id: `mem-update-${timestamp}-${idx}`,
@@ -1550,9 +1575,6 @@ export const useAura = () => {
           }
         });
 
-        if (intakeMemoryAdds.length > 0) {
-          appendMemoryItems(intakeMemoryAdds);
-        }
         if (timelineAdds.length > 0) {
           setTimelineEvents((prev) => [...timelineAdds, ...prev]);
         }
@@ -1560,41 +1582,37 @@ export const useAura = () => {
           setTasks((prev) => [...taskAdds, ...prev]);
         }
 
-        const shouldReview =
-          intakeNeedsReview || reviewQuestions.length > 0 || intakeItems.length === 0;
-        if (shouldReview) {
-          const review =
-            intakeNeedsReview || buildNeedsReview('Needs clarification', reviewQuestions);
-          const reviewItem: MemoryItem = {
-            id: `mem-review-${timestamp}`,
-            timestamp,
-            content: `Needs review: ${contentForMemory || inputForAI}`,
-            category: Category.GENERAL,
-            sentiment: 'neutral',
-            extractedFacts: [],
-            ownerId: activeUserId,
-            extractionConfidence: 0,
-            metadata: {
-              type: 'needs_review',
-              source: 'logbar',
-              version: 1,
-              payload: review,
-            },
-          };
-          appendMemoryItems([reviewItem]);
-        }
+        const shouldRefineCategory =
+          mainMemoryId && contentForMemory && !intakeItems.some((item) => item.type === 'memory');
+        const refinedCategory = shouldRefineCategory
+          ? intakeItems.length > 0
+            ? intakeItems[0].domain ||
+              inferCategory(contentForMemory, rawFacts as CategorizedFact[])
+            : inferCategory(contentForMemory, rawFacts as CategorizedFact[])
+          : null;
 
-        if (
-          mainMemoryId &&
-          contentForMemory &&
-          !intakeItems.some((item) => item.type === 'memory')
-        ) {
-          const refinedCategory = inferCategory(contentForMemory, rawFacts as CategorizedFact[]);
-          setMemoryItems((prev) =>
-            prev.map((item) =>
-              item.id === mainMemoryId ? { ...item, category: refinedCategory } : item
-            )
-          );
+        if (intakeMemoryAdds.length > 0 || shouldRefineCategory) {
+          setMemoryItems((prev) => {
+            let next = prev;
+            if (intakeMemoryAdds.length > 0) {
+              ensureMemoryHashIndex(prev);
+              const newItems = intakeMemoryAdds.filter((item) => {
+                const hash = contentHash(item.content);
+                if (memoryHashIndexRef.current.has(hash)) return false;
+                memoryHashIndexRef.current.add(hash);
+                return true;
+              });
+              if (newItems.length > 0) {
+                next = [...newItems, ...next];
+              }
+            }
+            if (shouldRefineCategory && refinedCategory) {
+              next = next.map((item) =>
+                item.id === mainMemoryId ? { ...item, category: refinedCategory } : item
+              );
+            }
+            return next;
+          });
         }
 
         const normalizedFacts = (rawFacts as any[]).filter(
@@ -1638,21 +1656,22 @@ export const useAura = () => {
           ...result,
           facts: normalizedFacts,
           proposedUpdates: derivedUpdates,
-          needsReview: shouldReview || result?.needsReview,
-          headline:
-            result?.headline || (shouldReview ? 'Signal logged. Needs review.' : 'Signal logged.'),
+          needsReview: false,
+          headline: result?.headline || 'Signal logged.',
           sourceId: addedMemoryIds[0],
           intake: {
             intent: normalizeIntakeIntent(result?.intent || fallbackIntent),
             items: intakeItems,
             missingData: Array.isArray(result?.missingData) ? result.missingData : [],
-            needsReview: intakeNeedsReview || undefined,
+            needsReview: undefined,
             confidence: intakeConfidence,
             notes: result?.notes,
           } as IntakeResult,
         };
       } catch (err: any) {
         const message = err?.message || 'AI processing failed.';
+        markPerf(PERF_MARKERS.logAiEnd);
+        measurePerf('arete-initial-ai', PERF_MARKERS.logStart, PERF_MARKERS.logAiEnd);
         if (addedMemoryIds.length > 0) {
           setMemoryItems((prev) =>
             prev.map((item) =>
@@ -1674,8 +1693,8 @@ export const useAura = () => {
         );
         debouncedRefreshAura();
         return {
-          headline: 'Signal logged. Needs review.',
-          needsReview: true,
+          headline: 'Signal logged.',
+          needsReview: false,
           missingFields: ['ai_processing'],
           facts: [],
           proposedUpdates: [],
@@ -1704,6 +1723,24 @@ export const useAura = () => {
     return Math.min(8, Math.max(5, fallback));
   };
 
+  const isSameLocalDay = (a: number, b: number) =>
+    new Date(a).toDateString() === new Date(b).toDateString();
+
+  const shouldRunDailyBatch = (force?: boolean) => {
+    if (force) return true;
+    const lastRun = lastDailyBatchRef.current;
+    if (!lastRun) return true;
+    return !isSameLocalDay(Date.now(), lastRun);
+  };
+
+  const shouldRunDeepTasks = (force?: boolean) => {
+    if (force) return true;
+    const lastRun = lastDeepTasksRef.current;
+    if (!lastRun) return true;
+    const weekMs = 7 * 24 * 60 * 60 * 1000;
+    return Date.now() - lastRun > weekMs;
+  };
+
   const planMyDay = async () => {
     setIsPlanningDay(true);
     try {
@@ -1723,30 +1760,102 @@ export const useAura = () => {
     }
   };
 
-  const refreshAura = async () => {
+  const refreshAura = async (options?: { force?: boolean }) => {
+    const force = Boolean(options?.force);
+    if (!shouldRunDailyBatch(force)) return;
+
+    markPerf(PERF_MARKERS.refreshStart);
     setIsGeneratingTasks(true);
     try {
-      const prompt = prompts.find((p) => p.id === 'deepPlanning')!;
+      const batchPrompt =
+        prompts.find((p) => p.id === 'dailyBatch') ||
+        DEFAULT_PROMPTS.find((p) => p.id === 'dailyBatch')!;
+      const deepPrompt = prompts.find((p) => p.id === 'deepPlanning')!;
       const financeMetrics = computeFinanceMetrics(profile);
       const missingData = buildMissingData(profile);
       const context = {
         familyMembers: familySpace.members,
         financeMetrics,
         missingData,
+        claims,
       };
-      const nextTasks = await generateTasks(memoryItems, profile, prompt, context);
-      const nextInsights = await generateInsights(memoryItems, profile, prompt, context);
-      const nextBlindSpots = await generateBlindSpots(memoryItems, profile, prompt, context);
-      setTasks(Array.isArray(nextTasks) ? nextTasks : []);
-      setInsights(Array.isArray(nextInsights) ? nextInsights : []);
-      setBlindSpots(Array.isArray(nextBlindSpots) ? nextBlindSpots : []);
+
+      let batchResult: {
+        tasks: DailyTask[];
+        insights: ProactiveInsight[];
+        blindSpots: BlindSpot[];
+      };
+      try {
+        batchResult = await dailyIntelligenceBatch(memoryItems, profile, batchPrompt, context);
+        markPerf(PERF_MARKERS.refreshEnd);
+        measurePerf('arete-refresh', PERF_MARKERS.refreshStart, PERF_MARKERS.refreshEnd);
+      } catch (err) {
+        console.error('[refreshAura] daily batch failed', err);
+        markPerf(PERF_MARKERS.refreshEnd);
+        measurePerf('arete-refresh', PERF_MARKERS.refreshStart, PERF_MARKERS.refreshEnd);
+        return;
+      }
+      const rawTasks = Array.isArray(batchResult?.tasks) ? batchResult.tasks : [];
+      setTasks((prev) => {
+        const now = Date.now();
+        const prevById = new Map(prev.map((t) => [t.id, t]));
+        const normalizedAi = rawTasks.map((task) => {
+          const title = typeof task.title === 'string' ? task.title : 'New task';
+          const description =
+            typeof task.description === 'string' && task.description.length > 0
+              ? task.description
+              : title;
+          const category = normalizeCategory(task.category);
+          const id = `ai-${activeUserId}-${contentHash(`${title}|${description}|${category}`)}`;
+          const existing = prevById.get(id);
+          return {
+            ...task,
+            id,
+            ownerId: task.ownerId || activeUserId,
+            title,
+            description,
+            category,
+            priority: task.priority || 'medium',
+            completed: existing?.completed ?? Boolean(task.completed),
+            createdAt: existing?.createdAt || task.createdAt || now,
+          } as DailyTask;
+        });
+        const aiIds = new Set(normalizedAi.map((t) => t.id));
+        const manualTasks = prev.filter((t) => !String(t.id || '').startsWith('ai-'));
+        const completedAi = prev.filter(
+          (t) => String(t.id || '').startsWith('ai-') && t.completed && !aiIds.has(t.id)
+        );
+        return [...manualTasks, ...normalizedAi, ...completedAi];
+      });
+
+      setInsights(Array.isArray(batchResult?.insights) ? batchResult.insights : []);
+      setBlindSpots(Array.isArray(batchResult?.blindSpots) ? batchResult.blindSpots : []);
+      lastDailyBatchRef.current = Date.now();
+
+      if (shouldRunDeepTasks(force)) {
+        try {
+          const deepResult = await generateDeepTasks(
+            profile,
+            memoryItems,
+            familySpace.members,
+            deepPrompt,
+            context
+          );
+          if (Array.isArray(deepResult?.recommendations) && deepResult.recommendations.length > 0) {
+            setRecommendations(deepResult.recommendations);
+            lastDeepTasksRef.current = Date.now();
+          }
+        } catch (err) {
+          console.error('[refreshAura] deep tasks failed', err);
+        }
+      }
     } finally {
       setIsGeneratingTasks(false);
     }
   };
 
   const runDeepInitialization = useCallback(async () => {
-    const result = await generateDeepInitialization(profile, ruleOfLife);
+    const result = await generateDeepInitialization(profile, ruleOfLife, memoryItems, claims);
     const timestamp = Date.now();
 
     const deepTasks = (result.doItems || []).map((task, idx) => ({
@@ -1804,12 +1913,42 @@ export const useAura = () => {
     if (deepBlindSpots.length > 0) setBlindSpots((prev) => [...deepBlindSpots, ...prev]);
     if (deepRecs.length > 0) setRecommendations((prev) => [...deepRecs, ...prev]);
 
+    // Store Always-Do/Watch chips from deep initialization
+    const initAlwaysDo = (result.alwaysDo || []).map((chip: any, idx: number) => ({
+      id: chip.id || `always-do-${timestamp}-${idx}`,
+      label: chip.label || '',
+      rationale: chip.rationale || '',
+      source: chip.source || 'computed',
+      profileField: chip.profileField,
+      priority: chip.priority || 'medium',
+    }));
+    const initAlwaysWatch = (result.alwaysWatch || []).map((chip: any, idx: number) => ({
+      id: chip.id || `always-watch-${timestamp}-${idx}`,
+      label: chip.label || '',
+      rationale: chip.rationale || '',
+      source: chip.source || 'computed',
+      profileField: chip.profileField,
+      priority: chip.priority || 'medium',
+    }));
+    if (initAlwaysDo.length > 0) setAlwaysDo(initAlwaysDo);
+    if (initAlwaysWatch.length > 0) setAlwaysWatch(initAlwaysWatch);
+
     if (result.personalizedGreeting) {
       addAuditLog(ActionType.SYSTEM, 'Initialization Complete', result.personalizedGreeting);
     }
 
     return result.personalizedGreeting;
-  }, [profile, ruleOfLife, activeUserId, addAuditLog, setTasks, setBlindSpots, setRecommendations]);
+  }, [
+    profile,
+    ruleOfLife,
+    memoryItems,
+    claims,
+    activeUserId,
+    addAuditLog,
+    setTasks,
+    setBlindSpots,
+    setRecommendations,
+  ]);
 
   const debouncedRefreshAura = useCallback(() => {
     if (refreshTimeoutRef.current) {
@@ -1824,6 +1963,9 @@ export const useAura = () => {
     return () => {
       if (refreshTimeoutRef.current) {
         window.clearTimeout(refreshTimeoutRef.current);
+      }
+      if (vaultSaveTimeoutRef.current) {
+        window.clearTimeout(vaultSaveTimeoutRef.current);
       }
     };
   }, []);
@@ -1858,6 +2000,8 @@ export const useAura = () => {
     isGeneratingTasks,
     prompts,
     layout,
+    alwaysDo,
+    alwaysWatch,
     setActiveUserId: handleSwitchUser,
     logMemory,
     planMyDay,
@@ -1948,8 +2092,30 @@ export const useAura = () => {
     updateTimelineEvent: (id: any, u: any) =>
       setTimelineEvents((p) => p.map((e) => (e.id === id ? { ...e, ...u } : e))),
     deleteTimelineEvent: (id: any) => setTimelineEvents((p) => p.filter((e) => e.id !== id)),
-    activatePrepPlan: (p: any) => {
-      setRecommendations((prev) => [p, ...prev]);
+    activatePrepPlan: (p: any, eventId?: string) => {
+      setRecommendations((prev) => {
+        // Prevent duplicates if p.id already exists
+        const filtered = prev.filter((r) => r.id !== p.id);
+        return [p, ...filtered];
+      });
+
+      // Convert steps to tasks if they exist
+      if (p.steps && p.steps.length > 0) {
+        const prepTasks: DailyTask[] = p.steps.map((step: string, i: number) => ({
+          id: `prep-${eventId || 'gen'}-${Date.now()}-${i}`,
+          ownerId: activeUserId,
+          title: step,
+          description: `Preparation for ${p.title || 'Event'}`,
+          category: p.category || Category.GENERAL,
+          priority: 'high',
+          completed: false,
+          createdAt: Date.now(),
+          eventId: eventId,
+        }));
+        setTasks((prev) => [...prepTasks, ...prev]);
+        setDailyPlan((prev) => [...prepTasks, ...prev]);
+      }
+
       const timestamp = Date.now();
       const memoryItem: MemoryItem = {
         id: `mem-prep-${timestamp}`,
@@ -1965,6 +2131,8 @@ export const useAura = () => {
           source: 'recommendation',
           version: 1,
           payload: p,
+          eventId: eventId,
+          sources: (p?.evidenceLinks?.sources as any) || [],
         },
       };
       appendMemoryItems([memoryItem]);
@@ -1980,11 +2148,14 @@ export const useAura = () => {
     setRuleOfLife,
     setPrompts,
     toggleTask: (id: string) => {
-      const task = dailyPlan.find((t) => t.id === id);
+      const task = dailyPlan.find((t) => t.id === id) || tasks.find((t) => t.id === id);
       if (!task) return;
 
       const newCompleted = !task.completed;
+
+      // Update both lists to maintain sync
       setDailyPlan((p) => p.map((t) => (t.id === id ? { ...t, completed: newCompleted } : t)));
+      setTasks((p) => p.map((t) => (t.id === id ? { ...t, completed: newCompleted } : t)));
 
       if (newCompleted) {
         setLastAction({ type: 'complete', task });
@@ -2010,6 +2181,9 @@ export const useAura = () => {
         };
         appendMemoryItems([memoryItem]);
         addAuditLog(ActionType.COMPLETE_TASK, 'Task Completed', task.title, memoryItem.id);
+        debouncedRefreshAura();
+      } else {
+        // setLastAction({ type: 'uncomplete', task }); // unsupported type
         debouncedRefreshAura();
       }
     },

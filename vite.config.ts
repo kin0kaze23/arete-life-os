@@ -21,14 +21,17 @@ const devGeminiProxy = () => ({
       req.on('end', async () => {
         try {
           const parsed = body ? JSON.parse(body) : {};
+          console.log('[DEV PROXY] Action:', parsed.action);
           const result = await handleGeminiAction(parsed.action, parsed.payload);
           res.statusCode = 200;
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify(result));
-        } catch (err) {
+        } catch (err: any) {
+          console.error('[DEV PROXY ERROR]', err?.message || err);
+          console.error('[DEV PROXY STACK]', err?.stack);
           res.statusCode = 500;
           res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify({ error: 'Gemini request failed' }));
+          res.end(JSON.stringify({ error: 'Gemini request failed', details: err?.message }));
         }
       });
     });

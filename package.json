@@ -11,6 +11,7 @@
     "doctor": "bash ./scripts/doctor.sh",
     "typecheck": "tsc --noEmit",
     "test": "echo \"No tests yet\"",
+    "test:e2e": "playwright test",
     "build": "vite build",
     "preview": "vite preview"
   },
@@ -25,6 +26,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.0",
     "@types/node": "^22.14.0",
     "@typescript-eslint/eslint-plugin": "^7.3.1",
     "@typescript-eslint/parser": "^7.3.1",

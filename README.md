@@ -2,11 +2,9 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+# Areté Life OS
 
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/drive/1cuj7akXL5dISmQasbU6DwZz0E_nhigma
+Local‑first Life OS with encrypted vault, AI mentor, and a three‑column execution dashboard.
 
 ## Run Locally
 
@@ -14,8 +12,9 @@ View your app in AI Studio: https://ai.studio/apps/drive/1cuj7akXL5dISmQasbU6DwZ
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in `.env.local` to your Gemini API key (used by the server-side `/api/gemini` proxy; do not commit this file)
-3. Run the app:
+2. Set the `GEMINI_API_KEY` in `.env.local` (server-side `/api/gemini` proxy; do not commit this file)
+3. Optional: set `GEMINI_MODEL_RESEARCH` to a search‑grounding‑supported Gemini model for event prep grounding (e.g. `gemini-2.5-flash`)
+4. Run the app:
    `npm run dev`
 
 On first launch, set a passphrase to encrypt local data. This passphrase is not recoverable.
@@ -46,13 +45,26 @@ On first launch, set a passphrase to encrypt local data. This passphrase is not 
 
 - Log Bar submissions flow through `core/useAura.ts` (`logMemory`), which creates `Source` + `MemoryItem` nodes in the encrypted local vault.
 - File attachments are stored as blobs in IndexedDB (`data/fileStore.ts`) and referenced by `Source.storageKey` (no base64 at rest).
-- AI extraction runs after the KG write; if it fails, the log still persists and is flagged `needsReview` with notes.
+- AI extraction runs after the KG write; if it fails, the log still persists and the error is stored in `extractionQualityNotes`.
+- Extracted facts/updates auto-commit to the knowledge graph (no verification step).
 
 ## Prompt structure
 
 - Prompt configs live in `ai/geminiService.ts` (`DEFAULT_PROMPTS`) and are editable in-app.
 - Ingestion uses the `internalization` prompt; recommendations use `deepPlanning`.
 - Templates receive `{{input}}`, `{{history}}`, `{{profile}}`, and `{{family}}` as context.
+
+## E2E tests (Playwright)
+
+- Install dependencies: `npm install`
+- Run E2E suite: `npm run test:e2e`
+- Optional: run with live AI instead of stubs:
+  `E2E_LIVE_AI=1 GEMINI_API_KEY=... npm run test:e2e`
+
+## Event prep grounding (research toggle)
+
+- Event prep plans use Google Search grounding only when explicitly requested.
+- Add `#research` or `[research]` to the event title/description to enable grounded prep plans.
 
 ## Debugging ingestion
 

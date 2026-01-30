@@ -7,19 +7,19 @@ import {
   CheckCircle,
   Clock,
   Package,
-  BrainCircuit,
-  MapPin,
   Calendar,
+  MapPin,
+  Circle,
 } from 'lucide-react';
 import { generateEventPrepPlan } from '@/ai/geminiService';
-import { getCategoryColor } from '@/shared';
+import { getEventEmoji } from '@/shared';
 
 interface PrepPlanModalProps {
   event: TimelineEvent;
   profile: UserProfile;
   history: MemoryEntry[];
   onClose: () => void;
-  onActivate: (plan: Recommendation) => void;
+  onActivate: (plan: Recommendation, eventId?: string) => void;
 }
 
 export const PrepPlanModal: React.FC<PrepPlanModalProps> = ({
@@ -29,39 +29,93 @@ export const PrepPlanModal: React.FC<PrepPlanModalProps> = ({
   onClose,
   onActivate,
 }) => {
+  const shouldEnableSearch = (evt: TimelineEvent) => {
+    const text = `${evt.title} ${evt.description} ${evt.fields?.location || ''}`.toLowerCase();
+    const markers = [
+      '#research',
+      '[research]',
+      'research:',
+      'with sources',
+      'grounded',
+      'citations',
+    ];
+    return markers.some((marker) => text.includes(marker));
+  };
+
+  const enableSearch = shouldEnableSearch(event);
   const [isGenerating, setIsGenerating] = useState(true);
   const [plan, setPlan] = useState<Recommendation | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+
+  // In-memory cache to avoid re-fetching for same event
+  const cacheRef = React.useRef<Map<string, Recommendation>>(new Map());
 
   useEffect(() => {
     const runSimulation = async () => {
+      // Check cache first
+      const cached = cacheRef.current.get(event.id);
+      if (cached) {
+        setPlan(cached);
+        setIsGenerating(false);
+        return;
+      }
+
+      // Create timeout controller (5 seconds max)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
       try {
-        const result = await generateEventPrepPlan(event, profile, history);
+        const result = await generateEventPrepPlan(event, profile, history, enableSearch);
+        clearTimeout(timeoutId);
+
+        // Cache the result and pre-select all steps
+        cacheRef.current.set(event.id, result);
         setPlan(result);
-      } catch (err) {
-        setError('Neural simulation failed. Horizon unstable.');
+        if (result.steps) {
+          setSelectedIndices(new Set(result.steps.map((_, i) => i)));
+        }
+      } catch (err: any) {
+        clearTimeout(timeoutId);
+
+        // On timeout or error, show graceful fallback
+        if (err?.name === 'AbortError' || controller.signal.aborted) {
+          setError('Request timed out. Try again later.');
+        } else {
+          setError('Unable to generate prep plan.');
+        }
       } finally {
         setIsGenerating(false);
       }
     };
     runSimulation();
-  }, [event]);
+  }, [event.id, enableSearch]);
+
+  const eventEmoji = getEventEmoji(event.title, event.category);
 
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-black/80 backdrop-blur-xl animate-in fade-in duration-300">
-      <div className="max-w-2xl w-full bg-[#0A0C10] border border-white/5 rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+      <div className="max-w-xl w-full bg-[#0A0C10] border border-white/5 rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
         {/* Simplified Header */}
         <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-400 border border-indigo-500/20">
-              <BrainCircuit size={20} />
-            </div>
+            <div className="text-2xl">{eventEmoji}</div>
             <div>
-              <h3 className="text-sm font-black text-white uppercase tracking-widest italic">
-                Preparation Manual
+              <h3 className="text-lg font-black text-white uppercase tracking-tight italic">
+                {event.title}
               </h3>
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">
-                Event Intelligence
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wide flex items-center gap-2">
+                <Calendar size={10} />{' '}
+                {new Date(event.date).toLocaleDateString(undefined, {
+                  weekday: 'long',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+                {event.fields?.location && (
+                  <span className="flex items-center gap-1">
+                    • <MapPin size={10} /> {event.fields.location}
+                  </span>
+                )}
               </p>
             </div>
           </div>
@@ -98,56 +152,63 @@ export const PrepPlanModal: React.FC<PrepPlanModalProps> = ({
             </div>
           ) : (
             plan && (
-              <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                {/* Simplified Event Title Section */}
-                <div className="bg-slate-900/40 border border-white/5 rounded-3xl p-6">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span
-                      className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase border ${getCategoryColor(event.category)}`}
-                    >
-                      {event.category}
-                    </span>
-                    <div className="flex items-center gap-3 text-[10px] text-slate-500 font-bold">
-                      <span className="flex items-center gap-1">
-                        <Calendar size={10} /> {new Date(event.date).toLocaleDateString()}
-                      </span>
-                      {event.fields?.location && (
-                        <span className="flex items-center gap-1 truncate max-w-[150px]">
-                          <MapPin size={10} /> {event.fields.location}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <h4 className="text-xl font-black text-white tracking-tight uppercase italic mb-3">
-                    {event.title}
-                  </h4>
-                  <div className="flex items-start gap-2 p-3 bg-indigo-500/5 rounded-2xl border border-indigo-500/10">
-                    <Sparkles size={14} className="text-indigo-400 mt-0.5 shrink-0" />
-                    <p className="text-[11px] text-indigo-200/70 font-medium leading-relaxed italic">
-                      {plan.rationale}
-                    </p>
-                  </div>
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                {/* One-line AI Insight */}
+                <div className="flex items-start gap-3 p-4 bg-indigo-500/5 rounded-2xl border border-indigo-500/10 mb-6">
+                  <Sparkles size={16} className="text-indigo-400 mt-0.5 shrink-0" />
+                  <p className="text-xs text-indigo-200/80 font-semibold leading-relaxed italic">
+                    {plan.rationale.split('.')[0]}.
+                  </p>
                 </div>
 
-                {/* Simplified Steps */}
+                {/* Checklist Style Steps */}
                 <div className="space-y-4">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 mb-2">
                     <ArrowUpRight size={14} className="text-indigo-500" />
                     <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                      Tactical Roadmap
+                      Prep Checklist
                     </h5>
                   </div>
-                  <div className="space-y-3">
-                    {plan.steps?.map((step, i) => (
-                      <div key={i} className="flex gap-4 items-center group">
-                        <div className="w-8 h-8 rounded-xl bg-slate-900 border border-white/5 flex items-center justify-center text-indigo-400 font-black text-xs shrink-0 group-hover:border-indigo-500/30 transition-colors">
-                          {i + 1}
-                        </div>
-                        <div className="flex-1 p-4 bg-white/[0.02] border border-white/5 rounded-2xl group-hover:bg-white/[0.04] transition-all">
-                          <p className="text-xs font-bold text-slate-300">{step}</p>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="space-y-2" data-testid="prep-steps">
+                    {plan.steps?.map((step, i) => {
+                      const isSelected = selectedIndices.has(i);
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          data-testid="prep-step"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            const next = new Set(selectedIndices);
+                            if (next.has(i)) next.delete(i);
+                            else next.add(i);
+                            setSelectedIndices(next);
+                          }}
+                          className={`w-full flex gap-3 items-center text-left group p-4 border rounded-2xl transition-all ${
+                            isSelected
+                              ? 'bg-indigo-500/10 border-indigo-500/30 ring-1 ring-indigo-500/20'
+                              : 'bg-white/[0.02] border-white/5 opacity-50 hover:opacity-100 hover:bg-white/[0.04]'
+                          }`}
+                        >
+                          <div
+                            className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-all ${
+                              isSelected
+                                ? 'bg-indigo-500 border-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]'
+                                : 'border-slate-700'
+                            }`}
+                          >
+                            {isSelected && <CheckCircle size={12} className="text-white" />}
+                          </div>
+                          <p
+                            className={`text-xs font-bold leading-relaxed transition-colors ${
+                              isSelected ? 'text-indigo-100' : 'text-slate-500'
+                            }`}
+                          >
+                            {step}
+                          </p>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -156,12 +217,12 @@ export const PrepPlanModal: React.FC<PrepPlanModalProps> = ({
                   <div className="flex items-center gap-2">
                     <CheckCircle size={14} className="text-emerald-500" />
                     <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                      Success Criteria
+                      Success Outcome
                     </h5>
                   </div>
-                  <div className="p-5 bg-emerald-500/5 border border-emerald-500/10 rounded-3xl">
-                    <p className="text-[11px] text-emerald-200/70 font-medium leading-relaxed italic">
-                      {plan.definitionOfDone}
+                  <div className="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl">
+                    <p className="text-xs text-emerald-200/80 font-bold leading-relaxed italic">
+                      {plan.definitionOfDone.split('.')[0]}.
                     </p>
                   </div>
                 </div>
@@ -170,36 +231,49 @@ export const PrepPlanModal: React.FC<PrepPlanModalProps> = ({
           )}
         </div>
 
-        {/* Streamlined Footer */}
-        <div className="px-8 py-6 bg-[#08090C] border-t border-white/5 flex justify-between items-center">
-          <div className="flex items-center gap-6">
-            <div className="flex flex-col">
-              <span className="text-[8px] font-black uppercase text-slate-600 tracking-widest mb-0.5">
-                Time
+        {/* Simplified Footer with no overlap */}
+        <div className="px-8 py-6 bg-[#08090C] border-t border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+          <div className="flex flex-1 items-center gap-8 min-w-0 overflow-hidden">
+            <div className="flex flex-col shrink-0">
+              <span className="text-[8px] font-black uppercase text-slate-600 tracking-widest mb-1">
+                Prep Time
               </span>
-              <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5 whitespace-nowrap">
-                <Clock size={10} className="text-indigo-500" /> {plan?.estimatedTime || '---'}
+              <span className="text-[10px] font-bold text-slate-400 flex items-center gap-2 whitespace-nowrap">
+                <Clock size={12} className="text-indigo-500" /> {plan?.estimatedTime || '---'}
               </span>
             </div>
-            <div className="flex flex-col">
-              <span className="text-[8px] font-black uppercase text-slate-600 tracking-widest mb-0.5">
-                Resources
+
+            <div className="w-[1px] h-8 bg-white/5 shrink-0 hidden sm:block" />
+
+            <div className="flex flex-col min-w-0 flex-1">
+              <span className="text-[8px] font-black uppercase text-slate-600 tracking-widest mb-1">
+                Key Asset
               </span>
-              <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5 whitespace-nowrap">
-                <Package size={10} className="text-indigo-500" /> {plan?.inputs?.[0] || 'Standard'}
+              <span className="text-[10px] font-bold text-slate-400 flex items-center gap-2 truncate">
+                <Package size={12} className="text-indigo-500 shrink-0" />
+                <span className="truncate">{plan?.inputs?.[0] || '---'}</span>
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => plan && onActivate(plan)}
-              disabled={isGenerating || !plan}
-              className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-600/20 flex items-center gap-2 transition-all active:scale-95"
-            >
-              Arm Mission
-            </button>
-          </div>
+          <button
+            onClick={() => {
+              if (plan && selectedIndices.size > 0) {
+                const filteredPlan = {
+                  ...plan,
+                  steps: plan.steps.filter((_, i) => selectedIndices.has(i)),
+                };
+                onActivate(filteredPlan, event.id);
+              }
+            }}
+            disabled={isGenerating || !plan || selectedIndices.size === 0}
+            data-testid="prep-execute"
+            className="shrink-0 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:hover:bg-indigo-600 text-white px-8 py-4 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-600/20 active:scale-95 transition-all whitespace-nowrap"
+          >
+            {selectedIndices.size === 0
+              ? 'Select Tasks'
+              : `Add ${selectedIndices.size} ${selectedIndices.size === 1 ? 'Task' : 'Tasks'}`}
+          </button>
         </div>
       </div>
     </div>

@@ -5,13 +5,23 @@ import {
   Wallet,
   Zap,
   Heart,
-  ShieldCheck,
-  Brain,
+  Briefcase,
+  Users,
+  Utensils,
+  Plane,
+  User,
   CheckCircle2,
   ArrowRight,
 } from 'lucide-react';
 import { ProfileCompletionRing } from '@/shared';
-import { FinanceMetrics, BlindSpot, UserProfile, Recommendation, Category } from '@/data';
+import {
+  FinanceMetrics,
+  BlindSpot,
+  UserProfile,
+  Recommendation,
+  Category,
+  AlwaysChip,
+} from '@/data';
 
 interface StatusSidebarProps {
   profile: UserProfile;
@@ -20,8 +30,11 @@ interface StatusSidebarProps {
   financeMetrics?: FinanceMetrics;
   recommendations: Recommendation[];
   onNavigate: (tab: any) => void;
-  onLog?: (input: string) => void;
-  onActivate?: (rec: Recommendation) => void;
+  onActivate?: (rec: Recommendation, eventId?: string) => void;
+  onKeepRecommendation?: (id: string) => void;
+  onRemoveRecommendation?: (id: string) => void;
+  alwaysDoChips?: AlwaysChip[];
+  alwaysWatchChips?: AlwaysChip[];
 }
 
 export const StatusSidebar: React.FC<StatusSidebarProps> = ({
@@ -31,11 +44,39 @@ export const StatusSidebar: React.FC<StatusSidebarProps> = ({
   financeMetrics,
   recommendations,
   onNavigate,
-  onLog,
   onActivate,
+  onKeepRecommendation,
+  onRemoveRecommendation,
+  alwaysDoChips = [],
+  alwaysWatchChips = [],
 }) => {
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
   const highRisks = blindSpots.filter((b) => b.severity === 'high');
+
+  const getCategoryFromLabel = (label: string): Category => {
+    switch (label) {
+      case 'Finance':
+        return Category.FINANCE;
+      case 'Health':
+        return Category.HEALTH;
+      case 'Relationships':
+        return Category.RELATIONSHIPS;
+      case 'Personal':
+        return Category.PERSONAL;
+      case 'Work':
+        return Category.WORK;
+      case 'Social':
+        return Category.SOCIAL;
+      case 'Meals':
+        return Category.MEALS;
+      case 'Travel':
+        return Category.TRAVEL;
+      case 'Spiritual':
+        return Category.SPIRITUAL;
+      default:
+        return Category.GENERAL;
+    }
+  };
 
   // Demo Data for Visualization if empty
   const demoRecs: Recommendation[] = [
@@ -82,9 +123,35 @@ export const StatusSidebar: React.FC<StatusSidebarProps> = ({
   ];
 
   const displayRecs = recommendations.length > 0 ? recommendations : demoRecs;
+  const isDemoRec = (rec: Recommendation) =>
+    rec.ownerId === 'system' || String(rec.id || '').startsWith('demo-');
+  const allowDemoFeedback = import.meta.env.VITE_E2E === '1';
 
   const getDimensionRecs = (cat: Category) =>
     displayRecs.filter((r) => r.category === cat && r.status === 'ACTIVE');
+
+  // Helper to map source/category to dimension for AlwaysChips
+  const getDimensionChips = (chips: AlwaysChip[], cat: Category) => {
+    return chips.filter((c) => {
+      // Direct Map
+      if (c.source === 'finance' && cat === Category.FINANCE) return true;
+      if (c.source === 'health' && cat === Category.HEALTH) return true;
+      if (c.source === 'spiritual' && cat === Category.SPIRITUAL) return true;
+      // Indirect Map (profile/ruleOfLife - map to Personal/Relationships and other human domains)
+      if (
+        ['profile', 'ruleOfLife', 'computed'].includes(c.source) &&
+        (cat === Category.PERSONAL || cat === Category.RELATIONSHIPS)
+      ) {
+        // Simple heuristic: if rationale mentions specific keywords, or just default to Personal
+        const text = (c.label + c.rationale).toLowerCase();
+        if (cat === Category.RELATIONSHIPS && text.match(/social|friend|family|partner|wife|kid/))
+          return true;
+        if (cat === Category.PERSONAL && !text.match(/social|friend|family|partner|wife|kid/))
+          return true;
+      }
+      return false;
+    });
+  };
 
   const DimensionSection = ({
     label,
@@ -102,6 +169,8 @@ export const StatusSidebar: React.FC<StatusSidebarProps> = ({
     color: string;
   }) => {
     const hasRecs = recs.length > 0;
+    const dimensionDoChips = getDimensionChips(alwaysDoChips, getCategoryFromLabel(label));
+    const dimensionWatchChips = getDimensionChips(alwaysWatchChips, getCategoryFromLabel(label));
 
     return (
       <div className="space-y-2">
@@ -111,6 +180,30 @@ export const StatusSidebar: React.FC<StatusSidebarProps> = ({
         </div>
 
         <div className="space-y-2">
+          {/* Always Do / Watch Chips */}
+          {(dimensionDoChips.length > 0 || dimensionWatchChips.length > 0) && (
+            <div className="flex flex-wrap gap-1.5 px-1 mb-2">
+              {dimensionWatchChips.map((chip) => (
+                <div
+                  key={chip.id}
+                  className="px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/20 text-[9px] font-bold text-rose-300 uppercase tracking-wide flex items-center gap-1"
+                  title={chip.rationale}
+                >
+                  <AlertTriangle size={8} /> {chip.label}
+                </div>
+              ))}
+              {dimensionDoChips.map((chip) => (
+                <div
+                  key={chip.id}
+                  className="px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20 text-[9px] font-bold text-indigo-300 uppercase tracking-wide flex items-center gap-1"
+                  title={chip.rationale}
+                >
+                  <CheckCircle2 size={8} /> {chip.label}
+                </div>
+              ))}
+            </div>
+          )}
+
           {hasRecs ? (
             recs.map((rec) => {
               const isExpanded = expandedId === rec.id;
@@ -118,6 +211,8 @@ export const StatusSidebar: React.FC<StatusSidebarProps> = ({
                 <div
                   key={rec.id}
                   onClick={() => setExpandedId(isExpanded ? null : rec.id)}
+                  data-testid="rec-card"
+                  data-rec-id={rec.id}
                   className={`group relative p-3 bg-slate-900/50 border rounded-xl transition-all cursor-pointer ${isExpanded ? 'border-indigo-500/40 bg-indigo-500/5' : 'border-white/5 hover:border-indigo-500/30'}`}
                 >
                   <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-indigo-500 rounded-l-xl opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -163,8 +258,48 @@ export const StatusSidebar: React.FC<StatusSidebarProps> = ({
                         </div>
                       )}
 
+                      {(!isDemoRec(rec) || allowDemoFeedback) &&
+                        (onKeepRecommendation || onRemoveRecommendation) && (
+                          <div className="flex items-center gap-2 pt-2">
+                            {onKeepRecommendation && rec.userFeedback !== 'kept' && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onKeepRecommendation(rec.id);
+                                }}
+                                data-testid="rec-keep"
+                                className="px-3 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-black uppercase tracking-widest text-emerald-300 hover:bg-emerald-500/20 transition-colors"
+                              >
+                                Keep
+                              </button>
+                            )}
+                            {onRemoveRecommendation && rec.status !== 'DISMISSED' && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onRemoveRecommendation(rec.id);
+                                }}
+                                data-testid="rec-remove"
+                                className="px-3 py-1 rounded-lg bg-rose-500/10 border border-rose-500/20 text-[10px] font-black uppercase tracking-widest text-rose-300 hover:bg-rose-500/20 transition-colors"
+                              >
+                                Remove
+                              </button>
+                            )}
+                            {rec.userFeedback === 'kept' && (
+                              <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400">
+                                Kept
+                              </span>
+                            )}
+                            {rec.status === 'DISMISSED' && (
+                              <span className="text-[9px] font-black uppercase tracking-widest text-rose-400">
+                                Removed
+                              </span>
+                            )}
+                          </div>
+                        )}
+
                       <button
-                        onClick={() => onActivate?.(rec)}
+                        onClick={() => onActivate?.(rec, (rec as any).metadata?.eventId)}
                         className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-bold tracking-wide transition-colors flex items-center justify-center gap-2"
                       >
                         Execute Protocol <ArrowRight size={10} />
@@ -213,33 +348,6 @@ export const StatusSidebar: React.FC<StatusSidebarProps> = ({
         </div>
       </div>
 
-      {/* Evening Audit Prompt (After 8PM) */}
-      {(new Date().getHours() >= 20 || new Date().getHours() < 4) && (
-        <div className="bg-gradient-to-br from-indigo-900/40 to-slate-900/40 border border-indigo-500/30 p-4 rounded-2xl relative overflow-hidden group">
-          <div className="absolute inset-0 bg-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-          <div className="flex items-start gap-3 relative z-10">
-            <div className="p-2 bg-indigo-500 rounded-lg shadow-lg shadow-indigo-500/40 animate-pulse">
-              <Zap size={16} className="text-white" fill="currentColor" />
-            </div>
-            <div className="flex-1">
-              <h4 className="text-xs font-black text-white uppercase tracking-wider mb-1">
-                System Audit
-              </h4>
-              <p className="text-[10px] text-indigo-200 leading-relaxed mb-3">
-                Daily cycle complete. Initiate closing protocol to consolidate memory and metrics.
-              </p>
-              <button
-                onClick={() => onLog?.('/audit Closing the day.')}
-                className="w-full py-2 bg-indigo-500 hover:bg-indigo-400 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all shadow-lg text-left pl-3 flex items-center justify-between group/btn"
-              >
-                Initiate Protocol{' '}
-                <div className="pr-3 group-hover/btn:translate-x-1 transition-transform">→</div>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* 2. Critical Risks (Pinned) */}
       {highRisks.length > 0 && (
         <div className="space-y-2">
@@ -287,12 +395,46 @@ export const StatusSidebar: React.FC<StatusSidebarProps> = ({
         />
 
         <DimensionSection
-          label="Growth"
-          icon={<Brain size={12} />}
-          recs={getDimensionRecs(Category.PERSONAL)}
+          label="Work"
+          icon={<Briefcase size={12} />}
+          recs={getDimensionRecs(Category.WORK)}
           metricValue={profile.personal.jobRole}
-          metricLabel="Career Track"
+          metricLabel="Role Focus"
+          color="text-slate-400"
+        />
+
+        <DimensionSection
+          label="Personal"
+          icon={<User size={12} />}
+          recs={getDimensionRecs(Category.PERSONAL)}
+          metricValue={profile.relationship.relationshipStatus}
+          metricLabel="Personal Focus"
           color="text-indigo-500"
+        />
+
+        <DimensionSection
+          label="Social"
+          icon={<Users size={12} />}
+          recs={getDimensionRecs(Category.SOCIAL)}
+          metricValue={profile.relationship.socialEnergy}
+          metricLabel="Social Energy"
+          color="text-sky-500"
+        />
+
+        <DimensionSection
+          label="Meals"
+          icon={<Utensils size={12} />}
+          recs={getDimensionRecs(Category.MEALS)}
+          metricLabel="Nutrition"
+          color="text-lime-500"
+        />
+
+        <DimensionSection
+          label="Travel"
+          icon={<Plane size={12} />}
+          recs={getDimensionRecs(Category.TRAVEL)}
+          metricLabel="Mobility"
+          color="text-teal-500"
         />
 
         <DimensionSection

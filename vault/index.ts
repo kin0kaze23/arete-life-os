@@ -1,7 +1,11 @@
-export { ClaimItem } from './ClaimItem';
-export { ConflictModal } from './ConflictModal';
+export { LifeVaultView } from './LifeVaultView';
 export { MemoryVaultView } from './MemoryVaultView';
-export { SourceViewer } from './SourceViewer';
+export { ConflictModal } from './ConflictModal';
+export { ClaimItem } from './ClaimItem';
 export { VaultLockView } from './VaultLockView';
-export { VaultView } from './VaultView';
-export { VerificationSheet } from './VerificationSheet';
+// export { LifeVaultView } from './LifeVaultView';
+export { IdentityCard } from './IdentityCard';
+export { VaultShell } from './VaultShell';
+export { NeuralDataGrid } from './NeuralDataGrid';
+export { DossierView } from './DossierView';
+export { InitWizard } from './InitWizard';

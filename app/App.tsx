@@ -1,25 +1,37 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, Suspense } from 'react';
 import { useAura } from '@/core';
 import { Sidebar, Header } from '@/layout';
 import { LogBar, CommandPalette } from '@/command';
-import { VaultView, MemoryVaultView, VerificationSheet, VaultLockView } from '@/vault';
-import { ChatView } from '@/chat';
-import { LifeStreamView } from '@/stream';
-import { DashboardView } from '@/dashboard';
-import { SettingsView } from '@/settings';
-import { OnboardingView } from '@/onboarding';
 import { askAura } from '@/ai';
 import { ErrorBoundary } from '@/app/ErrorBoundary';
 import { X, CheckCircle2, User, Database, Settings } from 'lucide-react';
-import { CategorizedFact, ProposedUpdate } from '@/data';
 import { useOnlineStatus, NetworkBanner, Toast } from '@/shared';
+
+const loadVault = () => import('@/vault');
+const loadDashboard = () => import('@/dashboard');
+const loadStream = () => import('@/stream');
+const loadChat = () => import('@/chat');
+const loadSettings = () => import('@/settings');
+const loadOnboarding = () => import('@/onboarding');
+
+const VaultLockView = React.lazy(() => loadVault().then((m) => ({ default: m.VaultLockView })));
+const LifeVaultView = React.lazy(() => loadVault().then((m) => ({ default: m.LifeVaultView })));
+const DashboardView = React.lazy(() => loadDashboard().then((m) => ({ default: m.DashboardView })));
+const LifeStreamView = React.lazy(() => loadStream().then((m) => ({ default: m.LifeStreamView })));
+const ChatView = React.lazy(() => loadChat().then((m) => ({ default: m.ChatView })));
+const SettingsView = React.lazy(() => loadSettings().then((m) => ({ default: m.SettingsView })));
+const OnboardingView = React.lazy(() =>
+  loadOnboarding().then((m) => ({ default: m.OnboardingView }))
+);
+
+const LoadingFallback = <div className="p-6 text-slate-400">Loading...</div>;
 
 const App: React.FC = () => {
   const aura = useAura();
   const [activeTab, setActiveTab] = useState<
     'dashboard' | 'stream' | 'chat' | 'vault' | 'settings'
   >('dashboard');
-  const [vaultSubTab, setVaultSubTab] = useState<'identity' | 'knowledge'>('identity');
+  // const [vaultSubTab, setVaultSubTab] = useState<'identity' | 'knowledge'>('identity'); // Deprecated
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [chatHistory, setChatHistory] = useState<
     {
@@ -31,12 +43,6 @@ const App: React.FC = () => {
   >([]);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [userInput, setUserInput] = useState('');
-
-  // Verification Sheet State
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [currentSourceId, setCurrentSourceId] = useState<string | null>(null);
-  const [pendingFacts, setPendingFacts] = useState<CategorizedFact[]>([]);
-  const [pendingUpdates, setPendingUpdates] = useState<ProposedUpdate[]>([]);
 
   const [toast, setToast] = useState<{
     message: string;
@@ -59,6 +65,12 @@ const App: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeydown);
   }, []);
 
+  useEffect(() => {
+    if (import.meta.env.VITE_E2E === '1' && aura.isUnlocked && aura.isOnboarded) {
+      aura.refreshAura();
+    }
+  }, [aura.isUnlocked, aura.isOnboarded]);
+
   const showToast = (
     message: string,
     type: 'success' | 'info' | 'error' = 'info',
@@ -71,18 +83,20 @@ const App: React.FC = () => {
 
   if (!aura.isUnlocked) {
     return (
-      <VaultLockView
-        hasVault={aura.hasVault}
-        hasLegacyData={aura.hasLegacyData}
-        lockError={aura.lockError}
-        onUnlock={aura.unlock}
-        onSetup={aura.setupVault}
-      />
+      <Suspense fallback={LoadingFallback}>
+        <VaultLockView
+          hasVault={aura.hasVault}
+          hasLegacyData={aura.hasLegacyData}
+          lockError={aura.lockError}
+          onUnlock={aura.unlock}
+          onSetup={aura.setupVault}
+        />
+      </Suspense>
     );
   }
 
   const handleLog = async (e: React.FormEvent, files?: File[]) => {
-    if (e) e.preventDefault();
+    if (e?.preventDefault) e.preventDefault();
     if (!isOnline) {
       showToast('Kernel link offline. Cannot sync signals.', 'error');
       return;
@@ -96,8 +110,7 @@ const App: React.FC = () => {
       return;
     }
     try {
-      // Instant Log: Skip verification
-      await aura.logMemory(inputToProcess, undefined, true);
+      await aura.logMemory(inputToProcess, files, true);
       setUserInput('');
       showToast('Memory Internialized', 'success');
     } catch (err: any) {
@@ -130,26 +143,19 @@ const App: React.FC = () => {
     }
   };
 
-  const commitAll = () => {
-    if (currentSourceId) aura.commitClaims(currentSourceId, pendingFacts, pendingUpdates);
-    setIsSheetOpen(false);
-    setPendingFacts([]);
-    setPendingUpdates([]);
-    setCurrentSourceId(null);
-    showToast('Neural State Converged', 'success');
-  };
-
   if (!aura.isOnboarded) {
     return (
-      <OnboardingView
-        profile={aura.profile}
-        setProfile={aura.setProfile}
-        ruleOfLife={aura.ruleOfLife}
-        setRuleOfLife={aura.setRuleOfLife}
-        onComplete={aura.completeOnboarding}
-        logMemory={async (input) => aura.logMemory(input)}
-        runDeepInitialization={aura.runDeepInitialization}
-      />
+      <Suspense fallback={LoadingFallback}>
+        <OnboardingView
+          profile={aura.profile}
+          setProfile={aura.setProfile}
+          ruleOfLife={aura.ruleOfLife}
+          setRuleOfLife={aura.setRuleOfLife}
+          onComplete={aura.completeOnboarding}
+          logMemory={async (input) => aura.logMemory(input)}
+          runDeepInitialization={aura.runDeepInitialization}
+        />
+      </Suspense>
     );
   }
 
@@ -174,7 +180,6 @@ const App: React.FC = () => {
           refreshTasks={aura.refreshAura}
           onOpenProfile={() => {
             setActiveTab('vault');
-            setVaultSubTab('identity');
           }}
           onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
         />
@@ -190,109 +195,98 @@ const App: React.FC = () => {
 
         <div className="flex-1 overflow-y-auto p-6 md:p-10 no-scrollbar">
           <ErrorBoundary>
-            <div
-              key={`${activeTab}-${aura.activeUserId}`}
-              className="animate-in fade-in slide-in-from-bottom-2 duration-300 h-full"
-            >
-              {activeTab === 'dashboard' && (
-                <DashboardView
-                  {...(aura as any)}
-                  toggleTask={(id) => {
-                    aura.toggleTask(id);
-                    const task = aura.dailyPlan.find((t) => t.id === id);
-                    if (task && !task.completed) {
-                      showToast('Task Optimized', 'success', aura.undoTaskAction, 'Undo');
+            <Suspense fallback={LoadingFallback}>
+              <div
+                key={`${activeTab}-${aura.activeUserId}`}
+                className="animate-in fade-in slide-in-from-bottom-2 duration-300 h-full"
+              >
+                {activeTab === 'dashboard' && (
+                  <DashboardView
+                    {...(aura as any)}
+                    toggleTask={(id) => {
+                      aura.toggleTask(id);
+                      const task = aura.dailyPlan.find((t) => t.id === id);
+                      if (task && !task.completed) {
+                        showToast('Task Optimized', 'success', aura.undoTaskAction, 'Undo');
+                      }
+                    }}
+                    deleteTask={(id) => {
+                      aura.deleteTask(id);
+                      showToast('Task Purged', 'info', aura.undoTaskAction, 'Undo');
+                    }}
+                    memory={aura.memoryItems}
+                    refreshAll={aura.refreshAura}
+                    onNavigate={setActiveTab as any}
+                    logMemory={handleLog}
+                    onToast={showToast}
+                    alwaysDoChips={aura.alwaysDo}
+                    alwaysWatchChips={aura.alwaysWatch}
+                    updateTimelineEvent={aura.updateTimelineEvent}
+                    deleteTimelineEvent={aura.deleteTimelineEvent}
+                  />
+                )}
+                {activeTab === 'vault' && (
+                  <LifeVaultView
+                    profile={aura.profile}
+                    ruleOfLife={aura.ruleOfLife}
+                    claims={aura.claims}
+                    memoryItems={aura.memoryItems}
+                    sources={aura.sources}
+                    updateProfile={(s, f, v) =>
+                      aura.setProfile((prev) => ({
+                        ...prev,
+                        [s]: { ...(prev as any)[s], [f]: v },
+                      }))
                     }
-                  }}
-                  deleteTask={(id) => {
-                    aura.deleteTask(id);
-                    showToast('Task Purged', 'info', aura.undoTaskAction, 'Undo');
-                  }}
-                  memory={aura.memoryItems}
-                  refreshAll={aura.refreshAura}
-                  onNavigate={setActiveTab as any}
-                  logMemory={handleLog}
-                />
-              )}
-              {activeTab === 'vault' && (
-                <div className="space-y-12">
-                  <div className="flex items-center bg-slate-900/60 p-1 rounded-2xl border border-slate-800 w-fit">
-                    <button
-                      onClick={() => setVaultSubTab('identity')}
-                      className={`px-8 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${vaultSubTab === 'identity' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
-                    >
-                      <User size={14} /> Identity Node
-                    </button>
-                    <button
-                      onClick={() => setVaultSubTab('knowledge')}
-                      className={`px-8 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${vaultSubTab === 'knowledge' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
-                    >
-                      <Database size={14} /> Knowledge Graph
-                    </button>
-                  </div>
-                  {vaultSubTab === 'identity' ? (
-                    <VaultView
-                      profile={aura.profile}
-                      ruleOfLife={aura.ruleOfLife}
-                      updateProfile={(s, f, v) =>
-                        aura.setProfile((prev) => ({
-                          ...prev,
-                          [s]: { ...(prev as any)[s], [f]: v },
-                        }))
-                      }
-                      updateRuleOfLife={aura.setRuleOfLife}
-                      updateInnerCircle={(c) =>
-                        aura.setProfile((prev) => ({ ...prev, innerCircle: c }))
-                      }
-                      onSync={aura.refreshAura}
-                    />
-                  ) : (
-                    <MemoryVaultView
-                      claims={aura.claims}
-                      sources={aura.sources}
-                      memoryItems={aura.memoryItems}
-                      onApprove={aura.approveClaims}
-                      onReject={aura.rejectClaims}
-                      onResolve={aura.resolveConflict}
-                      onDelete={aura.deleteClaim}
-                      onUpdate={aura.updateClaim}
-                    />
-                  )}
-                </div>
-              )}
-              {activeTab === 'stream' && (
-                <LifeStreamView
-                  memory={aura.memoryItems}
-                  timelineEvents={aura.timelineEvents}
-                  profile={aura.profile}
-                  addTimelineEvent={aura.addTimelineEvent}
-                  updateTimelineEvent={aura.updateTimelineEvent}
-                  deleteTimelineEvent={aura.deleteTimelineEvent}
-                  activatePrepPlan={aura.activatePrepPlan}
-                  onDeleteFacts={() => {}}
-                />
-              )}
-              {activeTab === 'chat' && (
-                <ChatView
-                  chatHistory={chatHistory}
-                  isProcessing={aura.isProcessing}
-                  scrollRef={scrollRef}
-                  onSendMessage={handleSendMessage}
-                />
-              )}
-              {activeTab === 'settings' && (
-                <SettingsView
-                  isDarkMode={isDarkMode}
-                  ruleOfLife={aura.ruleOfLife}
-                  setRuleOfLife={aura.setRuleOfLife}
-                  toggleDarkMode={() => {}}
-                  exportData={aura.exportData}
-                  importData={aura.importData}
-                  clearAllData={aura.clearAllData}
-                  storageUsage={aura.storageUsage}
-                />
-              )}
-            </div>
+                    updateRuleOfLife={aura.setRuleOfLife}
+                    onApprove={aura.approveClaims}
+                    onReject={aura.rejectClaims}
+                    onResolve={aura.resolveConflict}
+                    onDeleteClaim={aura.deleteClaim}
+                    onDeleteMemory={aura.deleteMemoryItem}
+                    onUpdate={aura.updateClaim}
+                    onSync={aura.refreshAura}
+                    onToast={showToast}
+                    onAdd={async (input) => {
+                      await aura.logMemory(input);
+                      aura.refreshAura({ force: true });
+                    }}
+                  />
+                )}
+                {activeTab === 'stream' && (
+                  <LifeStreamView
+                    memory={aura.memoryItems}
+                    timelineEvents={aura.timelineEvents}
+                    profile={aura.profile}
+                    addTimelineEvent={aura.addTimelineEvent}
+                    updateTimelineEvent={aura.updateTimelineEvent}
+                    deleteTimelineEvent={aura.deleteTimelineEvent}
+                    activatePrepPlan={aura.activatePrepPlan}
+                    onDeleteFacts={() => {}}
+                  />
+                )}
+                {activeTab === 'chat' && (
+                  <ChatView
+                    chatHistory={chatHistory}
+                    isProcessing={aura.isProcessing}
+                    scrollRef={scrollRef}
+                    onSendMessage={handleSendMessage}
+                  />
+                )}
+                {activeTab === 'settings' && (
+                  <SettingsView
+                    isDarkMode={isDarkMode}
+                    ruleOfLife={aura.ruleOfLife}
+                    setRuleOfLife={aura.setRuleOfLife}
+                    toggleDarkMode={() => {}}
+                    exportData={aura.exportData}
+                    importData={aura.importData}
+                    clearAllData={aura.clearAllData}
+                    storageUsage={aura.storageUsage}
+                  />
+                )}
+              </div>
+            </Suspense>
           </ErrorBoundary>
         </div>
 
@@ -300,19 +294,9 @@ const App: React.FC = () => {
           isOpen={isCommandPaletteOpen}
           onClose={() => setIsCommandPaletteOpen(false)}
           onNavigate={setActiveTab}
-          onSync={aura.refreshAura}
+          onSync={() => aura.refreshAura({ force: true })}
           onExport={aura.exportData}
           onReset={aura.clearAllData}
-        />
-        <VerificationSheet
-          isOpen={isSheetOpen}
-          onClose={() => setIsSheetOpen(false)}
-          facts={pendingFacts}
-          updates={pendingUpdates}
-          members={aura.familySpace.members}
-          onCommit={commitAll}
-          onRejectFact={(idx) => setPendingFacts((prev) => prev.filter((_, i) => i !== idx))}
-          onRejectUpdate={(idx) => setPendingUpdates((prev) => prev.filter((_, i) => i !== idx))}
         />
         <LogBar
           userInput={userInput}
@@ -322,6 +306,7 @@ const App: React.FC = () => {
           onLog={handleLog}
           onExport={aura.exportData}
           onReset={aura.clearAllData}
+          memory={aura.memoryItems}
         />
       </main>
     </div>

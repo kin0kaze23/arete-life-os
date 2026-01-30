@@ -341,6 +341,15 @@ const useMemoryByCategory = (category: Category) => {
 
 ## 5. Prompt Flow Optimization
 
+**Status (2026-01-29):** Phase 0 prompt-flow optimization shipped.
+
+- Daily intelligence batch replaces per-log tasks/insights/blind spots.
+- Cadence gating: batch runs daily, deep tasks weekly unless forced.
+- Intake uses Flash‑Lite with Pro retry; compact profile + 10 memory items.
+- Deterministic expense parser added with confidence gating.
+- Daily plan uses Flash with Pro fallback.
+- Optional model router + provider scaffolding added behind `AI_USE_ROUTER=1`.
+
 ### 5.1 Current Prompt Issues
 
 | Issue                               | Location                                             | Impact                              |

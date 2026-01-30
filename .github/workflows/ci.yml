@@ -25,3 +25,97 @@ jobs:
 
       - name: Doctor
         run: npm run doctor
+
+  ui_smoke:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    env:
+      CI: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect UI changes
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            ui:
+              - 'app/**'
+              - 'dashboard/**'
+              - 'command/**'
+              - 'shared/**'
+              - 'layout/**'
+              - 'public/**'
+              - 'stream/**'
+              - 'onboarding/**'
+              - 'vault/**'
+              - 'index.html'
+              - 'index.tsx'
+              - 'metadata.json'
+              - 'vite.config.ts'
+              - 'e2e/**'
+              - 'playwright.config.ts'
+
+      - name: Setup Node
+        if: steps.changes.outputs.ui == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        if: steps.changes.outputs.ui == 'true'
+        run: npm install
+
+      - name: Install Playwright
+        if: steps.changes.outputs.ui == 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: UI Smoke (core loop)
+        if: steps.changes.outputs.ui == 'true'
+        run: ./scripts/run-ui-smoke.sh
+
+      - name: UI Smoke skipped (no UI changes)
+        if: steps.changes.outputs.ui != 'true'
+        run: echo \"No UI changes detected. Skipping UI smoke.\"
+
+  guardrails:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    env:
+      CI: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect core changes
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            core:
+              - 'core/**'
+              - 'api/**'
+              - 'ai/**'
+              - 'data/**'
+
+      - name: Fetch base branch
+        if: steps.changes.outputs.core == 'true'
+        run: git fetch origin ${{ github.base_ref }}
+
+      - name: Cost guardrail (strict)
+        if: steps.changes.outputs.core == 'true'
+        run: ./scripts/cost-guardrail.sh --base origin/${{ github.base_ref }}
+
+      - name: Architecture drift check (strict)
+        if: steps.changes.outputs.core == 'true'
+        run: ./scripts/architecture-drift-check.sh --strict --base origin/${{ github.base_ref }}
+
+      - name: Guardrails skipped (no core changes)
+        if: steps.changes.outputs.core != 'true'
+        run: echo \"No core/AI/backend changes detected. Skipping guardrails.\"

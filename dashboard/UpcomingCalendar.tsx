@@ -1,13 +1,26 @@
 import React from 'react';
 import { TimelineEvent } from '@/data';
-import { Calendar, Clock, MapPin, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, MapPin, ChevronRight, Pencil, Trash2 } from 'lucide-react';
 
 interface UpcomingCalendarProps {
   events: TimelineEvent[];
   onSelectEvent: (event: TimelineEvent) => void;
+  onEditEvent?: (event: TimelineEvent) => void;
+  onDeleteEvent?: (eventId: string) => void;
 }
 
-export const UpcomingCalendar: React.FC<UpcomingCalendarProps> = ({ events, onSelectEvent }) => {
+const truncateTitle = (title: string, maxWords = 4): string => {
+  const words = title.split(' ');
+  if (words.length <= maxWords) return title;
+  return words.slice(0, maxWords).join(' ') + '…';
+};
+
+export const UpcomingCalendar: React.FC<UpcomingCalendarProps> = ({
+  events,
+  onSelectEvent,
+  onEditEvent,
+  onDeleteEvent,
+}) => {
   const upcomingEvents = events
     .filter((e) => new Date(e.date).getTime() > Date.now())
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -70,6 +83,8 @@ export const UpcomingCalendar: React.FC<UpcomingCalendarProps> = ({ events, onSe
                 <div
                   key={event.id}
                   onClick={() => onSelectEvent(event)}
+                  data-testid="event-card"
+                  data-event-id={event.id}
                   className="group flex items-stretch gap-4 p-3 bg-[#0A0C10] border border-white/5 rounded-2xl hover:bg-indigo-500/[0.03] hover:border-indigo-500/30 transition-all cursor-pointer relative overflow-hidden active:scale-[0.98]"
                 >
                   {/* Date Pillar */}
@@ -83,8 +98,11 @@ export const UpcomingCalendar: React.FC<UpcomingCalendarProps> = ({ events, onSe
                   {/* Content */}
                   <div className="flex-1 min-w-0 py-1 flex flex-col justify-center">
                     <div className="flex items-center gap-2 mb-1">
-                      <h4 className="text-[13px] font-bold text-slate-200 group-hover:text-white transition-colors truncate">
-                        {event.title}
+                      <h4
+                        className="text-[13px] font-bold text-slate-200 group-hover:text-white transition-colors"
+                        title={event.title}
+                      >
+                        {truncateTitle(event.title, 6)}
                       </h4>
                       {event.metadata?.isPriority && (
                         <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
@@ -109,8 +127,32 @@ export const UpcomingCalendar: React.FC<UpcomingCalendarProps> = ({ events, onSe
                     </div>
                   </div>
 
-                  {/* Action Hint */}
-                  <div className="flex items-center pr-1 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-1.5 pr-1 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
+                    {onEditEvent && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditEvent(event);
+                        }}
+                        className="w-7 h-7 rounded-full bg-slate-800/80 hover:bg-amber-500/20 flex items-center justify-center text-slate-400 hover:text-amber-400 border border-white/5 hover:border-amber-500/30 transition-all"
+                        title="Edit event"
+                      >
+                        <Pencil size={12} />
+                      </button>
+                    )}
+                    {onDeleteEvent && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteEvent(event.id);
+                        }}
+                        className="w-7 h-7 rounded-full bg-slate-800/80 hover:bg-rose-500/20 flex items-center justify-center text-slate-400 hover:text-rose-400 border border-white/5 hover:border-rose-500/30 transition-all"
+                        title="Delete event"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    )}
                     <div className="w-7 h-7 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/20">
                       <ChevronRight size={14} />
                     </div>

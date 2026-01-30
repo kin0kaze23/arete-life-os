@@ -1,4 +1,4 @@
-import { Category, MemoryEntry } from '../data/types';
+import { Category, MemoryEntry, UserProfile } from '../data/types';
 
 export const HYPER_PERSONALIZED_PROMPT = `
 You are the Chief of Staff for a high-performance individual within the Areté framework. Your task is to provide hyper-personalized, tactical guidance based on a deep analysis of their Life OS data to achieve excellence (Areté).
@@ -10,15 +10,18 @@ INPUT DATA:
 - FINANCE_METRICS: {{financeMetrics}}
 - MISSING_DATA: {{missingData}}
 - CURRENT_DATE: {{currentDate}}
+- USER_FEEDBACK: {{feedback}}
+- VERIFIED_FACTS: {{verifiedFacts}}
 
 INSTRUCTIONS:
-1. DATA-GROUNDED RATIONALE: Every recommendation MUST reference a specific fact from MEMORY_CONTEXT or a field in ACTIVE_PROFILE.
+1. DATA-GROUNDED RATIONALE: Every recommendation MUST reference a specific fact from MEMORY_CONTEXT, VERIFIED_FACTS, or a field in ACTIVE_PROFILE. Prefer VERIFIED_FACTS as highest-confidence data.
 2. VALUE ALIGNMENT: Check if tasks align with the user's Spiritual coreValues. Flag "Moral Friction" if they contradict.
 3. TACTICAL PRECISION: Provide an "Operating Manual" for every task. Never leave the user hanging.
 4. DEFINITION OF DONE (DoD): Specify exactly what "completed" looks like for every item.
 5. FINANCE NUMBERS: If FINANCE_METRICS is present, include daily/weekly budgets and savings rate in finance guidance.
 6. HEALTH SAFETY: If ACTIVE_PROFILE.health.conditions includes "fatty liver", provide non-diagnostic guidance (diet pattern, alcohol avoidance, activity targets) and suggest clinician follow-up for symptoms or abnormal labs.
 7. MISSING DATA: If MISSING_DATA is non-empty, include a "missingData" list with up to 3 items that would improve confidence.
+8. FEEDBACK LEARNING: If USER_FEEDBACK is present, learn from it. Do NOT repeat recommendations the user previously removed. Prioritize patterns similar to recommendations the user kept.
 
 OUTPUT SCHEMA:
 {
@@ -61,11 +64,30 @@ RULES:
 1. Do NOT invent facts. If uncertain, create a Needs Review item with 1-3 clarifying questions.
 2. Prefer concise, structured outputs. Use numbers/dates only if explicitly present.
 3. Always assign: intent, item type, domain, ownerId, confidence (0-1).
-4. If input implies future date/time, create an event item (type: event). Resolve relative dates (e.g., "tomorrow", "next Friday") using the provided CURRENT_DATE.
-5. For events, explicitly extract "location" and "time" into fields if mentioned. If "today" or "tomorrow" is mentioned, resolve to absolute YYYY-MM-DD.
-6. If input implies a routine ("daily", "weekly"), create a habit item (type: habit).
-6. If input is a link or file-only, create document/link items with metadata.
-7. If profile/config updates are implied, emit profile_update/config_update items and propose updates.
+4. If input implies future date/time or specific "need to do", create a task item (type: task_request) or event item (type: event). Resolve relative dates (e.g., "tomorrow", "next Friday") using the provided CURRENT_DATE.
+5. For events, explicitly rephrase the title to be 1-4 words (e.g., "Lunch with Sarah" not "i'm having lunch with sarah tomorrow"). Extract "location" and "time" into fields if mentioned.
+   EXAMPLES:
+   - "tennis tomorrow with John at 10 PM" → { type: "event", title: "Tennis with John", date: "[tomorrow's date]", time: "22:00" }
+   - "coffee at Starbucks Orchard at 3pm" → { type: "event", title: "Coffee at Starbucks Orchard", time: "15:00", location: "Starbucks Orchard" }
+6. HABIT vs TASK: Only create a "habit" item if the user implies a *recurring* automatic routine (e.g., "every day", "daily"). If the user says "tomorrow I need to...", it is a TASK (type: task_request).
+7. If input is a link or file-only, create document/link items with metadata.
+8. If profile/config updates are implied, emit profile_update/config_update items and propose updates.
+
+PHRASEOLOGY & STRUCTURE:
+10. REPHRASING RULE: titles for tasks and events MUST be rephrased into concise "Action Titles" (1-4 words). Do NOT use "I need to", "tomorrow I will", or "don't forget".
+    - BAD: "tomorrow i need to make breakfast for my wife"
+    - GOOD: "Make Breakfast for Wife"
+11. MULTI-TASK SPLITTING: If the user lists multiple distinct actions (e.g., "I need to do A, B, and C"), emit multiple items in the "items" array.
+    - EXAMPLE: "tomorrow i need to buy eggs and wash the car" → two task_request items.
+
+STRUCTURED TEMPLATE HANDLING:
+12. EVENING AUDIT TEMPLATE (🌙 EVENING AUDIT):
+   When input contains "🌙 EVENING AUDIT" or "EVENING AUDIT" header:
+   a) Create a "memory" item for the audit log.
+   b) CRITICAL: If "INTENT FOR TOMORROW" contains actionable text:
+      - Create a SEPARATE "task_request" item.
+      - REPHRASE the intent into a 1-4 word title.
+      - fields.date: Tomorrow's date (YYYY-MM-DD).
 
 OUTPUT JSON ONLY (no markdown), schema:
 {
@@ -78,25 +100,77 @@ OUTPUT JSON ONLY (no markdown), schema:
       "domain": "Health|Finance|Relationships|Spiritual|Work|Personal|General",
       "ownerId": "user_id|FAMILY_SHARED",
       "horizon": "now|soon|always|unknown",
-      "title": "short title",
-      "content": "raw or cleaned content",
+      "title": "Concise Action Title (1-4 words)",
+      "content": "Full rephrased description",
       "confidence": 0.0,
       "tags": ["string"],
-      "fields": { "date": "YYYY-MM-DD", "time": "HH:MM", "amount": 123, "location": "string", "people": ["string"] },
+      "fields": { "date": "YYYY-MM-DD", "time": "HH:MM", "amount": 123, "location": "string", "people": ["string"], "priority": "high|medium|low" },
       "sourceId": "source_id_if_file",
       "dedupeKey": "string"
     }
   ],
-  "facts": [
-    { "fact": "string", "category": "Health|Finance|Relationships|Spiritual|Work|Personal|General", "confidence": 0.0, "ownerId": "user_id", "eventDate": "YYYY-MM-DD", "sourceType": "text|pdf|image" }
-  ],
-  "proposedUpdates": [
-    { "section": "string", "field": "string", "oldValue": "string", "newValue": "string", "reasoning": "string", "confidence": 0.0, "targetUserId": "user_id" }
-  ],
-  "missingData": ["string"],
+  "facts": [],
+  "proposedUpdates": [],
+  "missingData": [],
   "needsReview": { "reason": "string", "questions": ["string"] },
   "confidence": 0.0,
   "notes": "string"
+}
+`;
+
+export const DAILY_INTELLIGENCE_BATCH_PROMPT = `
+You are the Areté Intelligence Core. Generate a daily batch of tasks, insights, and blind spots grounded in verified data.
+
+INPUT DATA:
+- PROFILE_SUMMARY: {{profileSummary}}
+- DAILY_DIGEST: {{dailyDigest}}
+- FAMILY_CONTEXT: {{family}}
+- FINANCE_METRICS: {{financeMetrics}}
+- MISSING_DATA: {{missingData}}
+- CURRENT_DATE: {{currentDate}}
+- USER_FEEDBACK: {{feedback}}
+- VERIFIED_FACTS: {{verifiedFacts}}
+
+RULES:
+1. Ground every output in PROFILE_SUMMARY, DAILY_DIGEST, or VERIFIED_FACTS. Do not invent facts.
+2. Return concise, actionable tasks with clear titles.
+3. Insights should be short and specific (2-4 sentences).
+4. Blind spots should be critical but constructive.
+5. If data is insufficient, return empty arrays (do not hallucinate).
+
+OUTPUT JSON ONLY:
+{
+  "tasks": [
+    {
+      "title": "Clear action-oriented title",
+      "category": "Work|Health|Finance|Relationships|Spiritual|Personal|General",
+      "priority": "low|medium|high",
+      "methodology": "Short how-to guidance",
+      "steps": ["Step 1", "Step 2"],
+      "estimatedTime": "15m",
+      "inputs": ["Thing needed"],
+      "definitionOfDone": "Clear completion criteria",
+      "risks": ["Risk 1"]
+    }
+  ],
+  "insights": [
+    {
+      "title": "Insight headline",
+      "description": "What the pattern implies and why it matters",
+      "category": "Work|Health|Finance|Relationships|Spiritual|Personal|General",
+      "confidence": 0.0
+    }
+  ],
+  "blindSpots": [
+    {
+      "title": "Blind spot headline",
+      "description": "Risk or gap and its consequence",
+      "category": "Work|Health|Finance|Relationships|Spiritual|Personal|General",
+      "severity": "low|medium|high"
+    }
+  ],
+  "missingData": ["item"],
+  "notes": "Any caveats"
 }
 `;
 
@@ -161,6 +235,84 @@ Return an array of DailyTask objects:
 RETURN JSON ARRAY ONLY.
 `;
 
+/**
+ * Extracts recent recommendation feedback (kept/removed) from memory items
+ * so AI can learn from user preferences and avoid repeating dismissed recommendations.
+ */
+export const buildFeedbackContext = (
+  memory: MemoryEntry[],
+  maxItems = 20
+): { action: string; title: string; category: string }[] => {
+  return memory
+    .filter((m) => m.metadata?.type === 'recommendation_feedback')
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .slice(0, maxItems)
+    .map((m) => {
+      const payload = m.metadata?.payload as any;
+      return {
+        action: payload?.action || 'unknown',
+        title: m.content?.replace(/^(Kept|Removed) recommendation:\s*/i, '') || '',
+        category: payload?.category || '',
+      };
+    });
+};
+
+export const buildCompactProfile = (profile: UserProfile) => ({
+  id: profile.id,
+  name: profile.identify?.name,
+  location: profile.identify?.location,
+  role: profile.role,
+  personal: {
+    jobRole: profile.personal?.jobRole,
+    company: profile.personal?.company,
+    interests: profile.personal?.interests,
+  },
+  health: {
+    sleepTime: profile.health?.sleepTime,
+    wakeTime: profile.health?.wakeTime,
+    activities: profile.health?.activities,
+    activityFrequency: profile.health?.activityFrequency,
+    conditions: profile.health?.conditions,
+  },
+  finances: {
+    income: profile.finances?.income,
+    fixedCosts: profile.finances?.fixedCosts,
+    variableCosts: profile.finances?.variableCosts,
+  },
+  relationship: {
+    relationshipStatus: profile.relationship?.relationshipStatus,
+    socialEnergy: profile.relationship?.socialEnergy,
+    socialGoals: profile.relationship?.socialGoals,
+  },
+  spiritual: {
+    coreValues: profile.spiritual?.coreValues,
+    worldview: profile.spiritual?.worldview,
+    practicePulse: profile.spiritual?.practicePulse,
+  },
+});
+
+export const buildDailyDigest = (
+  memory: MemoryEntry[],
+  maxItems = 12,
+  windowMs = 24 * 60 * 60 * 1000,
+  maxContentLength = 1000
+): Array<{ content: string; category: Category; timestamp: number }> => {
+  const now = Date.now();
+  const trimContent = (value: string) => {
+    if (maxContentLength <= 0 || value.length <= maxContentLength) return value;
+    return `${value.slice(0, maxContentLength)}...`;
+  };
+  return memory
+    .filter((item) => now - item.timestamp <= windowMs)
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .slice(0, maxItems)
+    .map((item) => ({
+      content: trimContent(item.content),
+      category: item.category,
+      timestamp: item.timestamp,
+    }));
+};
+
 export const buildMemoryContext = (
   memory: MemoryEntry[],
   categories: Category[],
@@ -168,12 +320,13 @@ export const buildMemoryContext = (
 ): MemoryEntry[] => {
   const now = Date.now();
   const dayMs = 24 * 60 * 60 * 1000;
+  const categorySet = new Set(categories);
 
   const scored = memory.map((item) => ({
     item,
     score:
       (now - item.timestamp < dayMs ? 100 : 0) +
-      (categories.includes(item.category) ? 50 : 0) +
+      (categorySet.has(item.category) ? 50 : 0) +
       (100 - Math.min(100, ((now - item.timestamp) / (7 * dayMs)) * 100)),
   }));
 

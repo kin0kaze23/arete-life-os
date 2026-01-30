@@ -116,6 +116,11 @@ export interface Claim {
   timestamp: number;
 }
 
+export interface Language {
+  language: string;
+  proficiency: 'Native' | 'Fluent' | 'Intermediate' | 'Basic';
+}
+
 export interface UserProfile {
   id: string;
   role: UserRole;
@@ -128,26 +133,32 @@ export interface UserProfile {
     name: string;
     birthday: string;
     location: string;
-    origin: string;
+    origin: string; // Hometown
     ethnicity: string;
+    languages?: Language[];
     lastUpdated?: number;
   };
   personal: {
-    status: string;
     jobRole: string;
     company: string;
     interests: string[];
+    personalityType?: string; // MBTI / Enneagram
+    communicationStyle?: string; // Direct, Storyteller, etc.
+    archetype?: string; // The Creator, The Sage, etc.
     lastUpdated?: number;
   };
   health: {
     height: string;
     weight: string;
+    bloodPressure?: string;
+    restingHeartRate?: string;
     sleepTime: string;
     wakeTime: string;
     activities: string[];
     activityFrequency: string;
     conditions: string[];
     medications: string[];
+    chronotype?: string; // Lark / Owl
     lastUpdated?: number;
   };
   finances: {
@@ -157,11 +168,17 @@ export interface UserProfile {
     income: string;
     fixedCosts: string;
     variableCosts: string;
+    investmentStrategy?: string; // Aggressive, Conservative
     lastUpdated?: number;
   };
   relationship: {
+    relationshipStatus: string; // Moved here/Formalized
     livingArrangement: string;
     socialEnergy: string;
+    loveLanguage?: string;
+    attachmentStyle?: string; // Secure, Anxious, Avoidant
+    familyDynamic?: string;
+    friendshipStyle?: string; // Low maintenance, High frequency
     dailyCommitments: string[];
     socialGoals: string[];
     lastUpdated?: number;
@@ -218,7 +235,9 @@ export interface MemoryItem {
     type?: string;
     payload?: unknown;
     source?: string;
+    sources?: string[]; // Added for multi-source grounding
     version?: number;
+    eventId?: string;
   };
 }
 export type MemoryEntry = MemoryItem;
@@ -331,6 +350,7 @@ export interface DailyTask {
     risks: string[];
     goals: string[];
   };
+  eventId?: string;
 }
 
 export interface Goal {

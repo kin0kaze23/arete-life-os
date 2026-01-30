@@ -5,3 +5,4 @@ export * from './design-tokens';
 export * from './utils';
 export * from './categoryIcons';
 export * from './Toast';
+export * from './emojiHelpers';

@@ -1,6 +1,6 @@
 # System Architecture
 
-> Last updated: 2026-01-27 | Version: 3.2.0
+> Last updated: 2026-01-28 | Version: 3.3.0
 
 ## Overview
 
@@ -59,24 +59,17 @@ areté-life-os/
 │   ├── PrepPlanModal.tsx      # Event preparation planner
 │   └── index.ts
 ├── core/                      # Central state management
-│   ├── useAura.ts             # THE central hook (1200+ lines)
+│   ├── useAura.ts             # THE central hook (2200+ lines)
 │   └── index.ts
 ├── dashboard/                 # Dashboard components
 │   ├── DashboardView.tsx      # Main layout
-│   ├── AlwaysPanels.tsx       # Always-do / always-watch chips
-│   ├── DomainPanels.tsx       # 5-pillar domain cards
-│   ├── DoWatchSection.tsx     # Daily tasks + blind spots
-│   ├── DigestView.tsx         # Daily digest
-│   ├── RecommendationsWidget.tsx
-│   ├── ReviewCard.tsx         # Task/recommendation card
+│   ├── FocusList.tsx          # Daily tasks + habits
+│   ├── StatusSidebar.tsx      # Profile + recommendations + always chips
 │   ├── UpcomingCalendar.tsx   # Calendar widget
 │   ├── EventPrepPopup.tsx     # AI prep recommendations
-│   ├── BlindSideRadarCard.tsx # Blind spot radar
-│   ├── FamilyDashboardView.tsx
-│   ├── APIErrorCard.tsx       # Error state
+│   ├── EventEditSheet.tsx     # Event edit form
 │   ├── SystemStatusFooter.tsx # System health indicator
-│   ├── corePillars.tsx        # Pillar visualization
-│   └── domainUtils.ts         # Coverage scoring
+│   └── index.ts
 ├── data/                      # Data model & persistence
 │   ├── types.ts               # Complete domain types (466 lines, 30+ interfaces)
 │   ├── cryptoVault.ts         # AES-256-GCM vault encryption
@@ -116,7 +109,6 @@ areté-life-os/
 │   ├── VaultView.tsx          # Profile editor
 │   ├── MemoryVaultView.tsx    # Knowledge graph browser
 │   ├── VaultLockView.tsx      # Lock screen (passphrase + rate limit)
-│   ├── VerificationSheet.tsx  # Fact verification workflow
 │   ├── ConflictModal.tsx      # Claim conflict resolution
 │   ├── SourceViewer.tsx       # Source file viewer
 │   ├── ClaimItem.tsx          # Individual claim display
@@ -188,42 +180,49 @@ LogBar (text/files) → LogRouter.classifyIntent()
                     → LogRouter.resolveTargetUser()
                     → POST /api/gemini (action: processInput)
                     → LOG_BAR_INGEST_PROMPT → IntakeResult
-                    → VerificationSheet (user approval)
-                    → commitClaims() + appendMemoryItems()
+                    → Auto-commit claims + appendMemoryItems()
 ```
 
 1. User enters text or attaches files in the LogBar
 2. `LogRouter` classifies intent (`MEMORY | QUERY | TASK | CONFIG`) and resolves target user
 3. Serverless function sends input + profile context to Gemini with `LOG_BAR_INGEST_PROMPT`
 4. AI returns structured `IntakeResult` with extracted facts, proposed updates, confidence
-5. User reviews and approves via `VerificationSheet`
-6. Approved data is committed to knowledge graph (Claims + MemoryItems)
+5. Intake output auto-commits claims and profile updates
+6. Data is committed to knowledge graph (Claims + MemoryItems)
 
 ### Cycle 2: Analyze (AI Inference)
 
 ```
-debouncedRefreshAura() (triggered after commit)
-  → generateDeepTasks()       → Recommendation[] + DailyTask[]
-  → generateBlindSpots()      → BlindSpot[]
-  → generateInsights()        → ProactiveInsight[]
-  → generateDailyPlan()       → DailyTask[] (prioritized)
+debouncedRefreshAura() (triggered after commit, 500ms debounce)
+  → Promise.allSettled([          ← All 4 generators run IN PARALLEL
+      generateTasks()             → DailyTask[]
+      generateInsights()          → ProactiveInsight[]
+      generateBlindSpots()        → BlindSpot[]
+      generateDeepTasks()         → Recommendation[] + DailyTask[]
+    ])
 ```
 
-1. After data changes, a debounced (1s) refresh triggers
-2. AI generates personalized recommendations grounded in profile + memory
-3. Blind spots and proactive insights are detected
-4. Daily plan is generated with priority ordering
-5. All results stored in reactive state
+**Context passed to each generator:**
+
+- `history` — category-filtered memory (30-50 items via `buildMemoryContext`)
+- `feedback` — user kept/removed signals (via `buildFeedbackContext`)
+- `verifiedFacts` — top 20 COMMITTED claims from knowledge graph
+- `financeMetrics`, `missingData`, `familyMembers`
+
+1. After data changes, a debounced (500ms) refresh triggers
+2. All 4 generators run in parallel via `Promise.allSettled` (3x faster than sequential)
+3. Each generator receives category-filtered memory, user feedback, and verified facts
+4. AI generates recommendations grounded in profile + memory + committed claims
+5. Partial failures are gracefully handled (fulfilled results applied, rejected ignored)
+6. All results stored in reactive state
 
 ### Cycle 3: Display (Dashboard)
 
 ```
 DashboardView renders reactive state:
-  ├─ AlwaysPanels       (always-do / always-watch chips)
-  ├─ DoWatchSection     (daily tasks + blind spots)
-  ├─ DomainPanels       (5 life pillars with coverage scores)
-  ├─ Recommendations    (actionable suggestions per domain)
-  └─ Calendar           (upcoming events)
+  ├─ FocusList           (daily tasks + habits)
+  ├─ UpcomingCalendar    (upcoming events)
+  └─ StatusSidebar       (profile + recommendations + always chips)
 ```
 
 ### Cycle 4: Execute (User Action)
@@ -296,6 +295,8 @@ All application state flows through the `useAura()` hook in `core/useAura.ts`:
 │  ├─ auditLogs: AuditLogEntry[]                         │
 │  ├─ timelineEvents: TimelineEvent[]                    │
 │  ├─ ruleOfLife: RuleOfLife                              │
+│  ├─ alwaysDo: AlwaysChip[]                             │
+│  ├─ alwaysWatch: AlwaysChip[]                          │
 │  └─ prompts: PromptConfig[]                            │
 │                                                        │
 │  Auto-behaviors:                                       │
@@ -371,11 +372,9 @@ App.tsx
    ├─ Sidebar.tsx          (tab navigation, domain health)
    ├─ Content Area
    │  ├─ DashboardView     (tab: dashboard)
-   │  │  ├─ AlwaysPanels
-   │  │  ├─ DoWatchSection
-   │  │  ├─ DomainPanels
-   │  │  ├─ RecommendationsWidget
-   │  │  └─ UpcomingCalendar
+   │  │  ├─ FocusList
+   │  │  ├─ UpcomingCalendar
+   │  │  └─ StatusSidebar
    │  ├─ LifeStreamView    (tab: stream)
    │  │  ├─ TimelineView
    │  │  ├─ HistoryView
@@ -386,7 +385,6 @@ App.tsx
    │  └─ SettingsView        (tab: settings)
    ├─ LogBar.tsx             (sticky bottom, all tabs)
    ├─ CommandPalette.tsx     (Cmd+K overlay)
-   └─ VerificationSheet.tsx  (modal: fact approval)
 ```
 
 ---

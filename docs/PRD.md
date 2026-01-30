@@ -61,7 +61,7 @@ A personal Chief of Staff that:
 | Confidence scoring (profile match, corroboration, source type) | Done   | `claimUtils.ts`           |
 | Source tracking (text, PDF, image)                             | Done   | `types.ts: Source`        |
 | Content deduplication via hash                                 | Done   | `utils.ts: contentHash()` |
-| User verification workflow                                     | Done   | `VerificationSheet.tsx`   |
+| User verification workflow (auto-commit)                       | Done   | —                         |
 
 ### 4.3 AI-Powered Analysis
 
@@ -81,17 +81,15 @@ A personal Chief of Staff that:
 
 ### 4.4 Dashboard
 
-| Requirement                                                              | Status | Implementation              |
-| ------------------------------------------------------------------------ | ------ | --------------------------- |
-| Do items (daily tasks with priority, steps, risks)                       | Done   | `DoWatchSection.tsx`        |
-| Watch items (blind spots with severity, actions)                         | Done   | `BlindSideRadarCard.tsx`    |
-| Always-Do / Always-Watch chips                                           | Done   | `AlwaysPanels.tsx`          |
-| 5-pillar domain panels (Health, Finance, Relationships, Spiritual, Work) | Done   | `DomainPanels.tsx`          |
-| Coverage scoring per pillar                                              | Done   | `domainUtils.ts`            |
-| Recommendations with keep/remove feedback                                | Done   | `RecommendationsWidget.tsx` |
-| Upcoming calendar                                                        | Done   | `UpcomingCalendar.tsx`      |
-| Event prep popup                                                         | Done   | `EventPrepPopup.tsx`        |
-| System status footer                                                     | Done   | `SystemStatusFooter.tsx`    |
+| Requirement                                        | Status | Implementation           |
+| -------------------------------------------------- | ------ | ------------------------ |
+| Do items (daily tasks with priority, steps, risks) | Done   | `FocusList.tsx`          |
+| Watch items (blind spots with severity, actions)   | Done   | `StatusSidebar.tsx`      |
+| Always-Do / Always-Watch chips                     | Done   | `StatusSidebar.tsx`      |
+| Recommendations with keep/remove feedback          | Done   | `StatusSidebar.tsx`      |
+| Upcoming calendar                                  | Done   | `UpcomingCalendar.tsx`   |
+| Event prep popup                                   | Done   | `EventPrepPopup.tsx`     |
+| System status footer                               | Done   | `SystemStatusFooter.tsx` |
 
 ### 4.5 Input System (LogBar)
 
@@ -107,12 +105,12 @@ A personal Chief of Staff that:
 
 ### 4.6 Life Stream
 
-| Requirement            | Status | Implementation     |
-| ---------------------- | ------ | ------------------ |
-| Timeline visualization | Done   | `TimelineView.tsx` |
-| Chronological history  | Done   | `HistoryView.tsx`  |
-| Audit log viewer       | Done   | `AuditLogView.tsx` |
-| Daily digest           | Done   | `DigestView.tsx`   |
+| Requirement            | Status  | Implementation     |
+| ---------------------- | ------- | ------------------ |
+| Timeline visualization | Done    | `TimelineView.tsx` |
+| Chronological history  | Done    | `HistoryView.tsx`  |
+| Audit log viewer       | Done    | `AuditLogView.tsx` |
+| Daily digest           | Removed | —                  |
 
 ### 4.7 Vault Management
 
@@ -127,13 +125,13 @@ A personal Chief of Staff that:
 
 ### 4.8 Multi-User (Family Space)
 
-| Requirement                         | Status | Implementation                          |
-| ----------------------------------- | ------ | --------------------------------------- |
-| Family space with multiple profiles | Done   | `types.ts: FamilySpace`                 |
-| Per-user data ownership             | Done   | `ownerId` on all entities               |
-| FAMILY_SHARED ownership             | Done   | `LogRouter.resolveTargetUser()`         |
-| Family dashboard view               | Done   | `FamilyDashboardView.tsx`               |
-| Privacy settings per user           | Done   | `types.ts: UserProfile.privacySettings` |
+| Requirement                         | Status  | Implementation                          |
+| ----------------------------------- | ------- | --------------------------------------- |
+| Family space with multiple profiles | Done    | `types.ts: FamilySpace`                 |
+| Per-user data ownership             | Done    | `ownerId` on all entities               |
+| FAMILY_SHARED ownership             | Done    | `LogRouter.resolveTargetUser()`         |
+| Family dashboard view               | Removed | —                                       |
+| Privacy settings per user           | Done    | `types.ts: UserProfile.privacySettings` |
 
 ---
 

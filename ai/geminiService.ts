@@ -11,9 +11,14 @@ import {
   UserProfile,
   FinanceMetrics,
   AlwaysChip,
+  Claim,
   RuleOfLife,
 } from '../data/types';
-import { HYPER_PERSONALIZED_PROMPT, LOG_BAR_INGEST_PROMPT } from './prompts';
+import {
+  HYPER_PERSONALIZED_PROMPT,
+  LOG_BAR_INGEST_PROMPT,
+  DAILY_INTELLIGENCE_BATCH_PROMPT,
+} from './prompts';
 
 const callGemini = async <T>(action: string, payload: Record<string, unknown>, fallback: T) => {
   try {
@@ -39,6 +44,7 @@ type PromptContext = {
   familyMembers?: UserProfile[];
   financeMetrics?: FinanceMetrics | null;
   missingData?: string[];
+  claims?: Claim[];
 };
 
 export const askAura = async (
@@ -69,6 +75,7 @@ export const generateDeepTasks = async (
       promptConfig,
       financeMetrics: context?.financeMetrics,
       missingData: context?.missingData,
+      claims: context?.claims,
     },
     { recommendations: [], tasks: [] }
   );
@@ -76,11 +83,12 @@ export const generateDeepTasks = async (
 export const generateEventPrepPlan = async (
   event: TimelineEvent,
   profile: UserProfile,
-  history: MemoryEntry[]
+  history: MemoryEntry[],
+  enableSearch = true
 ): Promise<Recommendation> =>
   callGemini(
     'generateEventPrepPlan',
-    { event, profile, history },
+    { event, profile, history, enableSearch },
     {
       id: `prep-${Date.now()}`,
       ownerId: profile.id,
@@ -121,7 +129,7 @@ export const processInput = async (
       promptConfig,
       familyMembers,
       fileMeta,
-      currentDate: new Date().toISOString(),
+      currentDate: new Date().toLocaleDateString('en-CA'), // YYYY-MM-DD in local time
     },
     {}
   );
@@ -141,6 +149,7 @@ export const generateTasks = async (
       familyMembers: context?.familyMembers,
       financeMetrics: context?.financeMetrics,
       missingData: context?.missingData,
+      claims: context?.claims,
     },
     []
   );
@@ -160,6 +169,7 @@ export const generateInsights = async (
       familyMembers: context?.familyMembers,
       financeMetrics: context?.financeMetrics,
       missingData: context?.missingData,
+      claims: context?.claims,
     },
     []
   );
@@ -179,8 +189,29 @@ export const generateBlindSpots = async (
       familyMembers: context?.familyMembers,
       financeMetrics: context?.financeMetrics,
       missingData: context?.missingData,
+      claims: context?.claims,
     },
     []
+  );
+
+export const dailyIntelligenceBatch = async (
+  history: MemoryEntry[],
+  profile: UserProfile,
+  promptConfig: PromptConfig,
+  context?: PromptContext
+): Promise<{ tasks: DailyTask[]; insights: ProactiveInsight[]; blindSpots: BlindSpot[] }> =>
+  callGemini(
+    'dailyIntelligenceBatch',
+    {
+      history,
+      profile,
+      promptConfig,
+      familyMembers: context?.familyMembers,
+      financeMetrics: context?.financeMetrics,
+      missingData: context?.missingData,
+      claims: context?.claims,
+    },
+    { tasks: [], insights: [], blindSpots: [] }
   );
 
 export const generateDailyPlan = async (
@@ -209,11 +240,13 @@ export interface DeepInitializationResult {
 
 export const generateDeepInitialization = async (
   profile: UserProfile,
-  ruleOfLife: RuleOfLife
+  ruleOfLife: RuleOfLife,
+  history: MemoryEntry[] = [],
+  claims: Claim[] = []
 ): Promise<DeepInitializationResult> =>
   callGemini(
     'generateDeepInitialization',
-    { profile, ruleOfLife },
+    { profile, ruleOfLife, history, claims },
     {
       doItems: [],
       watchItems: [],
@@ -246,5 +279,12 @@ export const DEFAULT_PROMPTS: PromptConfig[] = [
       'Generates hyper-personalized recommendations with tactical steps and success criteria for Areté.',
     template: HYPER_PERSONALIZED_PROMPT,
     defaultTemplate: HYPER_PERSONALIZED_PROMPT,
+  },
+  {
+    id: 'dailyBatch',
+    name: 'Daily Intelligence Batch',
+    purpose: 'Generates daily tasks, insights, and blind spots in a single batch.',
+    template: DAILY_INTELLIGENCE_BATCH_PROMPT,
+    defaultTemplate: DAILY_INTELLIGENCE_BATCH_PROMPT,
   },
 ];

@@ -1,6 +1,6 @@
 # AI Prompt Flow & Interaction Map
 
-> Last updated: 2026-01-27 | Version: 3.2.0
+> Last updated: 2026-01-28 | Version: 3.3.0
 
 This document maps how AI prompts flow through the system, what data they receive, and what they produce. Use this to audit AI behavior, improve prompt quality, and understand the full intelligence pipeline.
 
@@ -43,11 +43,12 @@ This document maps how AI prompts flow through the system, what data they receiv
 
 The system uses 3 configurable prompts stored in `ai/geminiService.ts`:
 
-| ID                | Name                   | Purpose                                    | Template Source             |
-| ----------------- | ---------------------- | ------------------------------------------ | --------------------------- |
-| `internalization` | Neural Internalization | Extracts structured facts from user input  | `LOG_BAR_INGEST_PROMPT`     |
-| `oracle`          | Areté Oracle           | Personal advisor Q&A with search grounding | Simple template             |
-| `deepPlanning`    | Executive Operations   | Hyper-personalized recommendations         | `HYPER_PERSONALIZED_PROMPT` |
+| ID                | Name                   | Purpose                                    | Template Source                   |
+| ----------------- | ---------------------- | ------------------------------------------ | --------------------------------- |
+| `internalization` | Neural Internalization | Extracts structured facts from user input  | `LOG_BAR_INGEST_PROMPT`           |
+| `oracle`          | Areté Oracle           | Personal advisor Q&A with search grounding | Simple template                   |
+| `deepPlanning`    | Executive Operations   | Hyper-personalized recommendations         | `HYPER_PERSONALIZED_PROMPT`       |
+| `dailyBatch`      | Daily Intelligence     | Daily tasks + insights + blind spots       | `DAILY_INTELLIGENCE_BATCH_PROMPT` |
 
 Users can customize all three via **Settings → Prompt Management** (`PromptManagementView.tsx`).
 
@@ -63,17 +64,19 @@ Converts raw user input (text + file metadata) into structured JSON for the know
 
 - Every time user submits text/files via `LogBar`
 - Action: `processInput`
-- Model: **Gemini Flash** (fast, structured extraction)
+- Model: **Gemini Flash‑Lite** (fast, structured extraction)
+- Fallback: **Gemini Pro** on schema failure
 
 ### Input Context
 
 ```
 Template Variables:
   {{profile}}       → JSON.stringify(activeProfile)
-  {{history}}       → JSON.stringify(buildMemoryContext(memory, categories, 30))
+  {{history}}       → JSON.stringify(buildMemoryContext(memory, [], 10))
   {{family}}        → JSON.stringify(familyMembers)
   {{input}}         → User's raw text input
   {{fileMeta}}      → JSON.stringify([{ name, mimeType, size }])
+  {{currentDate}}   → new Date().toISOString()
 ```
 
 ### Prompt Behavior Rules
@@ -140,10 +143,7 @@ Template Variables:
 ```
 AI Output → JSON.parse()
   → If facts[] or proposedUpdates[]:
-      → Show VerificationSheet (user approval required)
-      → User approves → commitClaims(sourceId, facts, updates)
-  → If needsReview:
-      → Show clarification dialog
+      → Auto-commit claims + profile updates
   → appendMemoryItems(items)
   → Files stored encrypted in IndexedDB
 ```
@@ -167,22 +167,25 @@ Generates hyper-personalized, executable recommendations grounded in the user's 
 ```
 Template Variables:
   {{profile}}         → JSON.stringify(profile)
-  {{history}}         → JSON.stringify(buildMemoryContext(memory, categories, 30))
+  {{history}}         → JSON.stringify(buildMemoryContext(memory, allCategories, 30))
   {{family}}          → JSON.stringify(familyMembers)
   {{financeMetrics}}  → JSON.stringify(computeFinanceMetrics(profile))
   {{missingData}}     → JSON.stringify(missingFields)
   {{currentDate}}     → new Date().toISOString()
+  {{feedback}}        → JSON.stringify(buildFeedbackContext(memory))
+  {{verifiedFacts}}   → JSON.stringify(committedClaims)  // Top 20 COMMITTED claims
 ```
 
 ### Prompt Behavior Rules
 
-1. **DATA-GROUNDED RATIONALE** — Every recommendation MUST reference a specific fact from memory or profile field
+1. **DATA-GROUNDED RATIONALE** — Every recommendation MUST reference a specific fact from memory, verified facts, or profile field. Prefer VERIFIED_FACTS as highest-confidence data.
 2. **VALUE ALIGNMENT** — Check tasks against user's `spiritual.coreValues`. Flag "Moral Friction" if contradicted
 3. **TACTICAL PRECISION** — Provide an "Operating Manual" for every task
 4. **DEFINITION OF DONE** — Specify exactly what "completed" looks like
 5. **FINANCE NUMBERS** — Include daily/weekly budgets and savings rate when `financeMetrics` present
 6. **HEALTH SAFETY** — Non-diagnostic guidance only; suggest clinician follow-up for concerning symptoms
 7. **MISSING DATA** — List up to 3 items that would improve confidence
+8. **FEEDBACK LEARNING** — If USER_FEEDBACK is present, learn from it. Do NOT repeat recommendations the user previously removed. Prioritize patterns similar to recommendations the user kept.
 
 ### Output Schema
 
@@ -269,37 +272,44 @@ These use inline prompts constructed in `api/gemini.ts` (not from the 3 configur
 ### generateTasks
 
 - **Purpose**: Generate daily tasks from memory + profile
-- **Model**: Gemini Pro
-- **Input**: history, profile, promptConfig, familyMembers, financeMetrics, missingData
+- **Model**: Gemini Flash
+- **Input**: history (30 items, all categories), profile, promptConfig, familyMembers, financeMetrics, missingData, claims (COMMITTED, top 20), feedback
 - **Output**: `DailyTask[]`
 - **Validation**: `TaskSchema` (Zod)
 
 ### generateInsights
 
 - **Purpose**: Detect proactive insights from patterns
-- **Model**: Gemini Pro
-- **Input**: history, profile, promptConfig, context
+- **Model**: Gemini Pro + Google Search grounding
+- **Input**: history (50 items, all categories), profile, promptConfig, context, claims (COMMITTED, top 20), feedback
 - **Output**: `ProactiveInsight[]`
 
 ### generateBlindSpots
 
 - **Purpose**: Find blind spots the user may be missing
 - **Model**: Gemini Pro
-- **Input**: history, profile, promptConfig, context
+- **Input**: history (50 items, all categories), profile, promptConfig, context, claims (COMMITTED, top 20), feedback
 - **Output**: `BlindSpot[]`
+
+### dailyIntelligenceBatch
+
+- **Purpose**: Daily bundled output for tasks + insights + blind spots
+- **Model**: Gemini Flash (default) → Pro escalation on validation failure or high complexity
+- **Input**: compact profile summary, daily digest (24h, long entries trimmed), financeMetrics, missingData, claims, feedback
+- **Output**: `{ tasks: DailyTask[], insights: ProactiveInsight[], blindSpots: BlindSpot[] }`
 
 ### generateDailyPlan
 
 - **Purpose**: Create prioritized daily plan
-- **Model**: Gemini Pro
-- **Input**: profile, timeline, goals, blindSpots, ruleOfLife, promptConfig
+- **Model**: Gemini Flash (fallback to Pro)
+- **Input**: profile, timeline, goals, blindSpots, ruleOfLife, promptConfig, history (30 items, all categories)
 - **Output**: `DailyTask[]` (ordered by priority)
 
 ### generateDeepInitialization
 
 - **Purpose**: Generate personalized content after onboarding
 - **Model**: Gemini Pro
-- **Input**: profile, ruleOfLife
+- **Input**: profile, ruleOfLife, history (30 items, all categories), claims (COMMITTED, top 20)
 - **Output**: `DeepInitializationResult` containing:
   - `doItems: DailyTask[]`
   - `watchItems: BlindSpot[]`
@@ -311,9 +321,9 @@ These use inline prompts constructed in `api/gemini.ts` (not from the 3 configur
 ### generateEventPrepPlan
 
 - **Purpose**: AI preparation recommendations for upcoming events
-- **Model**: Gemini Pro
-- **Input**: event, profile, history
-- **Output**: `Recommendation` with prep steps
+- **Model**: Gemini Pro (Google Search grounding when enabled)
+- **Input**: event, profile, history, enableSearch
+- **Output**: `Recommendation` with prep steps (and source links when grounded)
 
 ---
 
@@ -328,16 +338,58 @@ Scoring algorithm (per memory item):
   +0-100 recency score (decays over 7 days)
 
 Selection:
-  Sort by score descending → take top 30 items
+  Sort by score descending → take top N items (N varies by generator)
 ```
+
+### Memory Limits by Generator
+
+| Generator                    | Category Filter       | Max Items |
+| ---------------------------- | --------------------- | --------- |
+| `processInput` (intake)      | None (all categories) | 10        |
+| `askAura` (oracle)           | None (all categories) | 30        |
+| `generateTasks`              | All 6 categories      | 30        |
+| `generateInsights`           | All 6 categories      | 50        |
+| `generateBlindSpots`         | All 6 categories      | 50        |
+| `generateDeepTasks`          | All 6 categories      | 30        |
+| `generateDailyPlan`          | All 6 categories      | 30        |
+| `generateDeepInitialization` | All 6 categories      | 30        |
+| `dailyIntelligenceBatch`     | Daily digest (24h)    | 12        |
 
 This ensures prompts receive:
 
 1. **Today's signals** (highest priority)
-2. **Domain-relevant** memories
+2. **Domain-relevant** memories across all 6 life categories
 3. **Recent** memories (7-day decay)
 
-Max 30 items prevents token overflow.
+**Note:** Daily digest entries are capped at ~1000 characters to prevent oversized prompts.
+
+## Feedback Loop
+
+The `buildFeedbackContext()` function in `ai/prompts.ts` extracts user preference signals from memory:
+
+```
+Filter: memory items with metadata.type === 'recommendation_feedback'
+Sort: most recent first
+Limit: top 20 items
+Output: [{ action: 'kept'|'removed', title, category }]
+```
+
+This is passed as `{{feedback}}` to generators so the AI learns:
+
+- **Do NOT repeat** recommendations the user previously removed
+- **Prioritize** patterns similar to recommendations the user kept
+
+## Verified Facts (Claims)
+
+Committed claims from the knowledge graph are passed as `{{verifiedFacts}}` to all generators:
+
+```
+Filter: claims with status === 'COMMITTED'
+Limit: top 20
+Output: [{ fact, category, confidence }]
+```
+
+These are the highest-confidence data points and the AI is instructed to prefer them over raw memory when grounding recommendations.
 
 ---
 
@@ -360,19 +412,16 @@ These are appended to the base prompt when generating domain-specific recommenda
 ## Dual-Model Strategy
 
 ```
-┌─────────────────┐     ┌─────────────────┐
-│  Gemini Flash   │     │  Gemini Pro     │
-│  (Fast model)   │     │  (Deep model)   │
-├─────────────────┤     ├─────────────────┤
-│ processInput    │     │ generateDeep*   │
-│ (intake router) │     │ generateTasks   │
-│                 │     │ generateInsights│
-│                 │     │ blindSpots      │
-│                 │     │ dailyPlan       │
-│                 │     │ askAura         │
-│                 │     │ eventPrepPlan   │
-│                 │     │ deepInit        │
-└─────────────────┘     └─────────────────┘
+┌────────────────────┐     ┌────────────────────┐
+│  Gemini Flash‑Lite │     │   Gemini Pro       │
+│  (Fast model)      │     │  (Deep model)      │
+├────────────────────┤     ├────────────────────┤
+│ processInput       │     │ dailyIntelligence  │
+│ (intake router)    │     │ Batch (daily)      │
+│ dailyPlan (primary)│     │ generateDeep*      │
+│ eventPrepPlan      │     │ askAura            │
+│                    │     │ deepInit           │
+└────────────────────┘     └────────────────────┘
          │                       │
          │     If either fails   │
          │          ↓            │
@@ -416,7 +465,7 @@ const getModel = (kind: 'pro' | 'flash') => {
    action: "processInput"
    payload: { input, history(30 items), activeProfile, promptConfig }
 
-4. AI PROCESSING (Gemini Flash + LOG_BAR_INGEST_PROMPT)
+4. AI PROCESSING (Gemini Flash‑Lite + LOG_BAR_INGEST_PROMPT, fallback to Pro)
    Returns:
    {
      "intent": "health",
@@ -444,26 +493,29 @@ const getModel = (kind: 'pro' | 'flash') => {
      "confidence": 0.95
    }
 
-5. USER VERIFICATION (VerificationSheet.tsx)
-   → User reviews extracted facts
-   → Approves profile update (activities → "running (5km)")
-   → Clicks "Commit"
+5. AUTO-COMMIT
+   → Extracted facts and updates are committed immediately
 
 6. STATE UPDATE (useAura.ts)
    commitClaims() → Creates Claim (status: COMMITTED, confidence: 95)
    appendMemoryItems() → Adds MemoryItem (category: Health)
    updateProfile() → Updates profile.health.activities
 
-7. AI RE-ANALYSIS (debouncedRefreshAura, 1s delay)
-   generateDeepTasks() → New recommendation:
-     "Increase weekly running distance to 15km"
-     rationale: "You completed 5km today. Progressive overload suggests..."
-   generateBlindSpots() → New blind spot:
-     "Running without documented stretching routine"
-     severity: "medium"
+7. AI RE-ANALYSIS (debouncedRefreshAura, 500ms delay)
+   Promise.allSettled([
+     generateTasks()     → Updated task queue
+     generateInsights()  → Pattern detection
+     generateBlindSpots() → New blind spot:
+       "Running without documented stretching routine"
+       severity: "medium"
+     generateDeepTasks() → New recommendation:
+       "Increase weekly running distance to 15km"
+       rationale: "You completed 5km today. Progressive overload suggests..."
+   ])
+   All generators receive: memory (category-filtered), feedback, verifiedFacts (claims)
 
 8. DASHBOARD UPDATE (reactive)
-   → New task appears in DoWatchSection
+   → New task appears in FocusList
    → Health pillar coverage score increases
    → New blind spot appears in radar
 ```
@@ -486,16 +538,18 @@ interface PromptConfig {
 
 ### Template Variables Available
 
-| Variable             | Content                  | Available In          |
-| -------------------- | ------------------------ | --------------------- |
-| `{{profile}}`        | Full user profile JSON   | All prompts           |
-| `{{history}}`        | Selected memory items    | All prompts           |
-| `{{family}}`         | Family member profiles   | Ingest, Deep Planning |
-| `{{input}}`          | User's raw text          | Ingest, Oracle        |
-| `{{fileMeta}}`       | Attached file metadata   | Ingest                |
-| `{{financeMetrics}}` | Computed finance metrics | Deep Planning         |
-| `{{missingData}}`    | Fields with low coverage | Deep Planning         |
-| `{{currentDate}}`    | ISO date string          | Deep Planning         |
+| Variable             | Content                      | Available In                   |
+| -------------------- | ---------------------------- | ------------------------------ |
+| `{{profile}}`        | Full user profile JSON       | All prompts                    |
+| `{{history}}`        | Selected memory items        | All prompts                    |
+| `{{family}}`         | Family member profiles       | Ingest, Deep Planning          |
+| `{{input}}`          | User's raw text              | Ingest, Oracle                 |
+| `{{fileMeta}}`       | Attached file metadata       | Ingest                         |
+| `{{financeMetrics}}` | Computed finance metrics     | Deep Planning, all generators  |
+| `{{missingData}}`    | Fields with low coverage     | Deep Planning, all generators  |
+| `{{currentDate}}`    | ISO date string              | Ingest, Deep Planning, all gen |
+| `{{feedback}}`       | User recommendation feedback | Deep Planning, all generators  |
+| `{{verifiedFacts}}`  | Top 20 committed claims      | Deep Planning, all generators  |
 
 ---
 
@@ -510,7 +564,18 @@ interface PromptConfig {
 5. **Missing data detection**: Is the AI identifying the right gaps?
 6. **Domain prompt effectiveness**: Are domain modifiers improving output quality?
 
-### Potential Improvements
+### Implemented Optimizations (v3.3.0)
+
+1. **Feedback loop** ✅ — `buildFeedbackContext()` passes kept/removed signals to all generators via `{{feedback}}`
+2. **Verified facts** ✅ — Committed claims passed as `{{verifiedFacts}}` for highest-confidence grounding
+3. **Category-filtered memory** ✅ — All generators receive memory filtered by all 6 life categories
+4. **Parallel refresh** ✅ — `refreshAura()` uses `Promise.allSettled` to run tasks/insights/blindSpots/recommendations in parallel
+5. **Recommendation regeneration** ✅ — `refreshAura()` now regenerates recommendations (via `generateDeepTasks`) alongside tasks/insights/blindSpots
+6. **Deep init memory context** ✅ — `generateDeepInitialization` now receives memory + claims for data-grounded first impressions
+7. **AI domain preference** ✅ — Intake domain from AI is preferred over client-side regex classification
+8. **Always-Do/Watch wiring** ✅ — AlwaysChip state persisted in vault, rendered via `StatusSidebar` component
+
+### Remaining Improvements
 
 1. **Structured output mode**: Use Gemini's structured output feature instead of raw JSON parsing
 2. **Few-shot examples**: Add example inputs/outputs to each prompt
@@ -518,5 +583,4 @@ interface PromptConfig {
 4. **Prompt versioning**: Track which prompt version generated each output
 5. **A/B testing**: Compare prompt variants on same input
 6. **Token budgeting**: Monitor and optimize context window usage
-7. **Feedback loop**: Use keep/remove signals to fine-tune recommendations
-8. **Retrieval-Augmented Generation (RAG)**: Replace `buildMemoryContext()` with embedding-based retrieval for better context selection
+7. **Retrieval-Augmented Generation (RAG)**: Replace `buildMemoryContext()` with embedding-based retrieval for better context selection

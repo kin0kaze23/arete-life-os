@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { getProfileCompletion } from '@/shared';
 import {
+  AlwaysChip,
   DailyTask,
   UserProfile,
   ProactiveInsight,
@@ -16,6 +17,7 @@ import {
 import { FocusList } from './FocusList';
 import { StatusSidebar } from './StatusSidebar';
 import { EventPrepPopup } from './EventPrepPopup';
+import { EventEditSheet } from './EventEditSheet';
 import { SystemStatusFooter } from './SystemStatusFooter';
 import { UpcomingCalendar } from './UpcomingCalendar';
 
@@ -39,11 +41,16 @@ interface DashboardViewProps {
   deleteMemoryItem?: (id: string) => void;
   keepRecommendation?: (id: string) => void;
   removeRecommendation?: (id: string) => void;
-  activatePrepPlan?: (plan: Recommendation) => void;
-  logMemory?: (input: string) => Promise<void>; // Added for quick capture
+  activatePrepPlan?: (plan: Recommendation, eventId?: string) => void;
+  onToast?: (message: string, type?: 'success' | 'info' | 'error') => void;
+  logMemory?: (input: string) => Promise<void>;
+  alwaysDoChips?: AlwaysChip[];
+  alwaysWatchChips?: AlwaysChip[];
   isPlanningDay: boolean;
   isGeneratingTasks: boolean;
   undoTaskAction?: () => void;
+  updateTimelineEvent?: (id: string, updates: Partial<TimelineEvent>) => void;
+  deleteTimelineEvent?: (id: string) => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -60,11 +67,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   planMyDay,
   onNavigate,
   updateMemoryItem,
+  deleteMemoryItem,
   activatePrepPlan,
+  onToast,
+  alwaysDoChips = [],
+  alwaysWatchChips = [],
+  keepRecommendation,
+  removeRecommendation,
   isPlanningDay,
   isGeneratingTasks,
+  updateTimelineEvent,
+  deleteTimelineEvent,
 }) => {
   const [activePrepEvent, setActivePrepEvent] = useState<TimelineEvent | null>(null);
+  const [editingEvent, setEditingEvent] = useState<TimelineEvent | null>(null);
 
   const completion = getProfileCompletion(profile);
 
@@ -106,8 +122,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="space-y-8">
           <div className="flex items-center justify-between pb-4 border-b border-white/5">
             <div>
-              <h3 className="text-xl font-black text-white tracking-tight">Today's Focus</h3>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest">Daily Plan</p>
+              <h3 className="text-xl font-black text-white tracking-tight">Mission Control</h3>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest">Horizon Focus</p>
             </div>
           </div>
           <FocusList
@@ -119,6 +135,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             onRefreshPlan={planMyDay}
             onRefreshQueue={planMyDay} // Re-using planMyDay for simplicity, or could be generateTasks
             isPlanning={isPlanningDay}
+            events={timelineEvents}
           />
         </div>
 
@@ -130,7 +147,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <p className="text-[10px] text-slate-500 uppercase tracking-widest">Schedule</p>
             </div>
           </div>
-          <UpcomingCalendar events={timelineEvents} onSelectEvent={setActivePrepEvent} />
+          <UpcomingCalendar
+            events={timelineEvents}
+            onSelectEvent={setActivePrepEvent}
+            onEditEvent={setEditingEvent}
+            onDeleteEvent={deleteTimelineEvent}
+          />
         </div>
 
         {/* Column 3: Insight & Status */}
@@ -143,19 +165,36 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             financeMetrics={financeMetrics}
             recommendations={recommendations}
             onNavigate={onNavigate}
-            onLog={logMemory}
-            onActivate={(rec) => activatePrepPlan?.(rec)}
+            onActivate={(rec) => activatePrepPlan?.(rec, (rec as any).metadata?.eventId)}
+            onKeepRecommendation={keepRecommendation}
+            onRemoveRecommendation={removeRecommendation}
+            alwaysDoChips={alwaysDoChips}
+            alwaysWatchChips={alwaysWatchChips}
           />
         </div>
       </div>
+
+      <div className="mt-10">{/* AlwaysPanels removed and merged into StatusSidebar */}</div>
 
       <EventPrepPopup
         event={activePrepEvent}
         profile={profile}
         memory={memory}
         onClose={() => setActivePrepEvent(null)}
-        onActivate={(plan) => activatePrepPlan?.(plan)}
+        onActivate={(plan, id) => {
+          activatePrepPlan?.(plan, id);
+          onToast?.(`Armed: ${plan.title}. Tasks added to Today's Focus.`, 'success');
+          setActivePrepEvent(null);
+        }}
       />
+
+      {editingEvent && updateTimelineEvent && (
+        <EventEditSheet
+          event={editingEvent}
+          onSave={updateTimelineEvent}
+          onClose={() => setEditingEvent(null)}
+        />
+      )}
 
       <div className="mt-12">
         <SystemStatusFooter completion={completion.overall} />

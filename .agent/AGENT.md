@@ -1,78 +1,60 @@
-# Agent Operating Manual
+# Agent Operating Manual (Portable)
 
-## Mission
-
-Ship a production-ready Life OS app with stable core loops, premium dark UI, and reliable deployment.
+> **Portable**: Copy this file to any project. Pair with `./.agent/README.md` for project‑specific context.
 
 ## Session Init (Fast)
 
-Start with `./.agent/README.md` for the current context index and quick start.
+1. Read `./.agent/README.md` for project context and commands.
+2. Read `./.agent/CURRENT_STATUS.md` for last session state.
+3. If resuming planned work, open the relevant file in `./.agent/plans/`.
+4. Refresh the snapshot: `./scripts/update-status.sh` (if available).
 
-## Current Core Loop Status
+## Automation Discovery (Repo-Agnostic)
 
-- Log Bar writes are atomic: KG write succeeds even if AI extraction fails (needsReview set).
-- Files are stored local-first in IndexedDB and referenced via `Source.storageKey`.
-- Finance metrics are derived on each log and stored as a `finance_metrics` MemoryItem.
-- Habit signals are classified into `Category.HABIT` with structured metadata.
-- Dashboard auto-refreshes after log ingestion to keep Do/Watch current.
-- Evening Audit appears as a small Log Bar reminder (no large dashboard card).
+When a task is requested, discover and prefer existing automations before manual steps:
 
-## Guardrails
+1. Read `./.agent/README.md` for the automation index.
+2. Scan `./.agent/workflows/` for relevant checklists.
+3. Scan `./.agent/skills/` for task-specific procedures.
+4. Check `./scripts/` for executable helpers (if present).
 
-- main is always green and deployable
-- no secrets in git
-- minimal changes, iterative
-- tests/build must pass before merge
+If a workflow or script fits the task, propose or run it explicitly (per user preference).
 
-## AI Runtime Configuration (Server-side)
+## Automation Decision Rules (Repo-Agnostic)
 
-Set these in Vercel (Production + Preview as needed):
+When applicable, use these default mappings (only if the script/workflow exists):
 
-- `GEMINI_API_KEY`
-- `GEMINI_MODEL_PRO` (default: `gemini-3-pro-preview`)
-- `GEMINI_MODEL_FLASH` (default: `gemini-3-flash-preview`)
-- `OPENAI_API_KEY` (fallback)
-- `OPENAI_MODEL` (default: `gpt-5.1`)
-- `OPENAI_REASONING_EFFORT` (default: `medium`)
+- UI/UX changes → run UI guardrails (prefer a single UI-safe wrapper if present).
+- Core/AI/backend changes → run cost guardrail + architecture drift check.
+- Performance/latency changes → check/update latency baseline.
+- New AI generators → run the add-ai-generator workflow/checklist.
+- End of session → update status and archive learnings if needed.
 
-Notes:
+## Working Protocol
 
-- Gemini is primary; OpenAI is automatic fallback.
-- Keys must remain server-side only (never in client code).
-
-## Definition of Done (for any task)
-
-- UI has empty/loading/error states
-- state updates are reactive; no manual refresh
-- edge cases considered
-- lint/typecheck/build pass
-- PR includes verification steps
-
-## Working Protocol (Non-Developer Friendly)
-
-### 1) How to ask for work
+### How to ask for work
 
 Provide:
 
 - Goal: what you want to achieve (feature, fix, deploy)
 - Context: which screen or flow is affected
-- Constraints: "minimal change", "no refactor", "keep UI the same", etc.
-- Evidence: copy/paste exact error logs or screenshots
+- Constraints: “minimal change”, “no refactor”, “keep UI the same”, etc.
+- Evidence: exact error logs or screenshots
 
-### 2) What I will do each iteration
+### What I do each iteration
 
 - Summarize what changed and why
-- Give exactly one verification command (prefer `npm run doctor`)
+- Provide one verification command (from `./.agent/README.md`)
 - Explain what success looks like
 
-### 2.5) Autopilot (when you say "do all the things")
+### Autopilot (when you say “do all the things”)
 
-When you ask me to take over routine workflow, I will:
+I will:
 
 - Check `git status` and summarize changes
-- Run `npm run doctor` before any push
-- Commit with a clear message
-- Push to `main` if checks pass
+- Run the repo quality gate before any push
+- Commit with a clear message (optional)
+- Push to the default branch if checks pass
 
 I will still ask for approval before:
 
@@ -80,81 +62,40 @@ I will still ask for approval before:
 - Refactors or large structure changes
 - Dependency upgrades
 
-If a git commit fails due to local filesystem permissions (e.g., `.git/index.lock`), I will
-report it and ask you to run the commit/push manually in your terminal.
+## Definition of Done
 
-### 3) When I need your approval
+- UI has empty/loading/error states
+- State updates are reactive; no manual refresh
+- Edge cases considered
+- Lint/typecheck/build pass
+- PR includes verification steps
 
-I will wait for approval before:
-
-- Infra changes (CI, deployment, hosting, env policy)
-- Refactors or large structure changes
-- Dependency upgrades
-
-### 4) How to report issues (template)
-
-Use this format:
-
-```
-Issue summary:
-Steps taken:
-Expected:
-Actual:
-Logs:
-```
-
-### 5) Default verification
-
-- Preferred command: `npm run doctor`
-- If it fails, paste the full output and I will fix it
-
-### 6) Deployment flow (high level)
-
-- Run `npm run doctor`
-- Confirm CI green on PR
-- Merge to main
-- Verify Vercel deployment
-- If deployment issues occur, see [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
-
-### 7) Safety and secrets
+## Safety and Secrets
 
 - Never paste real API keys into chat
-- Keep `.env.local` untracked
+- Keep `.env.local` and secret files untracked
 
-## GitHub Automation Rules (Always Enforced)
+## Git Automation Rules (Always Enforced)
 
-### Pre-push checklist (required)
+### Pre‑push checklist (required)
 
-- Run `npm run doctor`
+- Run repo quality gate (`npm run doctor` if defined)
 - Ensure Git status is clean
 
-### Post-push verification (required)
+### Post‑push verification (required)
 
-- Check GitHub Actions for the latest `main` run and confirm it is green
-- If any failure is detected, fix it immediately and re-run CI
+- Check CI for the latest default-branch run and confirm it is green
+- If any failure is detected, fix it and re‑run CI
 
 ### Automation I will perform
 
 - Commit changes with clear messages
-- Push to `main` only after local `npm run doctor` passes
-- Re-run failed CI jobs and apply fixes until green
-
-### Git Hooks (Automated Quality Gates)
-
-Pre-push hook automatically runs `npm run doctor` before each push.
-
-**Setup (run once after cloning):**
-
-```bash
-./scripts/setup-hooks.sh
-```
-
-### Suggested improvements (optional)
-
-- Set branch protection to require CI passing before merge
+- Push only after local checks pass
+- Re‑run failed CI jobs and apply fixes until green
 
 ## Related Documentation
 
-- [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - Common issues and solutions (CSP, Vercel deployment, git config)
-- [LEARNINGS.md](./LEARNINGS.md) - Session-by-session discoveries and resolved issues
-- [../CLAUDE.md](../CLAUDE.md) - Quick reference loaded at session start
+- `./.agent/README.md` — Project‑specific context, folder map, commands
+- `./.agent/CURRENT_STATUS.md` — Current session snapshot
+- `./.agent/LEARNINGS.md` — Session discoveries and fixes
+- `./.agent/TROUBLESHOOTING.md` — Common issues and solutions

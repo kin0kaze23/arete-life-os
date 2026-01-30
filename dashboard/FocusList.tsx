@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Circle,
   CheckCircle2,
@@ -11,12 +11,15 @@ import {
   RefreshCw,
   Check,
   X,
+  ChevronDown,
 } from 'lucide-react';
-import { DailyTask, Category, MemoryEntry } from '@/data';
+import { DailyTask, Category, MemoryEntry, TimelineEvent } from '@/data';
+import { getEventEmoji } from '@/shared';
 
 interface FocusListProps {
   tasks: DailyTask[];
   habitItems: MemoryEntry[];
+  events?: TimelineEvent[];
   onToggleTask: (id: string) => void;
   onToggleHabit: (id: string) => void;
   onDeleteTask: (id: string) => void;
@@ -34,16 +37,72 @@ export const FocusList: React.FC<FocusListProps> = ({
   onRefreshPlan,
   onRefreshQueue,
   isPlanning,
+  events = [],
 }) => {
-  const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
-  // Separate tasks into Strategic (Top 3 or Priority high) and Queue
+  const toggleGroup = (id: string) => {
+    setExpandedGroups((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  // Group tasks by eventId
+  const { groups, standalone } = useMemo(() => {
+    const groups: Record<string, DailyTask[]> = {};
+    const standalone: DailyTask[] = [];
+
+    tasks.forEach((task) => {
+      if (task.eventId) {
+        if (!groups[task.eventId]) groups[task.eventId] = [];
+        groups[task.eventId].push(task);
+      } else {
+        standalone.push(task);
+      }
+    });
+
+    return { groups, standalone };
+  }, [tasks]);
+
+  // Helper to determine task horizon based on due_at or createdAt (using local time)
+  const getTaskHorizon = (task: DailyTask): 'today' | 'tomorrow' | 'later' => {
+    const formatDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const targetDateStr = formatDate(new Date(task.due_at || task.createdAt));
+    const now = new Date();
+    const todayStr = formatDate(now);
+
+    const tom = new Date(now);
+    tom.setDate(now.getDate() + 1);
+    const tomorrowStr = formatDate(tom);
+
+    if (targetDateStr === todayStr) return 'today';
+    if (targetDateStr === tomorrowStr) return 'tomorrow';
+    return 'later';
+  };
+
+  // Separate tasks by date horizon
+  const todayStandalone = standalone.filter((t) => getTaskHorizon(t) === 'today');
+  const tomorrowStandalone = standalone.filter((t) => getTaskHorizon(t) === 'tomorrow');
+
+  // Derived tasks for legacy rendering logic
   const activeTasks = tasks.map((t) => ({ ...t, type: 'task' as const }));
   const uncompletedTasks = activeTasks.filter((t) => !t.completed);
 
-  const strategicTasks = uncompletedTasks.filter((t) => t.priority === 'high').slice(0, 3);
-  const queueTasks = activeTasks.filter((t) => !strategicTasks.find((s) => s.id === t.id));
+  // Strategic Focus: Top 3 High Priority Standalone Tasks (Today only)
+  const strategicTasks = todayStandalone
+    .filter((t) => t.priority === 'high' && !t.completed)
+    .slice(0, 3);
+
+  // The Queue: Today's standalone tasks minus strategic ones
+  const queueTasks = todayStandalone.filter((t) => !strategicTasks.find((s) => s.id === t.id));
+
+  // Tomorrow's tasks for Upcoming section
+  const upcomingTasks = tomorrowStandalone;
 
   // Process Rituals
   const rituals = habitItems.map((h) => ({
@@ -54,19 +113,9 @@ export const FocusList: React.FC<FocusListProps> = ({
     category: Category.HABIT,
   }));
 
-  const handleTaskClick = (id: string) => {
-    if (confirmingId === id) {
-      onToggleTask(id);
-      setConfirmingId(null);
-    } else {
-      setConfirmingId(id);
-      // Auto-reset confirmation after 3 seconds
-      setTimeout(() => setConfirmingId((prev) => (prev === id ? null : prev)), 3000);
-    }
-  };
+  // handleTaskClick removed for single-click toggle simplicity
 
   const renderTaskItem = (task: DailyTask, isStrategic = false) => {
-    const isConfirming = confirmingId === task.id;
     const isExpanded = expandedId === task.id;
 
     return (
@@ -82,21 +131,12 @@ export const FocusList: React.FC<FocusListProps> = ({
       >
         <div className="flex items-start gap-4">
           <button
-            onClick={() => handleTaskClick(task.id)}
+            onClick={() => onToggleTask(task.id)}
             className={`mt-1 flex-shrink-0 transition-all duration-300 ${
-              isConfirming
-                ? 'scale-110 text-emerald-400'
-                : task.completed
-                  ? 'text-indigo-500'
-                  : 'text-slate-500 group-hover:text-indigo-400'
+              task.completed ? 'text-indigo-500' : 'text-slate-500 group-hover:text-indigo-400'
             }`}
           >
-            {isConfirming ? (
-              <div className="flex flex-col items-center gap-1">
-                <Check size={20} className="animate-pulse" />
-                <span className="text-[8px] font-black uppercase tracking-tighter">Done?</span>
-              </div>
-            ) : task.completed ? (
+            {task.completed ? (
               <CheckCircle2 size={20} fill="currentColor" className="text-black" />
             ) : (
               <Circle size={20} />
@@ -238,10 +278,68 @@ export const FocusList: React.FC<FocusListProps> = ({
     );
   };
 
+  const renderGroupedTasks = (eventId: string, groupedTasks: DailyTask[]) => {
+    const event = events.find((e) => e.id === eventId);
+    const title = event?.title || 'Event Preparation';
+    const category = event?.category || Category.GENERAL;
+    const emoji = getEventEmoji(title, category);
+    const isExpanded = expandedGroups[eventId];
+
+    // Calculate progress
+    const completedCount = groupedTasks.filter((t) => t.completed).length;
+    const totalCount = groupedTasks.length;
+    const isFullyComplete = completedCount === totalCount;
+
+    return (
+      <div key={eventId} className="space-y-3">
+        <div
+          onClick={() => toggleGroup(eventId)}
+          data-testid="prep-group"
+          data-event-id={eventId}
+          className={`flex items-center justify-between p-4 rounded-2xl border cursor-pointer transition-all ${
+            isFullyComplete
+              ? 'bg-emerald-500/5 border-emerald-500/20'
+              : 'bg-indigo-500/5 border-indigo-500/20 hover:border-indigo-500/40'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div className="text-xl">{emoji}</div>
+            <div>
+              <h4 className="text-sm font-black text-white uppercase tracking-tight italic flex items-center gap-2">
+                {title}
+                {isFullyComplete && (
+                  <CheckCircle2
+                    size={14}
+                    className="text-emerald-500 animate-in zoom-in duration-300"
+                  />
+                )}
+              </h4>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                Prep Mission • {completedCount}/{totalCount} Complete
+              </p>
+            </div>
+          </div>
+          <div className="text-slate-600">
+            <ChevronDown
+              size={18}
+              className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
+            />
+          </div>
+        </div>
+
+        {isExpanded && (
+          <div className="pl-6 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+            {groupedTasks.map((t) => renderTaskItem(t))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <div className="flex flex-col h-full space-y-8 no-scrollbar">
+    <div className="flex flex-col h-full space-y-8 no-scrollbar" data-testid="focus-list">
       {/* STRATEGIC MISSION */}
-      <div className="space-y-4">
+      <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-400 flex items-center gap-2">
             <Crown size={12} /> Strategic Focus
@@ -255,6 +353,13 @@ export const FocusList: React.FC<FocusListProps> = ({
             {isPlanning ? 'Syncing...' : 'Refresh Strategy'}
           </button>
         </div>
+
+        {/* Grouped Event Prep Tasks */}
+        {Object.keys(groups).length > 0 && (
+          <div className="space-y-4">
+            {Object.entries(groups).map(([id, gTasks]) => renderGroupedTasks(id, gTasks))}
+          </div>
+        )}
 
         <div className="space-y-3">
           {strategicTasks.length > 0 ? (
@@ -331,6 +436,16 @@ export const FocusList: React.FC<FocusListProps> = ({
           )}
         </div>
       </div>
+
+      {/* UPCOMING TASKS (Tomorrow) */}
+      {upcomingTasks.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-500/80 flex items-center gap-2">
+            <ArrowRight size={12} /> Upcoming Tasks
+          </h3>
+          <div className="space-y-3">{upcomingTasks.map((t) => renderTaskItem(t))}</div>
+        </div>
+      )}
     </div>
   );
 };

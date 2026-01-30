@@ -277,9 +277,9 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
               />
               <VaultSelect
                 label="Relationship Status"
-                value={profile.personal.status}
+                value={profile.relationship.relationshipStatus || 'Single'}
                 options={SUGGESTIONS.status}
-                onChange={(v) => updateProfile('personal', 'status', v)}
+                onChange={(v) => updateProfile('relationship', 'relationshipStatus', v)}
               />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <VaultInput
