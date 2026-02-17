@@ -55,7 +55,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             Areté OS
           </span>
           <span className="text-[8px] font-black tracking-[0.3em] text-indigo-500 uppercase">
-            Neural Kernel 3.2
+            Life OS
           </span>
         </div>
       </div>

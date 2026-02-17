@@ -10,6 +10,10 @@ import {
   Cpu,
   Zap,
   Search,
+  ClipboardCheck,
+  DollarSign,
+  Dumbbell,
+  Heart,
 } from 'lucide-react';
 import { useOnlineStatus, ActionTooltip } from '@/shared';
 import { MemoryEntry } from '@/data';
@@ -39,6 +43,67 @@ TITLE: [Event Name]
 LOCATION: [Where]
 DATE: [YYYY-MM-DD]
 TIME: [HH:MM]`;
+
+const DAILY_CHECKIN_TEMPLATE = `DAILY CHECK-IN
+────────────────────────
+ENERGY: [1-10]
+MOOD: [1-10]
+SLEEP: [hours]
+HIGHLIGHT: [What went well]
+STRUGGLE: [What was hard]
+FOCUS: [Top priority]`;
+
+const EXPENSE_LOG_TEMPLATE = `EXPENSE LOG
+────────────────────────
+AMOUNT: [Currency + amount]
+CATEGORY: [Food, Travel, Bills, etc.]
+MERCHANT: [Where]
+REASON: [Why this mattered]`;
+
+const WORKOUT_LOG_TEMPLATE = `WORKOUT LOG
+────────────────────────
+TYPE: [Run, Strength, Yoga, etc.]
+DURATION: [Minutes]
+INTENSITY: [Low/Med/High]
+NOTES: [How it felt]`;
+
+const RELATIONSHIP_TOUCHPOINT_TEMPLATE = `RELATIONSHIP TOUCHPOINT
+────────────────────────
+PERSON: [Who]
+CONTEXT: [What happened]
+FEELING: [Emotion]
+NEXT STEP: [Follow-up]`;
+
+const WORK_PROGRESS_TEMPLATE = `WORK PROGRESS
+────────────────────────
+MOVED: [What advanced]
+BLOCKERS: [What slowed you]
+NEXT: [Immediate next step]`;
+
+const HEALTH_SYMPTOM_TEMPLATE = `HEALTH SYMPTOM
+────────────────────────
+SYMPTOM: [What you felt]
+TIME: [When it started]
+SEVERITY: [1-10]
+NOTES: [Anything else]`;
+
+const UPLOAD_SUMMARY_TEMPLATE = `UPLOAD SUMMARY
+────────────────────────
+FILES: [What you uploaded]
+SUMMARY: [Key takeaways]
+NEXT ACTION: [What to do next]`;
+
+const TEMPLATE_MAP: Record<string, string> = {
+  DAILY_CHECKIN: DAILY_CHECKIN_TEMPLATE,
+  EXPENSE_LOG: EXPENSE_LOG_TEMPLATE,
+  WORKOUT_LOG: WORKOUT_LOG_TEMPLATE,
+  RELATIONSHIP_TOUCHPOINT: RELATIONSHIP_TOUCHPOINT_TEMPLATE,
+  WORK_PROGRESS: WORK_PROGRESS_TEMPLATE,
+  HEALTH_SYMPTOM: HEALTH_SYMPTOM_TEMPLATE,
+  UPLOAD_SUMMARY: UPLOAD_SUMMARY_TEMPLATE,
+  SCHEDULE_EVENT: SCHEDULE_EVENT_TEMPLATE,
+  EVENING_AUDIT: EVENING_AUDIT_TEMPLATE,
+};
 
 export const LogBar: React.FC<LogBarProps> = ({
   userInput,
@@ -90,6 +155,57 @@ export const LogBar: React.FC<LogBarProps> = ({
 
   const isNightHours = now.getHours() >= 20 || now.getHours() < 5;
   const showEveningAudit = isNightHours && !hasAuditToday;
+
+  const insertTemplate = (template: string) => {
+    setUserInput(template);
+    textareaRef.current?.focus();
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent).detail || {};
+      const templateKey = detail.template;
+      if (typeof templateKey === 'string' && TEMPLATE_MAP[templateKey]) {
+        insertTemplate(TEMPLATE_MAP[templateKey]);
+      }
+    };
+    window.addEventListener('logbar:insert', handler as EventListener);
+    return () => window.removeEventListener('logbar:insert', handler as EventListener);
+  }, []);
+
+  const templateOptions = [
+    {
+      id: 'DAILY_CHECKIN',
+      label: 'Daily Check-In',
+      icon: ClipboardCheck,
+      className: 'text-indigo-300',
+    },
+    {
+      id: 'SCHEDULE_EVENT',
+      label: 'Schedule Event',
+      icon: Sparkles,
+      className: 'text-slate-300',
+    },
+    {
+      id: 'EXPENSE_LOG',
+      label: 'Expense Log',
+      icon: DollarSign,
+      className: 'text-emerald-300',
+    },
+    {
+      id: 'WORKOUT_LOG',
+      label: 'Workout',
+      icon: Dumbbell,
+      className: 'text-cyan-300',
+    },
+    {
+      id: 'RELATIONSHIP_TOUCHPOINT',
+      label: 'Relationship',
+      icon: Heart,
+      className: 'text-rose-300',
+    },
+  ];
 
   const addFiles = (files: FileList) => {
     const next = Array.from(files).map((file) => {
@@ -148,15 +264,12 @@ export const LogBar: React.FC<LogBarProps> = ({
               {showEveningAudit && (
                 <button
                   type="button"
-                  onClick={() => {
-                    setUserInput(EVENING_AUDIT_TEMPLATE);
-                    textareaRef.current?.focus();
-                  }}
+                  onClick={() => insertTemplate(EVENING_AUDIT_TEMPLATE)}
                   className={`
                     px-3 py-1.5 rounded-xl border transition-all flex items-center gap-2 group
                     ${
                       now.getHours() >= 20 || now.getHours() < 5
-                        ? 'bg-indigo-500/10 border-indigo-500/40 text-indigo-300 shadow-[0_0_15px_rgba(99,102,241,0.15)] animate-pulse'
+                        ? 'bg-indigo-500/10 border-indigo-500/40 text-indigo-300 shadow-[0_0_15px_rgba(99,102,241,0.15)]'
                         : 'bg-white/[0.02] border-white/5 text-slate-400 hover:text-slate-200'
                     }
                   `}
@@ -165,25 +278,23 @@ export const LogBar: React.FC<LogBarProps> = ({
                     size={10}
                     className={now.getHours() >= 20 ? 'text-indigo-400' : 'text-slate-600'}
                   />
-                  <span className="text-[10px] font-bold uppercase tracking-widest">
+                  <span className="text-[11px] font-bold uppercase tracking-widest">
                     Evening Audit
                   </span>
                 </button>
               )}
 
-              {!userInput && (
+              {templateOptions.map((template) => (
                 <button
+                  key={template.id}
                   type="button"
-                  onClick={() => {
-                    setUserInput(SCHEDULE_EVENT_TEMPLATE);
-                    textareaRef.current?.focus();
-                  }}
-                  className="px-3 py-1.5 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] hover:border-indigo-500/30 text-[10px] font-bold text-slate-400 hover:text-indigo-300 transition-all flex items-center gap-2 group"
+                  onClick={() => insertTemplate(TEMPLATE_MAP[template.id])}
+                  className="px-3 py-1.5 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] hover:border-indigo-500/30 text-[11px] font-bold text-slate-400 hover:text-indigo-200 transition-all flex items-center gap-2 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40"
                 >
-                  <Sparkles size={10} className="text-slate-600 group-hover:text-indigo-400" />
-                  Schedule Event
+                  <template.icon size={12} className={template.className} />
+                  {template.label}
                 </button>
-              )}
+              ))}
             </div>
           )}
           {selectedFiles.map((file, idx) => (
@@ -196,15 +307,15 @@ export const LogBar: React.FC<LogBarProps> = ({
                 {file.file.name}
               </span>
               {file.status === 'uploading' && (
-                <span className="text-[9px] text-indigo-300">Uploading…</span>
+                <span className="text-[11px] text-indigo-300">Uploading…</span>
               )}
               {file.status === 'error' && (
-                <span className="text-[9px] text-rose-400">{file.error}</span>
+                <span className="text-[11px] text-rose-400">{file.error}</span>
               )}
               <button
                 type="button"
                 onClick={() => setSelectedFiles((prev) => prev.filter((_, i) => i !== idx))}
-                className="p-1 hover:text-rose-400"
+                className="p-2 min-w-[36px] min-h-[36px] hover:text-rose-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/40 rounded-lg"
               >
                 <X size={10} />
               </button>
@@ -248,7 +359,7 @@ export const LogBar: React.FC<LogBarProps> = ({
                   showMenu
                     ? 'bg-indigo-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.4)]'
                     : 'bg-slate-900 text-slate-500 hover:text-indigo-400 border border-slate-800'
-                }`}
+                } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40`}
               >
                 <Command size={20} />
               </button>
@@ -338,8 +449,8 @@ export const LogBar: React.FC<LogBarProps> = ({
               rows={1}
               placeholder={
                 isProcessing
-                  ? 'Internalizing Signal...'
-                  : 'Log memory, update profile, or use /ask...'
+                  ? 'Saving...'
+                  : 'Log your day, schedule an event, or attach a file...'
               }
               className="w-full bg-[#0D0F14] border border-slate-800 rounded-2xl pl-16 pr-32 py-4 focus:outline-none focus:border-indigo-500 transition-all text-sm text-slate-200 placeholder-slate-600 shadow-inner disabled:opacity-50 resize-none overflow-hidden min-h-[56px] leading-relaxed block"
               disabled={isProcessing || !isOnline}
@@ -359,7 +470,7 @@ export const LogBar: React.FC<LogBarProps> = ({
                   type="button"
                   disabled={isProcessing}
                   onClick={() => fileInputRef.current?.click()}
-                  className="p-2 text-slate-500 hover:text-indigo-400 transition-all"
+                  className="p-2 min-w-[42px] min-h-[42px] text-slate-500 hover:text-indigo-400 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 rounded-lg"
                 >
                   <Paperclip size={20} />
                 </button>
@@ -368,7 +479,7 @@ export const LogBar: React.FC<LogBarProps> = ({
               <button
                 type="submit"
                 disabled={isProcessing || (!userInput.trim() && selectedFiles.length === 0)}
-                className="p-2 bg-indigo-600 text-white rounded-xl shadow-lg hover:bg-indigo-500 transition-all flex items-center justify-center min-w-[42px] min-h-[42px]"
+                className="p-2 bg-indigo-600 text-white rounded-xl shadow-lg hover:bg-indigo-500 transition-all flex items-center justify-center min-w-[44px] min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40"
               >
                 {isProcessing ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
               </button>

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, Suspense } from 'react';
-import { useAura } from '@/core';
+import { useAura, useLifeContext } from '@/core';
 import { Sidebar, Header } from '@/layout';
 import { LogBar, CommandPalette } from '@/command';
 import { askAura } from '@/ai';
@@ -28,6 +28,24 @@ const LoadingFallback = <div className="p-6 text-slate-400">Loading...</div>;
 
 const App: React.FC = () => {
   const aura = useAura();
+  const lifeContext = useLifeContext({
+    isOnboarded: aura.isOnboarded,
+    profile: aura.profile,
+    memoryItems: aura.memoryItems,
+    goals: aura.goals,
+    timelineEvents: aura.timelineEvents,
+    dailyPlan: aura.dailyPlan,
+    prompts: aura.prompts,
+    lifeContextSnapshots: aura.lifeContextSnapshots,
+    latestDimensionSnapshots: aura.latestDimensionSnapshots,
+    lastSessionScores: aura.lastSessionScores,
+    dashboardPreferences: aura.dashboardPreferences,
+    setLifeContextSnapshots: aura.setLifeContextSnapshots,
+    setLatestDimensionSnapshots: aura.setLatestDimensionSnapshots,
+    setLastSessionScores: aura.setLastSessionScores,
+    setDashboardPreferences: aura.setDashboardPreferences,
+    setLifeContextSignalHandler: aura.setLifeContextSignalHandler,
+  });
   const [activeTab, setActiveTab] = useState<
     'dashboard' | 'stream' | 'chat' | 'vault' | 'settings'
   >('dashboard');
@@ -53,6 +71,11 @@ const App: React.FC = () => {
   const [logError, setLogError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const isOnline = useOnlineStatus();
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    document.documentElement.classList.toggle('dark', isDarkMode);
+  }, [isDarkMode]);
 
   useEffect(() => {
     const handleKeydown = (e: KeyboardEvent) => {
@@ -104,15 +127,35 @@ const App: React.FC = () => {
     setLogError(null);
     const inputToProcess = userInput.trim();
     if (!inputToProcess && (!files || files.length === 0)) return;
+    const normalizedInput = inputToProcess.toLowerCase();
+
+    if (normalizedInput === '/sync') {
+      await aura.refreshAura({ force: true });
+      setUserInput('');
+      showToast('Dashboard refreshed.', 'success');
+      return;
+    }
+    if (normalizedInput.startsWith('/ask')) {
+      const query = inputToProcess.replace(/^\/ask\s*/i, '').trim();
+      if (query.length > 0) {
+        await handleSendMessage(query);
+      } else {
+        setActiveTab('chat');
+        showToast('Ask command ready in assistant.', 'info');
+      }
+      setUserInput('');
+      return;
+    }
+
     if (activeTab === 'chat' && inputToProcess) {
       handleSendMessage(inputToProcess);
       setUserInput('');
       return;
     }
     try {
-      await aura.logMemory(inputToProcess, files, true);
+      await aura.logMemory(inputToProcess, files, false);
       setUserInput('');
-      showToast('Memory Internialized', 'success');
+      showToast('Saved', 'success');
     } catch (err: any) {
       const message = err?.message || 'Internalization error';
       setLogError(message);
@@ -160,7 +203,9 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen bg-[#02040a] text-slate-100 overflow-hidden font-inter dark">
+    <div
+      className={`flex h-screen overflow-hidden font-inter ${isDarkMode ? 'bg-[#02040a] text-slate-100' : 'bg-slate-100 text-slate-900'}`}
+    >
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -207,12 +252,12 @@ const App: React.FC = () => {
                       aura.toggleTask(id);
                       const task = aura.dailyPlan.find((t) => t.id === id);
                       if (task && !task.completed) {
-                        showToast('Task Optimized', 'success', aura.undoTaskAction, 'Undo');
+                        showToast('Task completed', 'success', aura.undoTaskAction, 'Undo');
                       }
                     }}
                     deleteTask={(id) => {
                       aura.deleteTask(id);
-                      showToast('Task Purged', 'info', aura.undoTaskAction, 'Undo');
+                      showToast('Task removed', 'info', aura.undoTaskAction, 'Undo');
                     }}
                     memory={aura.memoryItems}
                     refreshAll={aura.refreshAura}
@@ -223,6 +268,7 @@ const App: React.FC = () => {
                     alwaysWatchChips={aura.alwaysWatch}
                     updateTimelineEvent={aura.updateTimelineEvent}
                     deleteTimelineEvent={aura.deleteTimelineEvent}
+                    lifeContext={lifeContext}
                   />
                 )}
                 {activeTab === 'vault' && (
@@ -278,11 +324,22 @@ const App: React.FC = () => {
                     isDarkMode={isDarkMode}
                     ruleOfLife={aura.ruleOfLife}
                     setRuleOfLife={aura.setRuleOfLife}
-                    toggleDarkMode={() => {}}
+                    toggleDarkMode={() => setIsDarkMode((prev) => !prev)}
                     exportData={aura.exportData}
                     importData={aura.importData}
                     clearAllData={aura.clearAllData}
                     storageUsage={aura.storageUsage}
+                    auditLogs={aura.auditLogs}
+                    exportAuditLogs={aura.exportAuditLogs}
+                    clearAuditLogs={aura.clearAuditLogs}
+                    copyCspReportSummary={aura.copyCspReportSummary}
+                    backupIdentity={aura.backupIdentity}
+                    backupMeta={aura.backupMeta}
+                    enableBackups={aura.enableBackups}
+                    createRemoteBackup={aura.createRemoteBackup}
+                    listRemoteBackups={aura.listRemoteBackups}
+                    listRemoteBackupsForRecovery={aura.listRemoteBackupsForRecovery}
+                    restoreBackupWithRecovery={aura.restoreBackupWithRecovery}
                   />
                 )}
               </div>
