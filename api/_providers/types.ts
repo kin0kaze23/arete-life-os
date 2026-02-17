@@ -3,6 +3,7 @@ import type { ZodSchema } from 'zod';
 export type ProviderType =
   | 'gemini'
   | 'openai'
+  | 'xai'
   | 'anthropic'
   | 'mistral'
   | 'deepseek'

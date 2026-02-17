@@ -3,6 +3,7 @@ import type { ZodSchema } from 'zod';
 import type { AIProvider, GenerateOptions, ProviderType } from './types';
 
 const PROVIDER_ENDPOINTS: Record<string, string> = {
+  xai: 'https://api.x.ai/v1',
   mistral: 'https://api.mistral.ai/v1',
   deepseek: 'https://api.deepseek.com',
   groq: 'https://api.groq.com/openai/v1',

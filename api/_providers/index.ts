@@ -12,6 +12,7 @@ export const getProvider = (type: ProviderType, apiKey: string, model: string) =
       return new OpenAIProvider(apiKey, model);
     case 'anthropic':
       return new AnthropicProvider(apiKey, model);
+    case 'xai':
     case 'mistral':
     case 'deepseek':
     case 'groq':

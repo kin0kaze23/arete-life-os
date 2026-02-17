@@ -1,6 +1,6 @@
 import type { ZodSchema } from 'zod';
-import type { AIProvider, GenerateOptions, ProviderType } from './providers/types';
-import { getProvider } from './providers';
+import type { AIProvider, GenerateOptions, ProviderType } from './_providers/types';
+import { getProvider } from './_providers';
 
 type ModelConfig = {
   provider: ProviderType;
@@ -38,11 +38,11 @@ const getApiKey = (envVar: string): string => {
 };
 
 const defaultModelConfig = (): ModelConfig => {
-  const provider = (process.env.AI_DEFAULT_PROVIDER as ProviderType) || 'gemini';
+  const provider = (process.env.AI_DEFAULT_PROVIDER as ProviderType) || 'openai';
   return {
     provider,
     model:
-      process.env.AI_DEFAULT_MODEL || process.env.GEMINI_MODEL_FLASH || 'gemini-3-flash-preview',
+      process.env.AI_DEFAULT_MODEL || process.env.OPENAI_MODEL || 'gpt-5-mini',
     apiKeyEnvVar: `${provider.toUpperCase()}_API_KEY`,
     temperature: process.env.AI_DEFAULT_TEMPERATURE
       ? Number(process.env.AI_DEFAULT_TEMPERATURE)
@@ -65,9 +65,9 @@ const resolveActionConfig = (action: string): ModelConfig => {
 };
 
 const resolveFallback = (): ModelConfig | undefined => {
-  const provider = process.env.AI_FALLBACK_PROVIDER as ProviderType | undefined;
-  const model = process.env.AI_FALLBACK_MODEL;
-  if (!provider || !model) return undefined;
+  const provider =
+    (process.env.AI_FALLBACK_PROVIDER as ProviderType | undefined) || ('xai' as ProviderType);
+  const model = process.env.AI_FALLBACK_MODEL || 'grok-4-fast-non-reasoning';
   return {
     provider,
     model,
