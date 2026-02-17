@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, BookOpen, CalendarPlus, Target } from 'lucide-react';
 import {
   AlwaysChip,
   BaselineSwotEntry,
@@ -251,6 +251,62 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="max-w-6xl mx-auto pb-32 space-y-8">
       <DashboardHeader greeting={greeting} summary={headerSummary} />
+
+      {/* Getting Started — shown only when no memory items exist */}
+      {memory.length === 0 && (
+        <section className="rounded-3xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/5 to-transparent p-6 animate-in fade-in duration-500">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-indigo-400">
+            Getting Started
+          </p>
+          <h2 className="mt-2 text-lg font-semibold text-white text-balance">
+            Your dashboard personalises as you log. Start with one of these:
+          </h2>
+          <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <button
+              type="button"
+              onClick={() => handleInsertTemplate('DAILY_CHECKIN')}
+              className="flex items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-left hover:border-indigo-500/30 hover:bg-indigo-500/5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+            >
+              <BookOpen size={16} className="text-indigo-400 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-white">Daily check-in</p>
+                <p className="text-[12px] text-slate-400 mt-0.5 text-pretty">
+                  Log your energy, mood, and top focus for the day.
+                </p>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleInsertTemplate('SCHEDULE_EVENT')}
+              className="flex items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-left hover:border-indigo-500/30 hover:bg-indigo-500/5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+            >
+              <CalendarPlus size={16} className="text-emerald-400 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-white">Schedule an event</p>
+                <p className="text-[12px] text-slate-400 mt-0.5 text-pretty">
+                  Add an upcoming event so Areté can help you prepare.
+                </p>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleInsertTemplate('WORK_PROGRESS')}
+              className="flex items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-left hover:border-indigo-500/30 hover:bg-indigo-500/5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+            >
+              <Target size={16} className="text-amber-400 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-white">Log work progress</p>
+                <p className="text-[12px] text-slate-400 mt-0.5 text-pretty">
+                  Record what you moved forward and what's next.
+                </p>
+              </div>
+            </button>
+          </div>
+          <p className="mt-4 text-[11px] text-slate-500">
+            Just type anything into the log bar below — Areté will categorise and analyse it.
+          </p>
+        </section>
+      )}
 
       {/* Life Intelligence — always visible above the Decision Deck */}
       <SignalGrid
