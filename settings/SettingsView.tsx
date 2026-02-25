@@ -79,6 +79,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onToggleInboxAutoMerge,
 }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [isGeneratingLink, setIsGeneratingLink] = React.useState(false);
+  const [telegramLinkError, setTelegramLinkError] = React.useState<string | null>(null);
+
+  const handleGenerateLinkCode = async () => {
+    setIsGeneratingLink(true);
+    setTelegramLinkError(null);
+    try {
+      await onGenerateTelegramLinkCode?.();
+    } catch (err: any) {
+      setTelegramLinkError(err?.message || 'Failed to generate link code');
+    } finally {
+      setIsGeneratingLink(false);
+    }
+  };
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
@@ -308,11 +322,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <div className="space-y-2">
                   <button
                     type="button"
-                    onClick={() => onGenerateTelegramLinkCode?.()}
-                    className="rounded-xl bg-sky-500 hover:bg-sky-400 px-4 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-black"
+                    onClick={handleGenerateLinkCode}
+                    disabled={isGeneratingLink}
+                    className="rounded-xl bg-sky-500 hover:bg-sky-400 disabled:opacity-60 px-4 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-black"
                   >
-                    Generate Link Code
+                    {isGeneratingLink ? 'Generating...' : 'Generate Link Code'}
                   </button>
+                  {telegramLinkError && (
+                    <p className="text-[11px] text-rose-300">{telegramLinkError}</p>
+                  )}
                   {telegram?.linkCode && (
                     <div className="rounded-xl border border-sky-400/30 bg-sky-500/10 px-4 py-3 text-xs text-sky-200">
                       <p className="font-black uppercase tracking-[0.16em] text-[10px] mb-1">
