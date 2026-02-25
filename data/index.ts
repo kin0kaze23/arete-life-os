@@ -4,3 +4,7 @@ export * from './cryptoVault';
 export * from './migration';
 export * from './financeUtils';
 export * from './claimUtils';
+export * from './supabaseClient';
+export * from './supabaseTypes';
+export * from './supabaseVault';
+export * from './vaultMigration';

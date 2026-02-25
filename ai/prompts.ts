@@ -335,3 +335,181 @@ export const buildMemoryContext = (
     .slice(0, maxItems)
     .map((s) => s.item);
 };
+
+export const BASELINE_SWOT_PROMPT = `
+You are Areté Life OS. Generate a grounded baseline SWOT for each life dimension from PROFILE data only.
+
+INPUT:
+- PROFILE: {{profile}}
+- GOALS: {{goals}}
+- PRE_COMPUTED_METRICS: {{preComputedMetrics}}
+- PERSONALIZATION_CONTEXT: {{personalizationContext}}
+
+RULES:
+1. Use only provided data.
+2. If data is missing, state the gap explicitly.
+3. Keep each list concise (1-2 items).
+
+OUTPUT JSON:
+{
+  "baseline": [
+    {
+      "dimension": "Health|Finance|Relationships|Spiritual|Personal",
+      "strengths": ["..."],
+      "weaknesses": ["..."],
+      "opportunities": ["..."],
+      "threats": ["..."],
+      "confidence": "profile|mixed|memory",
+      "nextAction": "..."
+    }
+  ]
+}
+`;
+
+export const DIMENSION_CONTEXT_PROMPT = `
+You are Areté Life OS. Refresh dimension contexts using profile, memory, and pre-computed metrics.
+
+GROUNDING RULES:
+1. Reference ONLY data in input.
+2. Do NOT invent phone numbers, addresses, clinics, or external organizations.
+3. Every insight must cite a metric or memory pattern.
+4. If data is weak, explicitly return missingData.
+
+OUTPUT JSON:
+{
+  "snapshots": [
+    {
+      "dimension": "Health|Finance|Relationships|Spiritual|Personal",
+      "score": 0,
+      "trend": "up|down|stable",
+      "delta": 0,
+      "status": "critical|warning|stable|strong",
+      "insight": "...",
+      "gap": "...",
+      "nextStep": "...",
+      "projection": "...",
+      "swot": {
+        "strengths": ["..."],
+        "weaknesses": ["..."],
+        "opportunities": ["..."],
+        "threats": ["..."]
+      },
+      "scoreExplanation": {
+        "summary": "...",
+        "drivers": ["..."],
+        "peerComparison": "...",
+        "confidence": "low|medium|high"
+      },
+      "missingData": ["..."],
+      "fidelityLevel": 0,
+      "generatedAt": "ISO",
+      "triggeredBy": "manual|tier1|tier2|cold_start"
+    }
+  ]
+}
+`;
+
+export const LIFE_SNAPSHOT_SYNTHESIS_PROMPT = `
+You are Areté Life OS. Synthesize a dashboard narrative and priorities from dimension snapshots.
+
+INPUT:
+- PROFILE: {{profile}}
+- SNAPSHOTS: {{dimensionSnapshots}}
+
+OUTPUT JSON:
+{
+  "narrativeParagraph": "2-4 sentence synthesis",
+  "criticalPriorities": [
+    { "id": "string", "title": "string", "reason": "string", "dimension": "Health|Finance|Relationships|Spiritual|Personal", "urgency": "high|medium|low" }
+  ],
+  "profileGaps": [
+    { "dimension": "Health|Finance|Relationships|Spiritual|Personal", "id": "string", "section": "string", "field": "string", "reason": "string", "prompt": "string", "impact": "high|medium|low" }
+  ]
+}
+`;
+
+export const HEALTH_REPORT_PROMPT = `
+Generate a HealthReport JSON using only provided memories/profile.
+Do not invent external facts.
+Return fields: generatedAt, period, overallScore, trend, summary, highlights, concerns, metrics, recommendations.
+`;
+
+export const FINANCIAL_REPORT_PROMPT = `
+Generate a FinancialReport JSON using only provided memories/profile.
+Do not invent external facts.
+Return fields: generatedAt, period, cashflow, benchmarks, insights, actionItems.
+`;
+
+export const FAITH_REPORT_PROMPT = `
+Generate a FaithEngagementReport JSON using only provided memories/profile/relationships.
+Do not invent external people facts.
+Return fields: generatedAt, personalFaithState, practiceConsistency, recentInsights, relationships, generalPrinciples.
+`;
+
+export const HABITS_REPORT_PROMPT = `
+Generate a HabitsReport JSON using only provided memories/profile.
+Do not invent external facts.
+Return fields: generatedAt, activeHabits, suggestedHabits, droppedHabits.
+`;
+
+export const normalizePreComputedMetrics = (metrics: any) => {
+  return {
+    bmi: metrics?.bmi ?? null,
+    bmiCategory: metrics?.bmiCategory ?? null,
+    baselineSleepHours: metrics?.baselineSleepHours ?? null,
+    loggedSleepAvg: metrics?.loggedSleepAvg ?? null,
+    exerciseSessionsThisWeek: metrics?.exerciseSessionsThisWeek ?? 0,
+    exerciseTarget: metrics?.exerciseTarget ?? 0,
+    exerciseAdherence: metrics?.exerciseAdherence ?? 0,
+    daysSinceLastExercise: metrics?.daysSinceLastExercise ?? null,
+    savingsRate: metrics?.savingsRate ?? null,
+    netWorth: metrics?.netWorth ?? null,
+    emergencyFundMonths: metrics?.emergencyFundMonths ?? null,
+    debtToIncomeRatio: metrics?.debtToIncomeRatio ?? null,
+    dimensionLogCounts30d: metrics?.dimensionLogCounts30d ?? {},
+  };
+};
+
+export const buildProfileForDimension = (profile: UserProfile, dimension: Category) => {
+  switch (dimension) {
+    case Category.HEALTH:
+      return profile.health;
+    case Category.FINANCE:
+      return profile.finances;
+    case Category.RELATIONSHIPS:
+      return profile.relationship;
+    case Category.SPIRITUAL:
+      return profile.spiritual;
+    case Category.PERSONAL:
+      return profile.personal;
+    default:
+      return {};
+  }
+};
+
+export const buildLifeContextPersonalizationContext = (profile: UserProfile, metrics: any) => ({
+  name: profile.identify?.name || 'User',
+  location: profile.identify?.location || '',
+  role: profile.personal?.jobRole || '',
+  goals: profile.relationship?.socialGoals || [],
+  metrics,
+});
+
+export const buildDimensionContext = (
+  memory: MemoryEntry[],
+  goals: any[],
+  dimension: Category,
+  maxItems = 30
+) => {
+  return {
+    dimension,
+    memories: buildMemoryContext(memory, [dimension], maxItems).map((item) => ({
+      id: item.id,
+      timestamp: item.timestamp,
+      category: item.category,
+      content: item.content,
+      sentiment: item.sentiment,
+    })),
+    goals: (goals || []).slice(0, 10),
+  };
+};

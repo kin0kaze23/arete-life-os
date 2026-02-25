@@ -492,3 +492,143 @@ export interface WidgetConfig {
 export interface DashboardLayout {
   widgets: WidgetConfig[];
 }
+
+export type LifeDimension =
+  | Category.HEALTH
+  | Category.FINANCE
+  | Category.RELATIONSHIPS
+  | Category.SPIRITUAL
+  | Category.PERSONAL;
+
+export const LIFE_DIMENSIONS: LifeDimension[] = [
+  Category.HEALTH,
+  Category.FINANCE,
+  Category.RELATIONSHIPS,
+  Category.SPIRITUAL,
+  Category.PERSONAL,
+];
+
+export interface DimensionSwot {
+  strengths: string[];
+  weaknesses: string[];
+  opportunities: string[];
+  threats: string[];
+}
+
+export interface DimensionScoreExplanation {
+  summary: string;
+  drivers: string[];
+  peerComparison: string;
+  confidence: 'low' | 'medium' | 'high';
+}
+
+export interface DimensionContextSnapshot {
+  dimension: LifeDimension;
+  score: number;
+  trend: 'up' | 'down' | 'stable';
+  delta: number;
+  status: 'critical' | 'warning' | 'stable' | 'strong';
+  insight: string;
+  gap: string;
+  nextStep: string;
+  projection?: string;
+  swot: DimensionSwot;
+  scoreExplanation: DimensionScoreExplanation;
+  missingData: string[];
+  fidelityLevel: 0 | 1 | 2 | 3;
+  generatedAt: string;
+  triggeredBy: 'manual' | 'tier1' | 'tier2' | 'cold_start';
+}
+
+export interface BaselineSwotEntry {
+  dimension: Category;
+  strengths: string[];
+  weaknesses: string[];
+  opportunities: string[];
+  threats: string[];
+  confidence: 'profile' | 'mixed' | 'memory';
+  nextAction: string;
+}
+
+export interface CriticalPriority {
+  id: string;
+  title: string;
+  reason: string;
+  dimension: LifeDimension;
+  urgency: 'high' | 'medium' | 'low';
+}
+
+export interface ProfileGap {
+  dimension: LifeDimension;
+  id?: string;
+  section?: string;
+  field?: string;
+  reason?: string;
+  prompt?: string;
+  impact?: 'high' | 'medium' | 'low';
+}
+
+export interface ContributionFeedback {
+  logSummary: string;
+  affectedDimensions: Array<{
+    dimension: Category;
+    scoreBefore: number;
+    scoreAfter: number;
+    delta: number;
+  }>;
+}
+
+export interface PreComputedMetrics {
+  bmi?: number | null;
+  bmiCategory?: string | null;
+  baselineSleepHours?: number | null;
+  loggedSleepAvg?: number | null;
+  exerciseSessionsThisWeek?: number;
+  exerciseTarget?: number;
+  exerciseAdherence?: number;
+  daysSinceLastExercise?: number | null;
+  savingsRate?: number | null;
+  netWorth?: number | null;
+  emergencyFundMonths?: number | null;
+  debtToIncomeRatio?: number | null;
+  socialInteractions14d?: number;
+  commitmentsFulfilled7d?: number;
+  commitmentsTotal?: number;
+  practiceSessionsThisWeek?: number;
+  practiceTarget?: number;
+  practiceAdherence?: number;
+  daysSinceLastPractice?: number | null;
+  careerLogsThisMonth?: number;
+  interestLogsThisMonth?: number;
+  growthLogsThisMonth?: number;
+  statedInterests?: string[];
+  dimensionLogCounts30d?: Record<string, number>;
+}
+
+export const createEmptySnapshot = (dimension: LifeDimension): DimensionContextSnapshot => ({
+  dimension,
+  score: 50,
+  trend: 'stable',
+  delta: 0,
+  status: 'stable',
+  insight: 'No dimension analysis yet.',
+  gap: 'Need more logs to generate a stronger analysis.',
+  nextStep: 'Log one relevant update and refresh this dimension.',
+  projection: 'Trajectory unavailable until first refresh.',
+  swot: {
+    strengths: ['No baseline yet'],
+    weaknesses: ['No baseline yet'],
+    opportunities: ['Refresh this dimension'],
+    threats: ['Unknown'],
+  },
+  scoreExplanation: {
+    summary: 'No score explanation yet.',
+    drivers: [],
+    peerComparison: 'Unavailable',
+    confidence: 'low',
+  },
+  missingData: [],
+  fidelityLevel: 0,
+  generatedAt: new Date(0).toISOString(),
+  triggeredBy: 'cold_start',
+});

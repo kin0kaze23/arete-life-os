@@ -4,6 +4,8 @@ import { Sidebar, Header } from '@/layout';
 import { LogBar, CommandPalette } from '@/command';
 import { askAura } from '@/ai';
 import { ErrorBoundary } from '@/app/ErrorBoundary';
+import { AuthScreen } from '@/app/AuthScreen';
+import { isSupabaseConfigured, supabase } from '@/data';
 import { X, CheckCircle2, User, Database, Settings } from 'lucide-react';
 import { useOnlineStatus, NetworkBanner, Toast } from '@/shared';
 
@@ -28,6 +30,61 @@ const LoadingFallback = <div className="p-6 text-slate-400">Loading...</div>;
 
 const App: React.FC = () => {
   const aura = useAura();
+  const [authReady, setAuthReady] = useState(!isSupabaseConfigured);
+  const [isAuthenticated, setIsAuthenticated] = useState(!isSupabaseConfigured);
+  const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!supabase) {
+      setAuthReady(true);
+      setIsAuthenticated(true);
+      return;
+    }
+
+    let mounted = true;
+
+    const initialize = async () => {
+      const { data, error } = await supabase.auth.getSession();
+      if (!mounted) return;
+      if (error) {
+        setAuthError(error.message);
+      }
+      setIsAuthenticated(Boolean(data.session));
+      setAuthReady(true);
+    };
+
+    void initialize();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(Boolean(session));
+      setAuthReady(true);
+    });
+
+    return () => {
+      mounted = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleSendMagicLink = async (email: string) => {
+    if (!supabase) return;
+    setAuthError(null);
+    setIsSendingMagicLink(true);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+        },
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      setAuthError(err?.message || 'Unable to send magic link.');
+    } finally {
+      setIsSendingMagicLink(false);
+    }
+  };
   const lifeContext = useLifeContext({
     isOnboarded: aura.isOnboarded,
     profile: aura.profile,
@@ -93,6 +150,20 @@ const App: React.FC = () => {
       aura.refreshAura();
     }
   }, [aura.isUnlocked, aura.isOnboarded]);
+
+  if (!authReady) {
+    return <div className="min-h-screen bg-[#05070d] text-slate-300 p-8">Loading...</div>;
+  }
+
+  if (isSupabaseConfigured && !isAuthenticated) {
+    return (
+      <AuthScreen
+        onSendMagicLink={handleSendMagicLink}
+        authError={authError}
+        isSending={isSendingMagicLink}
+      />
+    );
+  }
 
   const showToast = (
     message: string,
@@ -269,6 +340,9 @@ const App: React.FC = () => {
                     updateTimelineEvent={aura.updateTimelineEvent}
                     deleteTimelineEvent={aura.deleteTimelineEvent}
                     lifeContext={lifeContext}
+                    inboxEntries={aura.inboxEntries}
+                    onMergeInbox={aura.mergeInboxEntries}
+                    onRefreshInbox={aura.refreshInbox}
                   />
                 )}
                 {activeTab === 'vault' && (
@@ -329,6 +403,13 @@ const App: React.FC = () => {
                     importData={aura.importData}
                     clearAllData={aura.clearAllData}
                     storageUsage={aura.storageUsage}
+                    cloudMigration={aura.cloudMigration}
+                    onMigrateToCloud={aura.migrateToCloud}
+                    telegram={aura.telegram}
+                    onGenerateTelegramLinkCode={aura.generateTelegramLinkCode}
+                    onUnlinkTelegram={aura.unlinkTelegram}
+                    inboxAutoMerge={aura.inboxAutoMerge}
+                    onToggleInboxAutoMerge={aura.setInboxAutoMerge}
                     auditLogs={aura.auditLogs}
                     exportAuditLogs={aura.exportAuditLogs}
                     clearAuditLogs={aura.clearAuditLogs}

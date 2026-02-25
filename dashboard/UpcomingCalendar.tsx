@@ -7,6 +7,7 @@ interface UpcomingCalendarProps {
   onSelectEvent: (event: TimelineEvent) => void;
   onEditEvent?: (event: TimelineEvent) => void;
   onDeleteEvent?: (eventId: string) => void;
+  maxEvents?: number;
 }
 
 const truncateTitle = (title: string, maxWords = 4): string => {
@@ -20,10 +21,12 @@ export const UpcomingCalendar: React.FC<UpcomingCalendarProps> = ({
   onSelectEvent,
   onEditEvent,
   onDeleteEvent,
+  maxEvents,
 }) => {
   const upcomingEvents = events
     .filter((e) => new Date(e.date).getTime() > Date.now())
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(0, maxEvents || events.length);
 
   if (upcomingEvents.length === 0) {
     return (

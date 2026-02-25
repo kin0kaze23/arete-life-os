@@ -14,6 +14,7 @@ import {
   Recommendation,
   Source,
   Goal,
+  InboxEntry,
 } from '@/data';
 import type { LifeContextController } from '@/core/useLifeContext';
 import { FocusList } from './FocusList';
@@ -25,6 +26,7 @@ import { DashboardHeader } from './DashboardHeader';
 import { computeScoreInternal } from './ScoreStrip';
 import { LifeContextPanel } from './LifeContextPanel';
 import { AdvanceProtectPanel } from './AdvanceProtectPanel';
+import { ReportsSection } from './ReportsSection';
 
 interface DashboardViewProps {
   memory: MemoryEntry[];
@@ -60,6 +62,9 @@ interface DashboardViewProps {
   deleteTimelineEvent?: (id: string) => void;
   personalizedGreeting?: string;
   lifeContext?: LifeContextController;
+  inboxEntries?: InboxEntry[];
+  onMergeInbox?: (ids?: string[]) => Promise<void> | void;
+  onRefreshInbox?: () => Promise<void> | void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -85,6 +90,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   deleteTimelineEvent,
   personalizedGreeting = 'Welcome',
   lifeContext,
+  inboxEntries = [],
+  onMergeInbox,
+  onRefreshInbox,
 }) => {
   const [activePrepEvent, setActivePrepEvent] = useState<TimelineEvent | null>(null);
   const [editingEvent, setEditingEvent] = useState<TimelineEvent | null>(null);
@@ -252,6 +260,46 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     <div className="max-w-6xl mx-auto pb-32 space-y-8">
       <DashboardHeader greeting={greeting} summary={headerSummary} />
 
+      {inboxEntries.length > 0 && (
+        <section className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5 space-y-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-300">
+                Inbox
+              </p>
+              <p className="text-sm text-slate-200">{inboxEntries.length} new entr{inboxEntries.length === 1 ? 'y' : 'ies'} from Telegram</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => onMergeInbox?.()}
+                className="rounded-lg bg-emerald-500 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-black"
+              >
+                Merge all
+              </button>
+              <button
+                type="button"
+                onClick={() => onRefreshInbox?.()}
+                className="rounded-lg border border-emerald-400/40 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-200"
+              >
+                Refresh
+              </button>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {inboxEntries.slice(0, 5).map((entry) => (
+              <div
+                key={entry.id}
+                className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-slate-200"
+              >
+                <span className="text-emerald-300 mr-2">•</span>
+                {(entry.raw_content || '').slice(0, 140) || 'Inbox entry'}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Getting Started — shown only when no memory items exist */}
       {memory.length === 0 && (
         <section className="rounded-3xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/5 to-transparent p-6 animate-in fade-in duration-500">
@@ -357,6 +405,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           />
         </div>
       </div>
+
+      <ReportsSection memory={memory} profile={profile} />
 
       {/* Deep Analysis — collapsible, defaults to expanded */}
       {lifeContext && (

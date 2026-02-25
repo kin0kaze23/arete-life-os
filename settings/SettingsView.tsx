@@ -13,6 +13,10 @@ import {
   ShieldCheck,
   Zap,
   HardDrive,
+  Cloud,
+  MessageCircle,
+  Link2,
+  RefreshCw,
 } from 'lucide-react';
 import { VaultSection, VaultInput, VaultSelect, VaultSlider } from '@/shared';
 import { ProactiveInsight, RuleOfLife } from '@/data';
@@ -26,6 +30,35 @@ interface SettingsViewProps {
   importData: (file: File) => void;
   clearAllData: () => void;
   storageUsage?: number;
+  cloudMigration?: {
+    status: 'idle' | 'running' | 'done' | 'error';
+    message?: string;
+    migrated?: number;
+  };
+  onMigrateToCloud?: () => Promise<void> | void;
+  telegram?: {
+    linked: boolean;
+    username?: string;
+    firstName?: string;
+    linkedAt?: string;
+    linkCode?: string | null;
+    linkCodeExpiresAt?: number | null;
+  };
+  onGenerateTelegramLinkCode?: () => Promise<void> | void;
+  onUnlinkTelegram?: () => Promise<void> | void;
+  inboxAutoMerge?: boolean;
+  onToggleInboxAutoMerge?: (value: boolean) => void;
+  auditLogs?: unknown[];
+  exportAuditLogs?: () => void;
+  clearAuditLogs?: () => void;
+  copyCspReportSummary?: () => void;
+  backupIdentity?: unknown;
+  backupMeta?: unknown;
+  enableBackups?: (...args: any[]) => Promise<any> | any;
+  createRemoteBackup?: (...args: any[]) => Promise<any> | any;
+  listRemoteBackups?: (...args: any[]) => Promise<any> | any;
+  listRemoteBackupsForRecovery?: (...args: any[]) => Promise<any> | any;
+  restoreBackupWithRecovery?: (...args: any[]) => Promise<any> | any;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -37,6 +70,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   importData,
   clearAllData,
   storageUsage = 0,
+  cloudMigration,
+  onMigrateToCloud,
+  telegram,
+  onGenerateTelegramLinkCode,
+  onUnlinkTelegram,
+  inboxAutoMerge = false,
+  onToggleInboxAutoMerge,
 }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -215,6 +255,93 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 onChange={handleFileChange}
               />
             </button>
+          </div>
+        </VaultSection>
+
+        <VaultSection icon={<Cloud size={24} />} title="Cloud Sync" color="text-cyan-400">
+          <div className="col-span-full space-y-4">
+            <div className="rounded-3xl border border-white/10 bg-slate-900/40 p-5 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-white">Migrate to Supabase Cloud</p>
+                <p className="text-[11px] text-slate-400">
+                  Encrypt existing vault entries per-item and sync across devices.
+                </p>
+                {cloudMigration?.message && (
+                  <p className="text-[11px] mt-1 text-cyan-300">{cloudMigration.message}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => onMigrateToCloud?.()}
+                disabled={cloudMigration?.status === 'running'}
+                className="rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-60 px-4 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-black"
+              >
+                {cloudMigration?.status === 'running' ? 'Migrating...' : 'Migrate to Cloud'}
+              </button>
+            </div>
+          </div>
+        </VaultSection>
+
+        <VaultSection icon={<MessageCircle size={24} />} title="Telegram" color="text-sky-400">
+          <div className="col-span-full space-y-4">
+            <div className="rounded-3xl border border-white/10 bg-slate-900/40 p-5 space-y-3">
+              <p className="text-sm font-bold text-white">
+                Status:{' '}
+                <span className={telegram?.linked ? 'text-emerald-300' : 'text-slate-400'}>
+                  {telegram?.linked ? 'Connected' : 'Not linked'}
+                </span>
+              </p>
+              {telegram?.linked ? (
+                <div className="space-y-2">
+                  <p className="text-xs text-slate-300">
+                    @{telegram.username || 'unknown'} {telegram.firstName ? `(${telegram.firstName})` : ''}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => onUnlinkTelegram?.()}
+                    className="rounded-xl border border-rose-400/40 px-4 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-rose-300"
+                  >
+                    Unlink
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => onGenerateTelegramLinkCode?.()}
+                    className="rounded-xl bg-sky-500 hover:bg-sky-400 px-4 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-black"
+                  >
+                    Generate Link Code
+                  </button>
+                  {telegram?.linkCode && (
+                    <div className="rounded-xl border border-sky-400/30 bg-sky-500/10 px-4 py-3 text-xs text-sky-200">
+                      <p className="font-black uppercase tracking-[0.16em] text-[10px] mb-1">
+                        Send this in Telegram
+                      </p>
+                      <code className="text-sm font-bold">/link {telegram.linkCode}</code>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-3xl border border-white/10 bg-slate-900/40 p-5 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-bold text-white">Inbox Auto-Merge</p>
+                <p className="text-[11px] text-slate-400">
+                  Automatically absorb new Telegram entries on dashboard load.
+                </p>
+              </div>
+              <button
+                aria-label="Toggle Inbox Auto Merge"
+                onClick={() => onToggleInboxAutoMerge?.(!inboxAutoMerge)}
+                className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${inboxAutoMerge ? 'bg-emerald-500' : 'bg-slate-700'}`}
+              >
+                <span
+                  className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${inboxAutoMerge ? 'translate-x-7' : 'translate-x-1'}`}
+                />
+              </button>
+            </div>
           </div>
         </VaultSection>
 

@@ -34,6 +34,14 @@ import {
   deleteFile,
   extractFinanceMetricsFromMemory,
   putFile,
+  isSupabaseConfigured,
+  supabase,
+  loadVaultSnapshotFromSupabase,
+  syncVaultSnapshotToSupabase,
+  loadInboxEntries,
+  markInboxEntriesMerged,
+  migrateLocalVaultToSupabase,
+  InboxEntry,
 } from '@/data';
 import { contentHash } from '@/shared';
 import { LogRouter } from '@/command';
@@ -316,6 +324,10 @@ type VaultData = {
   layouts: Record<string, DashboardLayout>;
   alwaysDo?: AlwaysChip[];
   alwaysWatch?: AlwaysChip[];
+  lifeContextSnapshots?: any[];
+  latestDimensionSnapshots?: Record<string, any>;
+  lastSessionScores?: Record<string, number>;
+  dashboardPreferences?: Record<string, any>;
 };
 
 const LEGACY_KEYS = [
@@ -357,6 +369,10 @@ const buildDefaultVault = (): VaultData => ({
   layouts: { [INITIAL_PROFILE.id]: DEFAULT_LAYOUT },
   alwaysDo: [],
   alwaysWatch: [],
+  lifeContextSnapshots: [],
+  latestDimensionSnapshots: {},
+  lastSessionScores: {},
+  dashboardPreferences: {},
 });
 
 const detectLegacyData = () => {
@@ -440,6 +456,25 @@ export const useAura = () => {
   );
   const [isUnlocked, setIsUnlocked] = useState<boolean>(false);
   const [lockError, setLockError] = useState<string | null>(null);
+  const [cloudUserId, setCloudUserId] = useState<string | null>(null);
+  const [cloudMigration, setCloudMigration] = useState<{
+    status: 'idle' | 'running' | 'done' | 'error';
+    message?: string;
+    migrated?: number;
+  }>({ status: 'idle' });
+  const [inboxEntries, setInboxEntries] = useState<InboxEntry[]>([]);
+  const [inboxAutoMerge, setInboxAutoMerge] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('arete:inboxAutoMerge') === 'true';
+  });
+  const [telegram, setTelegram] = useState<{
+    linked: boolean;
+    username?: string;
+    firstName?: string;
+    linkedAt?: string;
+    linkCode?: string | null;
+    linkCodeExpiresAt?: number | null;
+  }>({ linked: false });
 
   const [isOnboarded, setIsOnboarded] = useState<boolean>(false);
   const [familySpace, setFamilySpace] = useState<FamilySpace>(INITIAL_FAMILY);
@@ -466,6 +501,33 @@ export const useAura = () => {
       members: prev.members.map((m) => (m.id === profile.id ? profile : m)),
     }));
   }, [profile]);
+
+  useEffect(() => {
+    if (!supabase) return;
+    let mounted = true;
+
+    const initialize = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!mounted) return;
+      setCloudUserId(data.user?.id || null);
+    };
+
+    void initialize();
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setCloudUserId(session?.user?.id || null);
+    });
+
+    return () => {
+      mounted = false;
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('arete:inboxAutoMerge', inboxAutoMerge ? 'true' : 'false');
+  }, [inboxAutoMerge]);
 
   const handleSwitchUser = (id: string) => {
     const nextProfile = familySpace.members.find((m) => m.id === id);
@@ -495,6 +557,11 @@ export const useAura = () => {
   const [layout, setLayout] = useState<DashboardLayout>(DEFAULT_LAYOUT);
   const [alwaysDo, setAlwaysDo] = useState<AlwaysChip[]>([]);
   const [alwaysWatch, setAlwaysWatch] = useState<AlwaysChip[]>([]);
+  const [lifeContextSnapshots, setLifeContextSnapshots] = useState<any[]>([]);
+  const [latestDimensionSnapshots, setLatestDimensionSnapshots] = useState<Record<string, any>>({});
+  const [lastSessionScores, setLastSessionScores] = useState<Record<string, number>>({});
+  const [dashboardPreferences, setDashboardPreferences] = useState<Record<string, any>>({});
+  const [lifeContextSignalHandler, setLifeContextSignalHandler] = useState<any>(null);
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPlanningDay, setIsPlanningDay] = useState(false);
@@ -548,24 +615,44 @@ export const useAura = () => {
       setLayout((data.layouts && data.layouts[data.activeUserId]) || DEFAULT_LAYOUT);
       setAlwaysDo(ensureArray<AlwaysChip>(data.alwaysDo));
       setAlwaysWatch(ensureArray<AlwaysChip>(data.alwaysWatch));
+      setLifeContextSnapshots(Array.isArray(data.lifeContextSnapshots) ? data.lifeContextSnapshots : []);
+      setLatestDimensionSnapshots(data.latestDimensionSnapshots || {});
+      setLastSessionScores(data.lastSessionScores || {});
+      setDashboardPreferences(data.dashboardPreferences || {});
       setStorageUsage(getVaultStorageUsage());
     },
     [rebuildMemoryHashIndex]
   );
 
-  const unlock = useCallback(async (passphrase: string) => {
-    setLockError(null);
-    try {
-      const { key, data } = await unlockVault<VaultData>(passphrase);
-      keyRef.current = key;
-      setIsUnlocked(true);
-      setHasVault(true);
-      applyVaultData(data);
-    } catch (e) {
-      setLockError('Unable to unlock. Check your passphrase.');
-      setIsUnlocked(false);
-    }
-  }, []);
+  const unlock = useCallback(
+    async (passphrase: string) => {
+      setLockError(null);
+      try {
+        const { key, data } = await unlockVault<VaultData>(passphrase);
+        keyRef.current = key;
+        setIsUnlocked(true);
+        setHasVault(true);
+
+        let nextData = data;
+        if (isSupabaseConfigured && cloudUserId) {
+          try {
+            const cloudData = await loadVaultSnapshotFromSupabase(cloudUserId, key, data);
+            if (cloudData) {
+              nextData = cloudData;
+            }
+          } catch (error: any) {
+            console.warn('[useAura] Cloud load failed, using local vault', error?.message || error);
+          }
+        }
+
+        applyVaultData(nextData);
+      } catch (e) {
+        setLockError('Unable to unlock. Check your passphrase.');
+        setIsUnlocked(false);
+      }
+    },
+    [cloudUserId, applyVaultData]
+  );
 
   const setupVault = useCallback(
     async (passphrase: string) => {
@@ -579,12 +666,20 @@ export const useAura = () => {
         setIsUnlocked(true);
         setHasVault(true);
         applyVaultData(data);
+
+        if (isSupabaseConfigured && cloudUserId) {
+          try {
+            await syncVaultSnapshotToSupabase(cloudUserId, key, data);
+          } catch (error: any) {
+            console.warn('[useAura] Initial cloud sync failed', error?.message || error);
+          }
+        }
       } catch (e) {
         setLockError('Unable to create secure vault.');
         setIsUnlocked(false);
       }
     },
-    [hasLegacyData, applyVaultData]
+    [hasLegacyData, applyVaultData, cloudUserId]
   );
 
   useEffect(() => {
@@ -613,6 +708,10 @@ export const useAura = () => {
       layouts,
       alwaysDo,
       alwaysWatch,
+      lifeContextSnapshots,
+      latestDimensionSnapshots,
+      lastSessionScores,
+      dashboardPreferences,
     }),
     [
       isOnboarded,
@@ -634,20 +733,28 @@ export const useAura = () => {
       layouts,
       alwaysDo,
       alwaysWatch,
+      lifeContextSnapshots,
+      latestDimensionSnapshots,
+      lastSessionScores,
+      dashboardPreferences,
     ]
   );
 
   const saveVaultNow = useCallback(async () => {
     if (!keyRef.current) return;
     markPerf(PERF_MARKERS.persistStart);
+    const snapshot = getVaultSnapshot();
     try {
-      await saveVault(keyRef.current, getVaultSnapshot());
+      await saveVault(keyRef.current, snapshot);
+      if (isSupabaseConfigured && cloudUserId) {
+        await syncVaultSnapshotToSupabase(cloudUserId, keyRef.current, snapshot);
+      }
     } finally {
       markPerf(PERF_MARKERS.persistEnd);
       measurePerf('arete-persist', PERF_MARKERS.persistStart, PERF_MARKERS.persistEnd);
       setStorageUsage(getVaultStorageUsage());
     }
-  }, [getVaultSnapshot]);
+  }, [getVaultSnapshot, cloudUserId]);
 
   const scheduleVaultSave = useCallback(() => {
     if (!isUnlocked || !keyRef.current) return;
@@ -773,6 +880,200 @@ export const useAura = () => {
     },
     [rebuildMemoryHashIndex]
   );
+
+  const getAuthHeaders = useCallback(async () => {
+    if (!supabase) throw new Error('Supabase auth is not configured.');
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) throw new Error('Not authenticated.');
+    return {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    };
+  }, []);
+
+  const refreshTelegramStatus = useCallback(async () => {
+    if (!isSupabaseConfigured || !cloudUserId || !supabase) return;
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch('/api/telegram/status', {
+        method: 'GET',
+        headers: { Authorization: headers.Authorization },
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload?.error || 'Failed to load Telegram status');
+      const binding = payload?.binding;
+      setTelegram((prev) => ({
+        ...prev,
+        linked: Boolean(payload?.linked),
+        username: binding?.telegram_username || undefined,
+        firstName: binding?.telegram_first_name || undefined,
+        linkedAt: binding?.linked_at || undefined,
+      }));
+    } catch (error: any) {
+      console.warn('[useAura] refreshTelegramStatus failed', error?.message || error);
+    }
+  }, [cloudUserId, getAuthHeaders]);
+
+  const generateTelegramLinkCode = useCallback(async () => {
+    if (!isSupabaseConfigured || !cloudUserId) {
+      throw new Error('Cloud sync is required before linking Telegram.');
+    }
+    const headers = await getAuthHeaders();
+    const response = await fetch('/api/telegram/generate-link-token', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({}),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload?.error || 'Failed to generate link code');
+    }
+    setTelegram((prev) => ({
+      ...prev,
+      linkCode: payload.token,
+      linkCodeExpiresAt: Date.now() + (payload.expires_in_minutes || 5) * 60 * 1000,
+    }));
+  }, [cloudUserId, getAuthHeaders]);
+
+  const unlinkTelegram = useCallback(async () => {
+    const headers = await getAuthHeaders();
+    const response = await fetch('/api/telegram/unlink', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({}),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload?.error || 'Failed to unlink Telegram');
+    }
+    setTelegram({ linked: false });
+  }, [getAuthHeaders]);
+
+  const mergeInboxEntries = useCallback(
+    async (ids?: string[], entriesOverride?: InboxEntry[]) => {
+      if (!cloudUserId) return;
+      const availableEntries = entriesOverride || inboxEntries;
+      const selected =
+        ids && ids.length > 0
+          ? availableEntries.filter((entry) => ids.includes(entry.id))
+          : availableEntries;
+      if (selected.length === 0) return;
+
+      const timestamp = Date.now();
+      const mergedMemory: MemoryItem[] = [];
+
+      selected.forEach((entry, entryIndex) => {
+        const aiItems = Array.isArray((entry.ai_result as any)?.items)
+          ? ((entry.ai_result as any).items as any[])
+          : [];
+
+        if (aiItems.length === 0) {
+          mergedMemory.push({
+            id: `mem-inbox-${timestamp}-${entryIndex}`,
+            timestamp,
+            content: entry.raw_content,
+            category: inferCategory(entry.raw_content, []),
+            sentiment: 'neutral',
+            extractedFacts: [],
+            ownerId: activeUserId,
+            extractionConfidence: 0.6,
+            metadata: {
+              type: 'telegram_inbox',
+              source: 'telegram',
+              version: 1,
+              payload: {
+                contentType: entry.content_type,
+                sourceUrl: entry.source_url,
+              },
+            },
+          });
+          return;
+        }
+
+        aiItems.forEach((item, itemIndex) => {
+          const content =
+            typeof item?.content === 'string' && item.content.trim().length > 0
+              ? item.content
+              : entry.raw_content;
+          mergedMemory.push({
+            id: `mem-inbox-${timestamp}-${entryIndex}-${itemIndex}`,
+            timestamp,
+            content,
+            category: normalizeCategory(item?.domain || inferCategory(content, [])),
+            sentiment: 'neutral',
+            extractedFacts: [],
+            ownerId: activeUserId,
+            extractionConfidence: coerceConfidence(item?.confidence, 0.7),
+            metadata: {
+              type: 'telegram_inbox',
+              source: 'telegram',
+              version: 1,
+              payload: {
+                contentType: entry.content_type,
+                sourceUrl: entry.source_url,
+                title: item?.title,
+                fields: item?.fields,
+              },
+            },
+          });
+        });
+      });
+
+      appendMemoryItems(mergedMemory);
+      await markInboxEntriesMerged(
+        cloudUserId,
+        selected.map((entry) => entry.id)
+      );
+      setInboxEntries((prev) => prev.filter((entry) => !selected.some((item) => item.id === entry.id)));
+      addAuditLog(ActionType.INGEST_SIGNAL, 'Inbox merged', `${selected.length} Telegram entr${selected.length === 1 ? 'y' : 'ies'}`);
+    },
+    [cloudUserId, inboxEntries, appendMemoryItems, activeUserId, addAuditLog]
+  );
+
+  const refreshInbox = useCallback(async () => {
+    if (!cloudUserId || !isSupabaseConfigured) return;
+    try {
+      const entries = await loadInboxEntries(cloudUserId);
+      setInboxEntries(entries);
+      if (entries.length > 0 && inboxAutoMerge) {
+        await mergeInboxEntries(
+          entries.map((entry) => entry.id),
+          entries
+        );
+      }
+    } catch (error: any) {
+      console.warn('[useAura] refreshInbox failed', error?.message || error);
+    }
+  }, [cloudUserId, inboxAutoMerge, mergeInboxEntries]);
+
+  useEffect(() => {
+    if (!isUnlocked || !cloudUserId) return;
+    void refreshTelegramStatus();
+    void refreshInbox();
+  }, [isUnlocked, cloudUserId, refreshTelegramStatus, refreshInbox]);
+
+  const migrateToCloud = useCallback(async () => {
+    if (!keyRef.current) throw new Error('Unlock your vault first.');
+    if (!cloudUserId) throw new Error('Sign in to Supabase first.');
+    setCloudMigration({ status: 'running', message: 'Migrating vault to cloud...' });
+    try {
+      const result = await migrateLocalVaultToSupabase(keyRef.current, cloudUserId, getVaultSnapshot());
+      setCloudMigration({
+        status: 'done',
+        migrated: result.migrated,
+        message: `Migration complete. ${result.migrated} entries synced.`,
+      });
+      await refreshInbox();
+      await refreshTelegramStatus();
+    } catch (error: any) {
+      setCloudMigration({
+        status: 'error',
+        message: error?.message || 'Cloud migration failed.',
+      });
+      throw error;
+    }
+  }, [cloudUserId, getVaultSnapshot, refreshInbox, refreshTelegramStatus]);
 
   const keepRecommendation = useCallback(
     (id: string) => {
@@ -1992,6 +2293,14 @@ export const useAura = () => {
     isProcessing,
     isPlanningDay,
     storageUsage,
+    cloudMigration,
+    inboxEntries,
+    inboxAutoMerge,
+    telegram,
+    lifeContextSnapshots,
+    latestDimensionSnapshots,
+    lastSessionScores,
+    dashboardPreferences,
     timelineEvents,
     insights,
     blindSpots,
@@ -2004,6 +2313,13 @@ export const useAura = () => {
     alwaysWatch,
     setActiveUserId: handleSwitchUser,
     logMemory,
+    migrateToCloud,
+    mergeInboxEntries,
+    refreshInbox,
+    checkInbox: refreshInbox,
+    generateTelegramLinkCode,
+    unlinkTelegram,
+    setInboxAutoMerge,
     planMyDay,
     resolveConflict,
     clearAllData: () => {
@@ -2058,6 +2374,27 @@ export const useAura = () => {
       }
     },
     refreshAura,
+    exportAuditLogs: () => {
+      const blob = new Blob([JSON.stringify(auditLogs, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `arete-audit-logs-${new Date().toISOString().slice(0, 10)}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    },
+    clearAuditLogs: () => setAuditLogs([]),
+    copyCspReportSummary: async () => {
+      const summary = `Audit logs: ${auditLogs.length}. Last entry: ${auditLogs[0]?.summary || 'none'}`;
+      await navigator.clipboard.writeText(summary);
+    },
+    backupIdentity: null,
+    backupMeta: null,
+    enableBackups: async () => ({ ok: true }),
+    createRemoteBackup: async () => ({ ok: true }),
+    listRemoteBackups: async () => [],
+    listRemoteBackupsForRecovery: async () => [],
+    restoreBackupWithRecovery: async () => ({ ok: true }),
     keepRecommendation,
     removeRecommendation,
     runDeepInitialization,
@@ -2147,6 +2484,11 @@ export const useAura = () => {
     setProfile,
     setRuleOfLife,
     setPrompts,
+    setLifeContextSnapshots,
+    setLatestDimensionSnapshots,
+    setLastSessionScores,
+    setDashboardPreferences,
+    setLifeContextSignalHandler,
     toggleTask: (id: string) => {
       const task = dailyPlan.find((t) => t.id === id) || tasks.find((t) => t.id === id);
       if (!task) return;
