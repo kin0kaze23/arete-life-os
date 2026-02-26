@@ -13,14 +13,16 @@
   "mergePolicy": {
     "high": {
       "requiredChecks": [
-        "risk-policy-gate",
-        "build"
+        "build",
+        "code-review-agent",
+        "risk-policy-gate"
       ]
     },
     "low": {
       "requiredChecks": [
-        "risk-policy-gate",
-        "build"
+        "build",
+        "code-review-agent",
+        "risk-policy-gate"
       ]
     }
   },
@@ -35,7 +37,7 @@
     ]
   },
   "reviewAgent": {
-    "enabled": false,
+    "enabled": true,
     "checkName": "code-review-agent",
     "enforceOnTiers": [
       "high"
