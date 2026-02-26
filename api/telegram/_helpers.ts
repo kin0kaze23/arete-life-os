@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Category, UserRole, type UserProfile } from '../../data/types';
+import { Category, UserRole, type UserProfile } from '../../data/types.js';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

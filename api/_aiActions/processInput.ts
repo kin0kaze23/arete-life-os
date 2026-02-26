@@ -6,9 +6,9 @@
  */
 
 import type { MemoryEntry, PromptConfig, UserProfile } from '../../data/types';
-import { LOG_BAR_INGEST_PROMPT, buildMemoryContext, buildCompactProfile } from '../../ai/prompts';
-import { fillTemplate } from '../_aiConfig';
-import { modelRouter } from '../_modelRouter';
+import { LOG_BAR_INGEST_PROMPT, buildMemoryContext, buildCompactProfile } from '../../ai/prompts.js';
+import { fillTemplate } from '../_aiConfig.js';
+import { modelRouter } from '../_modelRouter.js';
 
 export interface ProcessInputParams {
   input: string;

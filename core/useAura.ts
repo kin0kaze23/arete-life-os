@@ -70,6 +70,7 @@ import { parseLogDeterministically } from './logParser';
 
 const APP_VERSION = '3.2.0';
 const VAULT_INACTIVITY_MS = 15 * 60 * 1000;
+const DEFAULT_TELEGRAM_INBOX_REVIEW_CONFIDENCE = 0.65;
 const PERF_MARKERS = {
   logStart: 'arete-log-start',
   logAiEnd: 'arete-ai-initial-end',
@@ -456,7 +457,9 @@ export const useAura = () => {
   );
   const [isUnlocked, setIsUnlocked] = useState<boolean>(false);
   const [lockError, setLockError] = useState<string | null>(null);
-  const [cloudUserId, setCloudUserId] = useState<string | null>(null);
+  const [cloudUserId, setCloudUserId] = useState<string | null>(() =>
+    import.meta.env.VITE_E2E ? 'e2e-user' : null
+  );
   const [cloudMigration, setCloudMigration] = useState<{
     status: 'idle' | 'running' | 'done' | 'error';
     message?: string;
@@ -466,6 +469,12 @@ export const useAura = () => {
   const [inboxAutoMerge, setInboxAutoMerge] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     return localStorage.getItem('arete:inboxAutoMerge') === 'true';
+  });
+  const [inboxReviewConfidence, setInboxReviewConfidence] = useState<number>(() => {
+    if (typeof window === 'undefined') return DEFAULT_TELEGRAM_INBOX_REVIEW_CONFIDENCE;
+    const raw = Number(localStorage.getItem('arete:inboxReviewConfidence'));
+    const fallback = DEFAULT_TELEGRAM_INBOX_REVIEW_CONFIDENCE;
+    return coerceConfidence(Number.isFinite(raw) ? raw : fallback, fallback);
   });
   const [telegram, setTelegram] = useState<{
     linked: boolean;
@@ -528,6 +537,11 @@ export const useAura = () => {
     if (typeof window === 'undefined') return;
     localStorage.setItem('arete:inboxAutoMerge', inboxAutoMerge ? 'true' : 'false');
   }, [inboxAutoMerge]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('arete:inboxReviewConfidence', String(inboxReviewConfidence));
+  }, [inboxReviewConfidence]);
 
   const handleSwitchUser = (id: string) => {
     const nextProfile = familySpace.members.find((m) => m.id === id);
@@ -892,6 +906,43 @@ export const useAura = () => {
     };
   }, []);
 
+  const parseApiPayload = useCallback(async (response: Response): Promise<any> => {
+    const raw = await response.text();
+    if (!raw) return {};
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return { error: raw.length > 220 ? `${raw.slice(0, 220)}...` : raw };
+    }
+  }, []);
+
+  type MergeInboxOptions = {
+    mode?: 'manual' | 'auto';
+  };
+
+  const getInboxAiItems = useCallback((entry: InboxEntry) => {
+    return Array.isArray((entry.ai_result as any)?.items) ? ((entry.ai_result as any).items as any[]) : [];
+  }, []);
+
+  const getInboxEntryConfidence = useCallback(
+    (entry: InboxEntry) => {
+      const rootConfidence = (entry.ai_result as any)?.confidence;
+      if (typeof rootConfidence === 'number' && !Number.isNaN(rootConfidence)) {
+        return coerceConfidence(rootConfidence, 0.6);
+      }
+      const items = getInboxAiItems(entry);
+      if (items.length === 0) return 0.6;
+      const total = items.reduce((sum, item) => sum + coerceConfidence(item?.confidence, 0.6), 0);
+      return coerceConfidence(total / items.length, 0.6);
+    },
+    [getInboxAiItems]
+  );
+
+  const inboxNeedsReview = useCallback(
+    (entry: InboxEntry) => getInboxEntryConfidence(entry) < inboxReviewConfidence,
+    [getInboxEntryConfidence, inboxReviewConfidence]
+  );
+
   const refreshTelegramStatus = useCallback(async () => {
     if (!isSupabaseConfigured || !cloudUserId || !supabase) return;
     try {
@@ -900,7 +951,7 @@ export const useAura = () => {
         method: 'GET',
         headers: { Authorization: headers.Authorization },
       });
-      const payload = await response.json();
+      const payload = await parseApiPayload(response);
       if (!response.ok) throw new Error(payload?.error || 'Failed to load Telegram status');
       const binding = payload?.binding;
       setTelegram((prev) => ({
@@ -913,7 +964,7 @@ export const useAura = () => {
     } catch (error: any) {
       console.warn('[useAura] refreshTelegramStatus failed', error?.message || error);
     }
-  }, [cloudUserId, getAuthHeaders]);
+  }, [cloudUserId, getAuthHeaders, parseApiPayload]);
 
   const generateTelegramLinkCode = useCallback(async () => {
     if (!isSupabaseConfigured || !cloudUserId) {
@@ -925,7 +976,7 @@ export const useAura = () => {
       headers,
       body: JSON.stringify({}),
     });
-    const payload = await response.json();
+    const payload = await parseApiPayload(response);
     if (!response.ok) {
       throw new Error(payload?.error || 'Failed to generate link code');
     }
@@ -934,7 +985,7 @@ export const useAura = () => {
       linkCode: payload.token,
       linkCodeExpiresAt: Date.now() + (payload.expires_in_minutes || 5) * 60 * 1000,
     }));
-  }, [cloudUserId, getAuthHeaders]);
+  }, [cloudUserId, getAuthHeaders, parseApiPayload]);
 
   const unlinkTelegram = useCallback(async () => {
     const headers = await getAuthHeaders();
@@ -943,16 +994,18 @@ export const useAura = () => {
       headers,
       body: JSON.stringify({}),
     });
-    const payload = await response.json();
+    const payload = await parseApiPayload(response);
     if (!response.ok) {
       throw new Error(payload?.error || 'Failed to unlink Telegram');
     }
     setTelegram({ linked: false });
-  }, [getAuthHeaders]);
+  }, [getAuthHeaders, parseApiPayload]);
 
   const mergeInboxEntries = useCallback(
-    async (ids?: string[], entriesOverride?: InboxEntry[]) => {
+    async (ids?: string[], entriesOverride?: InboxEntry[], options?: MergeInboxOptions) => {
       if (!cloudUserId) return;
+
+      const mode = options?.mode || 'manual';
       const availableEntries = entriesOverride || inboxEntries;
       const selected =
         ids && ids.length > 0
@@ -960,24 +1013,43 @@ export const useAura = () => {
           : availableEntries;
       if (selected.length === 0) return;
 
+      const mergeableEntries =
+        mode === 'auto' ? selected.filter((entry) => !inboxNeedsReview(entry)) : selected;
+      if (mergeableEntries.length === 0) return;
+
       const timestamp = Date.now();
       const mergedMemory: MemoryItem[] = [];
+      const mergedTasks: DailyTask[] = [];
+      const mergedEvents: TimelineEvent[] = [];
+      const mergedClaims: Claim[] = [];
+      const derivedUpdates: ProposedUpdate[] = [];
 
-      selected.forEach((entry, entryIndex) => {
-        const aiItems = Array.isArray((entry.ai_result as any)?.items)
-          ? ((entry.ai_result as any).items as any[])
+      mergeableEntries.forEach((entry, entryIndex) => {
+        const aiResult = (entry.ai_result || {}) as any;
+        const aiItems = getInboxAiItems(entry);
+        const entryConfidence = getInboxEntryConfidence(entry);
+        const entryMemoryIds: string[] = [];
+        const reviewNote =
+          entryConfidence < inboxReviewConfidence
+            ? ['Low-confidence Telegram classification. Merged by manual review.']
+            : undefined;
+        const normalizedFacts = Array.isArray(aiResult?.facts)
+          ? aiResult.facts.filter((fact: any) => fact && typeof fact.fact === 'string')
           : [];
+        const baseMemoryId = `mem-inbox-${timestamp}-${entryIndex}`;
 
         if (aiItems.length === 0) {
+          const memoryId = baseMemoryId;
           mergedMemory.push({
-            id: `mem-inbox-${timestamp}-${entryIndex}`,
+            id: memoryId,
             timestamp,
             content: entry.raw_content,
-            category: inferCategory(entry.raw_content, []),
+            category: inferCategory(entry.raw_content, normalizedFacts as CategorizedFact[]),
             sentiment: 'neutral',
             extractedFacts: [],
             ownerId: activeUserId,
-            extractionConfidence: 0.6,
+            extractionConfidence: entryConfidence,
+            extractionQualityNotes: reviewNote,
             metadata: {
               type: 'telegram_inbox',
               source: 'telegram',
@@ -988,48 +1060,248 @@ export const useAura = () => {
               },
             },
           });
-          return;
+          entryMemoryIds.push(memoryId);
+        } else {
+          aiItems.forEach((item, itemIndex) => {
+            const content =
+              typeof item?.content === 'string' && item.content.trim().length > 0
+                ? item.content.trim()
+                : entry.raw_content;
+            const fields =
+              item?.fields && typeof item.fields === 'object'
+                ? (item.fields as Record<string, unknown>)
+                : {};
+            const domain = normalizeCategory(item?.domain || inferCategory(content, []));
+            const itemConfidence = coerceConfidence(item?.confidence, entryConfidence);
+            const itemOwnerId =
+              item?.ownerId === 'FAMILY_SHARED'
+                ? ('FAMILY_SHARED' as const)
+                : typeof item?.ownerId === 'string' && item.ownerId.length > 0
+                  ? item.ownerId
+                  : activeUserId;
+            const intakeType = normalizeIntakeType(item?.type);
+
+            if (intakeType === 'event') {
+              const rawDate = (fields as any).date || (fields as any).startDate || (fields as any).eventDate;
+              if (typeof rawDate === 'string' && rawDate.trim().length > 0) {
+                const eventDate = rawDate.trim();
+                const title =
+                  (typeof item?.title === 'string' && item.title.trim().length > 0
+                    ? item.title
+                    : content) || 'Telegram event';
+                const event: TimelineEvent = {
+                  id: `event-inbox-${timestamp}-${entryIndex}-${itemIndex}`,
+                  ownerId: String(itemOwnerId),
+                  title,
+                  date: eventDate,
+                  category: domain,
+                  description: content || title,
+                  createdAt: timestamp,
+                  isManual: true,
+                  fields: {
+                    location: typeof (fields as any).location === 'string' ? (fields as any).location : undefined,
+                  },
+                };
+                mergedEvents.push(event);
+                const eventMemoryId = `mem-event-inbox-${timestamp}-${entryIndex}-${itemIndex}`;
+                mergedMemory.push({
+                  id: eventMemoryId,
+                  timestamp,
+                  content: `Event: ${title} on ${eventDate}`,
+                  category: domain,
+                  sentiment: 'neutral',
+                  extractedFacts: [],
+                  ownerId: itemOwnerId,
+                  extractionConfidence: itemConfidence,
+                  extractionQualityNotes: reviewNote,
+                  metadata: {
+                    type: 'event',
+                    source: 'telegram',
+                    version: 1,
+                    payload: {
+                      eventId: event.id,
+                      contentType: entry.content_type,
+                      sourceUrl: entry.source_url,
+                    },
+                  },
+                });
+                entryMemoryIds.push(eventMemoryId);
+                return;
+              }
+            }
+
+            if (intakeType === 'task' || intakeType === 'task_request') {
+              const title =
+                (typeof item?.title === 'string' && item.title.trim().length > 0 ? item.title : content) ||
+                'Telegram task';
+              const task: DailyTask = {
+                id: `task-inbox-${timestamp}-${entryIndex}-${itemIndex}`,
+                ownerId: String(itemOwnerId),
+                title,
+                description: content || title,
+                category: domain,
+                priority:
+                  item?.priority === 'high' || item?.priority === 'low' ? item.priority : 'medium',
+                completed: false,
+                createdAt: timestamp,
+                steps: Array.isArray((fields as any).steps) ? ((fields as any).steps as string[]) : [],
+                inputs: Array.isArray((fields as any).inputs) ? ((fields as any).inputs as string[]) : [],
+                definitionOfDone:
+                  typeof (fields as any).definitionOfDone === 'string'
+                    ? (fields as any).definitionOfDone
+                    : undefined,
+                risks: Array.isArray((fields as any).risks) ? ((fields as any).risks as string[]) : [],
+                links: {
+                  claims: [],
+                  sources: [],
+                  risks: [],
+                  goals: [],
+                },
+              };
+              mergedTasks.push(task);
+            }
+
+            if (intakeType === 'profile_update' || intakeType === 'config_update') {
+              const section = (fields as any).section;
+              const field = (fields as any).field;
+              const newValue = (fields as any).newValue;
+              if (section && field && newValue !== undefined) {
+                derivedUpdates.push({
+                  id: `update-inbox-${timestamp}-${entryIndex}-${itemIndex}`,
+                  section,
+                  field,
+                  oldValue: '',
+                  newValue: String(newValue),
+                  reasoning:
+                    (typeof (fields as any).reasoning === 'string' && (fields as any).reasoning) ||
+                    'Telegram inbox update',
+                  confidence: itemConfidence,
+                  targetUserId: String(itemOwnerId),
+                });
+              }
+            }
+
+            const finalCategory = intakeType === 'habit' ? Category.HABIT : domain;
+            const memoryId = `mem-inbox-${timestamp}-${entryIndex}-${itemIndex}`;
+            mergedMemory.push({
+              id: memoryId,
+              timestamp,
+              content,
+              category: finalCategory,
+              sentiment: 'neutral',
+              extractedFacts: [],
+              ownerId: itemOwnerId,
+              extractionConfidence: itemConfidence,
+              extractionQualityNotes: reviewNote,
+              metadata: {
+                type: 'telegram_inbox',
+                source: 'telegram',
+                version: 1,
+                payload: {
+                  contentType: entry.content_type,
+                  sourceUrl: entry.source_url,
+                  title: item?.title,
+                  fields: item?.fields,
+                  intakeType,
+                },
+              },
+            });
+            entryMemoryIds.push(memoryId);
+          });
         }
 
-        aiItems.forEach((item, itemIndex) => {
-          const content =
-            typeof item?.content === 'string' && item.content.trim().length > 0
-              ? item.content
-              : entry.raw_content;
-          mergedMemory.push({
-            id: `mem-inbox-${timestamp}-${entryIndex}-${itemIndex}`,
+        const claimSourceId = entryMemoryIds[0] || baseMemoryId;
+        normalizedFacts.forEach((fact: any, factIndex: number) => {
+          mergedClaims.push({
+            id: `claim-inbox-${timestamp}-${entryIndex}-${factIndex}`,
+            sourceId: claimSourceId,
+            fact: String(fact.fact),
+            type: 'FACT',
+            confidence: calculateClaimConfidence(fact, profile, claims),
+            status: ClaimStatus.COMMITTED,
+            category: normalizeCategory(fact.category),
+            ownerId: fact.ownerId || activeUserId,
             timestamp,
-            content,
-            category: normalizeCategory(item?.domain || inferCategory(content, [])),
-            sentiment: 'neutral',
-            extractedFacts: [],
-            ownerId: activeUserId,
-            extractionConfidence: coerceConfidence(item?.confidence, 0.7),
-            metadata: {
-              type: 'telegram_inbox',
-              source: 'telegram',
-              version: 1,
-              payload: {
-                contentType: entry.content_type,
-                sourceUrl: entry.source_url,
-                title: item?.title,
-                fields: item?.fields,
-              },
-            },
           });
         });
       });
 
-      appendMemoryItems(mergedMemory);
-      await markInboxEntriesMerged(
-        cloudUserId,
-        selected.map((entry) => entry.id)
+      if (mergedMemory.length > 0) appendMemoryItems(mergedMemory);
+      if (mergedTasks.length > 0) setTasks((prev) => [...mergedTasks, ...prev]);
+      if (mergedEvents.length > 0) setTimelineEvents((prev) => [...mergedEvents, ...prev]);
+      if (mergedClaims.length > 0) setClaims((prev) => [...mergedClaims, ...prev]);
+
+      if (derivedUpdates.length > 0) {
+        derivedUpdates.forEach((update) => {
+          setProfile((prev) => {
+            if (update.targetUserId && update.targetUserId !== prev.id) return prev;
+            const section = update.section as keyof UserProfile;
+            return {
+              ...prev,
+              [section]: {
+                ...(prev as any)[section],
+                [update.field]: update.newValue,
+                lastUpdated: Date.now(),
+              },
+            };
+          });
+        });
+      }
+
+      const mergedIds = mergeableEntries.map((entry) => entry.id);
+      if (isSupabaseConfigured) {
+        await markInboxEntriesMerged(cloudUserId, mergedIds);
+      }
+      setInboxEntries((prev) => prev.filter((entry) => !mergedIds.includes(entry.id)));
+
+      const remainingForReview =
+        mode === 'auto'
+          ? selected.filter((entry) => !mergedIds.includes(entry.id) && inboxNeedsReview(entry)).length
+          : 0;
+
+      const detailSuffix =
+        remainingForReview > 0
+          ? ` (${remainingForReview} held for manual review)`
+          : '';
+      addAuditLog(
+        ActionType.INGEST_SIGNAL,
+        'Inbox merged',
+        `${mergedIds.length} Telegram entr${mergedIds.length === 1 ? 'y' : 'ies'}${detailSuffix}`
       );
-      setInboxEntries((prev) => prev.filter((entry) => !selected.some((item) => item.id === entry.id)));
-      addAuditLog(ActionType.INGEST_SIGNAL, 'Inbox merged', `${selected.length} Telegram entr${selected.length === 1 ? 'y' : 'ies'}`);
     },
-    [cloudUserId, inboxEntries, appendMemoryItems, activeUserId, addAuditLog]
+    [
+      cloudUserId,
+      inboxEntries,
+      inboxNeedsReview,
+      inboxReviewConfidence,
+      getInboxAiItems,
+      getInboxEntryConfidence,
+      appendMemoryItems,
+      activeUserId,
+      profile,
+      claims,
+      addAuditLog,
+    ]
   );
+
+  useEffect(() => {
+    if (!import.meta.env.VITE_E2E || typeof window === 'undefined') return;
+    (window as any).__ARETE_E2E__ = {
+      setInboxEntries: (entries: InboxEntry[]) => setInboxEntries(entries),
+      mergeInboxAuto: async (ids?: string[]) => {
+        await mergeInboxEntries(ids, undefined, { mode: 'auto' });
+      },
+      mergeInboxManual: async (ids?: string[]) => {
+        await mergeInboxEntries(ids, undefined, { mode: 'manual' });
+      },
+      setInboxReviewConfidence: (value: number) => {
+        setInboxReviewConfidence(coerceConfidence(value, DEFAULT_TELEGRAM_INBOX_REVIEW_CONFIDENCE));
+      },
+    };
+    return () => {
+      delete (window as any).__ARETE_E2E__;
+    };
+  }, [mergeInboxEntries]);
 
   const refreshInbox = useCallback(async () => {
     if (!cloudUserId || !isSupabaseConfigured) return;
@@ -1037,10 +1309,7 @@ export const useAura = () => {
       const entries = await loadInboxEntries(cloudUserId);
       setInboxEntries(entries);
       if (entries.length > 0 && inboxAutoMerge) {
-        await mergeInboxEntries(
-          entries.map((entry) => entry.id),
-          entries
-        );
+        await mergeInboxEntries(entries.map((entry) => entry.id), entries, { mode: 'auto' });
       }
     } catch (error: any) {
       console.warn('[useAura] refreshInbox failed', error?.message || error);
@@ -2296,6 +2565,7 @@ export const useAura = () => {
     cloudMigration,
     inboxEntries,
     inboxAutoMerge,
+    inboxReviewConfidence,
     telegram,
     lifeContextSnapshots,
     latestDimensionSnapshots,
@@ -2320,6 +2590,7 @@ export const useAura = () => {
     generateTelegramLinkCode,
     unlinkTelegram,
     setInboxAutoMerge,
+    setInboxReviewConfidence,
     planMyDay,
     resolveConflict,
     clearAllData: () => {

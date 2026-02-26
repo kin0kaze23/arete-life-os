@@ -341,6 +341,7 @@ const App: React.FC = () => {
                     deleteTimelineEvent={aura.deleteTimelineEvent}
                     lifeContext={lifeContext}
                     inboxEntries={aura.inboxEntries}
+                    inboxReviewConfidence={aura.inboxReviewConfidence}
                     onMergeInbox={aura.mergeInboxEntries}
                     onRefreshInbox={aura.refreshInbox}
                   />
@@ -410,6 +411,8 @@ const App: React.FC = () => {
                     onUnlinkTelegram={aura.unlinkTelegram}
                     inboxAutoMerge={aura.inboxAutoMerge}
                     onToggleInboxAutoMerge={aura.setInboxAutoMerge}
+                    inboxReviewConfidence={aura.inboxReviewConfidence}
+                    onChangeInboxReviewConfidence={aura.setInboxReviewConfidence}
                     auditLogs={aura.auditLogs}
                     exportAuditLogs={aura.exportAuditLogs}
                     clearAuditLogs={aura.clearAuditLogs}

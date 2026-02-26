@@ -13,7 +13,8 @@
     "test": "echo \"No tests yet\"",
     "test:e2e": "playwright test",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "setup:multi-device": "bash ./scripts/setup-multi-device.sh"
   },
   "dependencies": {
     "@google/genai": "^1.38.0",

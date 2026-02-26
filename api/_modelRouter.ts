@@ -1,6 +1,6 @@
 import type { ZodSchema } from 'zod';
-import type { AIProvider, GenerateOptions, ProviderType } from './_providers/types';
-import { getProvider } from './_providers';
+import type { AIProvider, GenerateOptions, ProviderType } from './_providers/types.js';
+import { getProvider } from './_providers/index.js';
 
 type ModelConfig = {
   provider: ProviderType;

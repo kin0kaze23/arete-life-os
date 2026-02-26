@@ -71,3 +71,22 @@ On first launch, set a passphrase to encrypt local data. This passphrase is not 
 - Watch for UI toasts and the Audit Log entries after each submission.
 - Confirm a new Memory item appears in the Vault, with Sources linking to any files.
 - If AI extraction fails, the log persists with `needsReview` + `extractionQualityNotes`.
+
+## Telegram Journaling Workflow
+
+1. Open Dashboard -> Telegram card -> generate a link code.
+2. Send `/link <code>` to your Telegram bot.
+3. Send journal messages, links, images, or short updates in Telegram.
+4. Dashboard Inbox pulls unmerged items on refresh and shows AI confidence per item.
+
+Merge behavior:
+- Auto-merge merges only entries with confidence above your configured Inbox Review Threshold (default `0.65`).
+- Lower-confidence entries stay in Inbox with a `needs review` badge.
+- You can merge low-confidence items manually from the Inbox card using `Merge`.
+- Configure threshold in `Settings -> Telegram -> Inbox Review Threshold`.
+
+What gets merged:
+- `event` items -> Timeline event + Memory entry
+- `task` or `task_request` items -> Task + Memory entry
+- `profile_update` / `config_update` -> Profile field update + Memory entry
+- Any extracted `facts` -> committed Claims linked to the merged memory

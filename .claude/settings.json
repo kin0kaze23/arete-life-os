@@ -6,6 +6,10 @@
         "-c",
         "set -a; [ -f '/Users/jonathannugroho/Documents/Personal Projects/areté-life-os/.env' ] && source '/Users/jonathannugroho/Documents/Personal Projects/areté-life-os/.env'; set +a; exec npx -y @supabase/mcp-server-supabase@latest --access-token \"$SUPABASE_ACCESS_TOKEN\""
       ]
+    },
+    "vercel": {
+      "type": "http",
+      "url": "https://mcp.vercel.com"
     }
   }
 }

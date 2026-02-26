@@ -1,8 +1,8 @@
-import type { ProviderType } from './types';
-import { GeminiProvider } from './gemini';
-import { OpenAIProvider } from './openai';
-import { OpenAICompatibleProvider } from './openai-compatible';
-import { AnthropicProvider } from './anthropic';
+import type { ProviderType } from './types.js';
+import { GeminiProvider } from './gemini.js';
+import { OpenAIProvider } from './openai.js';
+import { OpenAICompatibleProvider } from './openai-compatible.js';
+import { AnthropicProvider } from './anthropic.js';
 
 export const getProvider = (type: ProviderType, apiKey: string, model: string) => {
   switch (type) {

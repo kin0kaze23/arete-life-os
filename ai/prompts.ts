@@ -1,4 +1,4 @@
-import { Category, MemoryEntry, UserProfile } from '../data/types';
+import { Category, type MemoryEntry, type UserProfile } from '../data/types.js';
 
 export const HYPER_PERSONALIZED_PROMPT = `
 You are the Chief of Staff for a high-performance individual within the Areté framework. Your task is to provide hyper-personalized, tactical guidance based on a deep analysis of their Life OS data to achieve excellence (Areté).

@@ -1,18 +1,18 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { processInput as processInputAction } from '../_aiActions/processInput';
+import { processInput as processInputAction } from '../_aiActions/processInput.js';
 import {
   analyzePhotoWithGemini,
   extractUrls,
   fetchJinaReader,
   isYouTubeUrl,
   processVideoUrl,
-} from '../_contentExtractors';
+} from '../_contentExtractors.js';
 import {
   createFallbackProfile,
   getSupabaseAdmin,
   normalizeCategoryFromText,
   sendTelegramMessage,
-} from './_helpers';
+} from './_helpers.js';
 
 const parseChatId = (message: any): number | null => {
   const chatId = message?.chat?.id;
@@ -91,13 +91,16 @@ const handleLinkCommand = async (chatId: number, token: string, message: any) =>
     return;
   }
 
-  const { error: bindingError } = await supabase.from('telegram_bindings').upsert({
-    user_id: profile.id,
-    telegram_chat_id: chatId,
-    telegram_username: message?.from?.username || null,
-    telegram_first_name: message?.from?.first_name || null,
-    is_active: true,
-  });
+  const { error: bindingError } = await supabase.from('telegram_bindings').upsert(
+    {
+      user_id: profile.id,
+      telegram_chat_id: chatId,
+      telegram_username: message?.from?.username || null,
+      telegram_first_name: message?.from?.first_name || null,
+      is_active: true,
+    },
+    { onConflict: 'telegram_chat_id' }
+  );
 
   if (bindingError) {
     await sendTelegramMessage(chatId, `Link failed: ${bindingError.message}`);

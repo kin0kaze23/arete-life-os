@@ -6,7 +6,60 @@ on:
     branches: [main]
 
 jobs:
+  risk-policy-gate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      tier: ${{ steps.policy.outputs.tier }}
+      required_checks: ${{ steps.policy.outputs.required_checks }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run deterministic risk policy gate
+        id: policy
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const policy = JSON.parse(fs.readFileSync(".github/risk-policy.json", "utf8"));
+            const isPR = context.eventName === "pull_request";
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const prNumber = context.payload.pull_request?.number;
+            const files = [];
+
+            if (isPR && prNumber) {
+              const changed = await github.paginate(github.rest.pulls.listFiles, {
+                owner,
+                repo,
+                pull_number: prNumber,
+                per_page: 100
+              });
+              for (const file of changed) files.push(file.filename);
+            }
+
+            const highPrefixes = policy.riskTierRules?.highPrefixes || [];
+            const tier = files.some((file) => highPrefixes.some((prefix) => file.startsWith(prefix))) ? "high" : "low";
+            const requiredChecks = policy.mergePolicy?.[tier]?.requiredChecks || [];
+
+            const controlPlane = policy.docsDrift?.controlPlanePrefixes || [];
+            const docPrefixes = policy.docsDrift?.requiredDocPrefixes || [];
+            const touchedControl = files.some((file) => controlPlane.some((prefix) => file.startsWith(prefix)));
+            const touchedDocs = files.some((file) => docPrefixes.some((prefix) => file === prefix || file.startsWith(prefix)));
+
+            if (isPR && touchedControl && !touchedDocs) {
+              core.setFailed("Control-plane changes require docs updates (docs/** or README.md).");
+              return;
+            }
+
+            core.setOutput("tier", tier);
+            core.setOutput("required_checks", JSON.stringify(requiredChecks));
+
   build:
+    needs: risk-policy-gate
     runs-on: ubuntu-latest
     env:
       CI: true
@@ -27,6 +80,7 @@ jobs:
         run: npm run doctor
 
   ui_smoke:
+    needs: risk-policy-gate
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     env:
@@ -83,6 +137,7 @@ jobs:
         run: echo \"No UI changes detected. Skipping UI smoke.\"
 
   guardrails:
+    needs: risk-policy-gate
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     env:

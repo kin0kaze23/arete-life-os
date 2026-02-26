@@ -63,6 +63,7 @@ interface DashboardViewProps {
   personalizedGreeting?: string;
   lifeContext?: LifeContextController;
   inboxEntries?: InboxEntry[];
+  inboxReviewConfidence?: number;
   onMergeInbox?: (ids?: string[]) => Promise<void> | void;
   onRefreshInbox?: () => Promise<void> | void;
 }
@@ -91,6 +92,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   personalizedGreeting = 'Welcome',
   lifeContext,
   inboxEntries = [],
+  inboxReviewConfidence = 0.65,
   onMergeInbox,
   onRefreshInbox,
 }) => {
@@ -117,6 +119,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     );
     return items.sort((a, b) => b.timestamp - a.timestamp).slice(0, 5);
   }, [memory]);
+
+  const estimateInboxConfidence = (entry: InboxEntry) => {
+    const root = (entry.ai_result as any)?.confidence;
+    if (typeof root === 'number' && !Number.isNaN(root)) return Math.max(0, Math.min(1, root));
+    const items = Array.isArray((entry.ai_result as any)?.items) ? ((entry.ai_result as any).items as any[]) : [];
+    if (items.length === 0) return 0.6;
+    const total = items.reduce((sum, item) => {
+      const value = typeof item?.confidence === 'number' && !Number.isNaN(item.confidence) ? item.confidence : 0.6;
+      return sum + Math.max(0, Math.min(1, value));
+    }, 0);
+    return total / items.length;
+  };
+
+  const getInboxPreview = (entry: InboxEntry) => {
+    const items = Array.isArray((entry.ai_result as any)?.items) ? ((entry.ai_result as any).items as any[]) : [];
+    if (items.length === 0) return '';
+    const top = items[0];
+    const title = typeof top?.title === 'string' ? top.title.trim() : '';
+    const content = typeof top?.content === 'string' ? top.content.trim() : '';
+    return title || content;
+  };
 
   // Derived Tasks (Focus)
   // Combine dailyPlan and tasks, prioritizing plan
@@ -287,15 +310,42 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
           <div className="space-y-2">
-            {inboxEntries.slice(0, 5).map((entry) => (
-              <div
-                key={entry.id}
-                className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-slate-200"
-              >
-                <span className="text-emerald-300 mr-2">•</span>
-                {(entry.raw_content || '').slice(0, 140) || 'Inbox entry'}
-              </div>
-            ))}
+            {inboxEntries.slice(0, 5).map((entry) => {
+              const confidence = estimateInboxConfidence(entry);
+              const needsReview = confidence < inboxReviewConfidence;
+              const preview = getInboxPreview(entry);
+              return (
+                <div key={entry.id} className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-slate-200">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-1.5 min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-emerald-300">•</span>
+                        <span className="rounded-md border border-white/20 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-300">
+                          {entry.content_type}
+                        </span>
+                        <span className="rounded-md border border-indigo-400/30 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.12em] text-indigo-200">
+                          {Math.round(confidence * 100)}% confidence
+                        </span>
+                        {needsReview && (
+                          <span className="rounded-md border border-amber-400/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-200">
+                            needs review
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-slate-200">{(entry.raw_content || '').slice(0, 140) || 'Inbox entry'}</p>
+                      {preview && <p className="text-[11px] text-slate-400 line-clamp-2">AI: {preview}</p>}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void onMergeInbox?.([entry.id])}
+                      className="shrink-0 rounded-md border border-emerald-400/40 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-200 hover:bg-emerald-500/10"
+                    >
+                      Merge
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </section>
       )}

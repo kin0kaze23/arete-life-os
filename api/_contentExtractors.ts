@@ -1,5 +1,5 @@
 import { YoutubeTranscript } from 'youtube-transcript';
-import { modelRouter } from './_modelRouter';
+import { modelRouter } from './_modelRouter.js';
 
 export const extractUrls = (input: string): string[] => {
   const regex = /https?:\/\/[^\s]+/gim;

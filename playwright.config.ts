@@ -28,6 +28,8 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       VITE_E2E: '1',
+      VITE_SUPABASE_URL: '',
+      VITE_SUPABASE_ANON_KEY: '',
     },
   },
 });

@@ -48,6 +48,8 @@ interface SettingsViewProps {
   onUnlinkTelegram?: () => Promise<void> | void;
   inboxAutoMerge?: boolean;
   onToggleInboxAutoMerge?: (value: boolean) => void;
+  inboxReviewConfidence?: number;
+  onChangeInboxReviewConfidence?: (value: number) => void;
   auditLogs?: unknown[];
   exportAuditLogs?: () => void;
   clearAuditLogs?: () => void;
@@ -77,6 +79,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onUnlinkTelegram,
   inboxAutoMerge = false,
   onToggleInboxAutoMerge,
+  inboxReviewConfidence = 0.65,
+  onChangeInboxReviewConfidence,
 }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [isGeneratingLink, setIsGeneratingLink] = React.useState(false);
@@ -359,6 +363,29 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${inboxAutoMerge ? 'translate-x-7' : 'translate-x-1'}`}
                 />
               </button>
+            </div>
+
+            <div className="rounded-3xl border border-white/10 bg-slate-900/40 p-5 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-bold text-white">Inbox Review Threshold</p>
+                  <p className="text-[11px] text-slate-400">
+                    Auto-merge keeps entries below this confidence for manual review.
+                  </p>
+                </div>
+                <span className="rounded-lg border border-indigo-400/30 bg-indigo-500/10 px-2 py-1 text-[11px] font-black text-indigo-200">
+                  {Math.round(inboxReviewConfidence * 100)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0.5}
+                max={0.95}
+                step={0.05}
+                value={inboxReviewConfidence}
+                onChange={(e) => onChangeInboxReviewConfidence?.(Number(e.target.value))}
+                className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-400"
+              />
             </div>
           </div>
         </VaultSection>
