@@ -58,6 +58,42 @@ jobs:
             core.setOutput("tier", tier);
             core.setOutput("required_checks", JSON.stringify(requiredChecks));
 
+  code-review-agent:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch base ref
+        run: git fetch origin "${{ github.base_ref }}" --depth=1
+
+      - name: Review diff for obvious secret leaks
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIFF_TARGET="origin/${{ github.base_ref }}...HEAD"
+          changed_files="$(git diff --name-only "$DIFF_TARGET" || true)"
+          echo "$changed_files"
+
+          if echo "$changed_files" | grep -E '(^|/)\.env($|\.|_)' | grep -Ev '\.env\.example$' >/dev/null; then
+            echo "Tracked .env-like file detected in PR diff."
+            exit 1
+          fi
+
+          patch="$(git diff "$DIFF_TARGET" || true)"
+          if echo "$patch" | grep -E 'AKIA[0-9A-Z]{16}|-----BEGIN (RSA|EC|OPENSSH) PRIVATE KEY-----|ghp_[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}' >/dev/null; then
+            echo "Potential credential/private-key pattern detected in diff."
+            exit 1
+          fi
+
+          echo "code-review-agent checks passed."
+
   build:
     needs: risk-policy-gate
     runs-on: ubuntu-latest
