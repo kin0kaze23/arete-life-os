@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, Loader2, Mic, Search, Command } from 'lucide-react';
+import { Mic, Search, Command } from 'lucide-react';
 import { UserProfile } from '@/data';
 import { getProfileCompletion, ProfileCompletionRing, ActionTooltip } from '@/shared';
 
@@ -17,112 +17,101 @@ export const Header: React.FC<HeaderProps> = ({
   activeTab,
   profile,
   isGeneratingTasks,
-  refreshTasks,
   onOpenProfile,
   onStartVoice,
   onOpenCommandPalette,
 }) => {
   const userName = profile.identify.name || 'User';
   const completion = getProfileCompletion(profile);
+  const tabLabel =
+    activeTab === 'dashboard'
+      ? 'Dashboard'
+      : activeTab === 'vault'
+        ? 'My Life'
+        : activeTab === 'stream'
+          ? 'Journal'
+          : activeTab === 'chat'
+            ? 'Assistant'
+            : 'Settings';
+  const tabDescription =
+    activeTab === 'dashboard'
+      ? 'Daily command center'
+      : activeTab === 'vault'
+        ? 'Identity, memory, and knowledge graph'
+        : activeTab === 'stream'
+          ? 'Categorized life timeline and logs'
+          : activeTab === 'chat'
+            ? 'Ask Aura from your private context'
+            : 'Workspace controls';
 
   return (
-    <header className="px-10 py-5 flex justify-between items-center bg-[#050505]/50 backdrop-blur-xl sticky top-0 z-40 border-b border-slate-800/50">
-      <div className="flex items-center gap-6">
-        <h2 className="text-xl font-black uppercase tracking-[0.25em] text-white">
-          {activeTab === 'dashboard'
-            ? 'Dashboard'
-            : activeTab.replace('vault', 'Memory Vault').toUpperCase()}
-        </h2>
+    <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0b1220]/72 px-6 py-4 backdrop-blur-xl xl:px-10">
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+            {tabLabel}
+          </p>
+          <h2 className="truncate text-lg font-semibold tracking-tight text-slate-100 xl:text-xl">
+            {tabDescription}
+          </h2>
+        </div>
 
         <button
           onClick={onOpenCommandPalette}
-          className="hidden lg:flex items-center gap-3 px-4 py-2 bg-slate-900/50 border border-slate-800 rounded-xl text-slate-500 hover:text-slate-300 hover:border-slate-700 transition-all group"
+          className="group hidden items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-slate-300 transition hover:border-white/20 hover:bg-white/[0.05] xl:flex"
         >
-          <Search size={14} />
-          <span className="text-[10px] font-bold uppercase tracking-widest">
-            Execute Command...
-          </span>
-          <div className="flex items-center gap-1 ml-4 opacity-50 group-hover:opacity-100 transition-opacity">
+          <Search size={14} className="text-slate-400" />
+          <span className="text-xs font-medium text-slate-300">Search or run command</span>
+          <span className="ml-2 flex items-center gap-1 rounded-md border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
             <Command size={10} />
-            <span className="text-[10px] font-mono">K</span>
-          </div>
+            K
+          </span>
         </button>
       </div>
 
-      <div className="flex items-center gap-6">
-        <div className="hidden md:flex items-center gap-6">
-          <div className="flex flex-col items-end">
-            <span className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">
-              {isGeneratingTasks ? 'Neural Processing' : 'Security Node'}
-            </span>
-
-            <div className="flex items-center gap-3">
-              <div className="relative w-4 h-4">
-                <div
-                  className={`absolute inset-0 rounded-full border-2 border-indigo-500/20 ${isGeneratingTasks ? 'animate-ping' : ''}`}
-                />
-                <div
-                  className={`absolute inset-0 rounded-full border-2 border-indigo-500 ${isGeneratingTasks ? 'animate-spin border-t-transparent' : 'opacity-40'}`}
-                />
-                {!isGeneratingTasks && (
-                  <div className="absolute inset-1 bg-indigo-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(99,102,241,0.8)]" />
-                )}
-              </div>
-              <span
-                className={`text-[10px] font-bold transition-colors ${
-                  isGeneratingTasks ? 'text-indigo-400' : 'text-emerald-400 opacity-80'
-                }`}
-              >
-                {isGeneratingTasks ? 'SYNCHRONIZING' : 'LINK ACTIVE'}
-              </span>
-            </div>
-          </div>
+      <div className="mt-3 flex items-center justify-end gap-3">
+        <div className="hidden items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 md:flex">
+          <span
+            className={`h-2 w-2 rounded-full ${
+              isGeneratingTasks ? 'animate-pulse bg-amber-400' : 'bg-emerald-400'
+            }`}
+          />
+          <span className="text-[11px] font-medium text-slate-300">
+            {isGeneratingTasks ? 'Refreshing plan' : 'Synced'}
+          </span>
         </div>
 
-        <div className="flex items-center gap-4">
-          {onStartVoice && (
-            <ActionTooltip label="Vocal Link" side="bottom">
-              <button
-                onClick={onStartVoice}
-                className="w-10 h-10 rounded-xl bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all shadow-lg active:scale-95"
-              >
-                <Mic size={18} />
-              </button>
-            </ActionTooltip>
-          )}
-
-          <ActionTooltip label="Identity Nodes" side="bottom">
+        {onStartVoice && (
+          <ActionTooltip label="Voice Input" side="bottom">
             <button
-              onClick={onOpenProfile}
-              className="flex items-center gap-4 p-1 pl-4 rounded-xl border border-slate-800 bg-[#0D1117]/80 hover:bg-slate-900/90 transition-all group active:scale-[0.98]"
+              onClick={onStartVoice}
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-slate-300 transition hover:border-blue-300/40 hover:bg-blue-500/15 hover:text-blue-100"
             >
-              <div className="flex flex-col items-end hidden sm:flex">
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-black uppercase tracking-widest text-white">
-                    {completion.overall}% SECURE
-                  </span>
-                </div>
-                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest opacity-80">
-                  Kernel Root
-                </span>
-              </div>
-
-              <div className="relative p-1">
-                <ProfileCompletionRing
-                  profile={profile}
-                  size={38}
-                  strokeWidth={4}
-                  showText={false}
-                />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-6 h-6 rounded-lg bg-indigo-600/20 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-black text-[10px]">
-                    {userName.charAt(0).toUpperCase()}
-                  </div>
-                </div>
-              </div>
+              <Mic size={16} />
             </button>
           </ActionTooltip>
-        </div>
+        )}
+
+        <ActionTooltip label="Open My Life" side="bottom">
+          <button
+            onClick={onOpenProfile}
+            className="group flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-1 pl-3 transition hover:border-white/20 hover:bg-white/[0.06]"
+          >
+            <div className="hidden flex-col items-end sm:flex">
+              <span className="text-[11px] font-semibold text-slate-100">{userName}</span>
+              <span className="text-[10px] text-slate-400">{completion.overall}% complete</span>
+            </div>
+
+            <div className="relative p-1">
+              <ProfileCompletionRing profile={profile} size={36} strokeWidth={4} showText={false} />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="flex h-6 w-6 items-center justify-center rounded-md border border-blue-300/30 bg-blue-500/20 text-[10px] font-bold text-blue-100">
+                  {userName.charAt(0).toUpperCase()}
+                </div>
+              </div>
+            </div>
+          </button>
+        </ActionTooltip>
       </div>
     </header>
   );

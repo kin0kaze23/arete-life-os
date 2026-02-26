@@ -15,14 +15,12 @@ export interface FormField {
   label: string;
   type: 'text' | 'number' | 'list' | 'currency' | 'select' | 'languages';
   options?: string[];
-  suggestions?: string[]; // Quick chips for text/list inputs
+  suggestions?: string[];
   placeholder?: string;
   tooltip?: string;
   locked?: boolean;
-  multiSelect?: boolean; // For select type
+  multiSelect?: boolean;
 }
-
-// --- SUB-COMPONENTS TO ISOLATE HOOKS ---
 
 const SelectInput: React.FC<{
   value: any;
@@ -44,44 +42,41 @@ const SelectInput: React.FC<{
           <button
             key={opt}
             onClick={() => toggle(opt)}
-            className={`
-                           text-xs px-3 py-1.5 rounded-full border transition-all
-                           ${
-                             selected.includes(opt)
-                               ? 'bg-indigo-500/20 border-indigo-500 text-indigo-300 shadow-[0_0_10px_rgba(99,102,241,0.2)]'
-                               : 'bg-slate-800 border-white/5 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
-                           }
-                       `}
+            className={`rounded-full border px-3 py-1.5 text-xs transition ${
+              selected.includes(opt)
+                ? 'border-blue-300/35 bg-blue-500/16 text-blue-100'
+                : 'border-white/10 bg-white/[0.02] text-slate-300 hover:border-white/20'
+            }`}
           >
             {opt}
           </button>
         ))}
       </div>
     );
-  } else {
-    return (
-      <div className="relative">
-        <select
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full bg-transparent text-sm text-white outline-none appearance-none cursor-pointer py-1"
-        >
-          <option value="" className="bg-slate-900 text-slate-500">
-            Select...
-          </option>
-          {options?.map((opt) => (
-            <option key={opt} value={opt} className="bg-slate-900 text-white">
-              {opt}
-            </option>
-          ))}
-        </select>
-        <ChevronDown
-          size={14}
-          className="absolute right-0 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
-        />
-      </div>
-    );
   }
+
+  return (
+    <div className="relative">
+      <select
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full appearance-none bg-transparent py-1 text-sm text-slate-100 outline-none"
+      >
+        <option value="" className="bg-slate-900 text-slate-500">
+          Select...
+        </option>
+        {options?.map((opt) => (
+          <option key={opt} value={opt} className="bg-slate-900 text-slate-100">
+            {opt}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        size={14}
+        className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-slate-500"
+      />
+    </div>
+  );
 };
 
 const LanguageInput: React.FC<{
@@ -107,41 +102,39 @@ const LanguageInput: React.FC<{
         {langs.map((l, i) => (
           <div
             key={i}
-            className="flex items-center gap-2 bg-slate-800 border border-white/10 px-2 py-1 rounded text-xs"
+            className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1"
           >
-            <span className="text-slate-200">{l.language}</span>
-            <span className="text-slate-500">|</span>
-            <span className="text-indigo-400 uppercase text-[10px] tracking-wider">
-              {l.proficiency}
-            </span>
+            <span className="text-xs text-slate-200">{l.language}</span>
+            <span className="text-[10px] uppercase tracking-[0.1em] text-blue-200">{l.proficiency}</span>
             <button
               onClick={() => {
                 const next = [...langs];
                 next.splice(i, 1);
                 onChange(next);
               }}
-              className="text-slate-600 hover:text-rose-400"
+              className="text-slate-500 transition hover:text-rose-300"
             >
               <X size={12} />
             </button>
           </div>
         ))}
+
         <button
           onClick={() => setIsAdding(true)}
-          className="bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 px-2 py-1 rounded text-xs flex items-center gap-1 transition-colors"
+          className="inline-flex items-center gap-1 rounded-full border border-blue-300/30 bg-blue-500/14 px-2.5 py-1 text-xs text-blue-100 transition hover:bg-blue-500/22"
         >
           <Plus size={12} /> Add
         </button>
       </div>
 
       {isAdding && (
-        <div className="flex gap-2 animate-in slide-in-from-top-2 p-2 bg-slate-800/50 rounded border border-white/5">
+        <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
           <input
             autoFocus
             value={tempLang}
             onChange={(e) => setTempLang(e.target.value)}
-            placeholder="Language..."
-            className="bg-transparent border-b border-indigo-500/50 outline-none text-xs text-white w-24"
+            placeholder="Language"
+            className="w-24 border-b border-blue-300/35 bg-transparent text-xs text-slate-100 outline-none"
             onKeyDown={(e) => e.key === 'Enter' && add()}
           />
           <select
@@ -155,7 +148,7 @@ const LanguageInput: React.FC<{
               </option>
             ))}
           </select>
-          <button onClick={add} className="text-emerald-400 hover:text-emerald-300">
+          <button onClick={add} className="text-emerald-300 transition hover:text-emerald-200">
             <CheckCircle2 size={14} />
           </button>
         </div>
@@ -173,8 +166,10 @@ const TagInput: React.FC<{
   const [inputValue, setInputValue] = useState('');
 
   const addItem = (item: string) => {
-    if (!list.includes(item)) {
-      onChange([...list, item]);
+    const trimmed = item.trim();
+    if (!trimmed) return;
+    if (!list.includes(trimmed)) {
+      onChange([...list, trimmed]);
     }
     setInputValue('');
   };
@@ -185,43 +180,45 @@ const TagInput: React.FC<{
 
   return (
     <div>
-      <div className="flex flex-wrap gap-2 mb-2">
+      <div className="mb-2 flex flex-wrap gap-2">
         {list.map((item: string, i: number) => (
           <span
             key={i}
-            className="flex items-center gap-1 bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-2 py-0.5 rounded text-xs"
+            className="flex items-center gap-1 rounded-full border border-blue-300/25 bg-blue-500/12 px-2 py-0.5 text-xs text-blue-100"
           >
             {item}
-            <button onClick={() => removeItem(item)} className="hover:text-white">
+            <button onClick={() => removeItem(item)} className="transition hover:text-white">
               <X size={10} />
             </button>
           </span>
         ))}
+
         <input
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && inputValue) {
+              e.preventDefault();
               addItem(inputValue);
             }
             if (e.key === 'Backspace' && !inputValue && list.length > 0) {
               removeItem(list[list.length - 1]);
             }
           }}
-          placeholder="Type & Enter..."
-          className="bg-transparent outline-none text-xs text-slate-400 min-w-[80px]"
+          placeholder="Type & Enter"
+          className="min-w-[90px] bg-transparent text-xs text-slate-300 outline-none placeholder:text-slate-500"
         />
       </div>
-      {/* Suggestions */}
+
       {suggestions && (
-        <div className="flex flex-wrap gap-1.5 pt-2 border-t border-white/5">
+        <div className="flex flex-wrap gap-1.5 border-t border-white/10 pt-2">
           {suggestions
             .filter((s) => !list.includes(s))
             .map((s) => (
               <button
                 key={s}
                 onClick={() => addItem(s)}
-                className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-500 hover:bg-slate-700 hover:text-slate-300 transition-colors"
+                className="rounded-full border border-white/10 bg-white/[0.02] px-2 py-0.5 text-[10px] text-slate-400 transition hover:border-white/20 hover:text-slate-200"
               >
                 + {s}
               </button>
@@ -252,12 +249,10 @@ const StandardInput: React.FC<{
         }
       }}
       placeholder={placeholder || 'Empty'}
-      className="w-full bg-transparent outline-none text-sm text-white placeholder-slate-600 font-mono"
+      className="w-full bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-500"
     />
   );
 };
-
-// --- MAIN COMPONENT ---
 
 export const DossierView: React.FC<DossierViewProps> = ({
   title,
@@ -273,53 +268,49 @@ export const DossierView: React.FC<DossierViewProps> = ({
   };
 
   return (
-    <div className="p-8 max-w-4xl mx-auto animate-in slide-in-from-bottom-4 duration-500">
-      <div className="flex items-center justify-between mb-8 border-b border-white/5 pb-4">
+    <div className="mx-auto max-w-6xl p-8">
+      <div className="mb-8 flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 p-5">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Lock size={12} className="text-emerald-500" />
-            <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded font-bold tracking-widest uppercase">
-              Authorized
+          <div className="mb-1 flex items-center gap-2">
+            <Lock size={12} className="text-emerald-300" />
+            <span className="rounded-full border border-emerald-300/30 bg-emerald-500/12 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-200">
+              Secured
             </span>
           </div>
-          <h1 className="text-2xl font-black text-white tracking-tight uppercase font-mono">
-            {title}
-          </h1>
+          <h1 className="text-2xl font-semibold text-slate-100">{title}</h1>
         </div>
-        <div className="text-right">
-          <div className="text-[10px] text-slate-600 font-mono">LAST UPDATED</div>
-          <div className="text-xs text-slate-400 font-mono">{new Date().toLocaleDateString()}</div>
+        <div className="text-right text-xs text-slate-400">
+          <div>Last Updated</div>
+          <div>{new Date().toLocaleDateString()}</div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         {schema.map((field) => {
           const value = data[field.key];
           const isEmpty =
             value === undefined || value === '' || (Array.isArray(value) && value.length === 0);
 
           return (
-            <div key={field.key} className="group relative">
-              <div className="flex items-center gap-2 mb-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+            <div key={field.key} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="mb-2 flex items-center gap-2">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
                   {field.label}
                 </label>
+
                 {field.tooltip && (
                   <div className="group/tooltip relative">
-                    <Info size={12} className="text-slate-600 cursor-help" />
-                    <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-48 bg-slate-800 text-slate-300 text-xs p-2 rounded shadow-xl border border-white/10 opacity-0 group-hover/tooltip:opacity-100 pointer-events-none transition-opacity z-10">
+                    <Info size={12} className="cursor-help text-slate-500" />
+                    <div className="pointer-events-none absolute left-full top-1/2 z-10 ml-2 w-52 -translate-y-1/2 rounded-md border border-white/10 bg-[#111827] p-2 text-xs text-slate-300 opacity-0 transition-opacity group-hover/tooltip:opacity-100">
                       {field.tooltip}
                     </div>
                   </div>
                 )}
-                {isEmpty && <AlertCircle size={10} className="text-amber-500 opacity-50" />}
+
+                {isEmpty && <AlertCircle size={11} className="text-amber-300" />}
               </div>
 
-              <div
-                className={`
-                                bg-slate-900/30 border border-white/5 rounded-lg p-3 transition-all hover:bg-slate-900/50 hover:border-indigo-500/30 focus-within:bg-slate-900 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/50
-                            `}
-              >
+              <div className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
                 {field.type === 'select' && (
                   <SelectInput
                     value={value}

@@ -1,6 +1,6 @@
 import React from 'react';
-import { UserProfile, MemoryItem, Claim } from '@/data/types';
-import { Activity, Database, Shield, HardDrive, Users, Zap, FileText } from 'lucide-react';
+import { UserProfile } from '@/data/types';
+import { Activity, Database, Shield, HardDrive, Zap, FileText } from 'lucide-react';
 
 interface VaultOverviewProps {
   profile: UserProfile;
@@ -17,97 +17,107 @@ export const VaultOverview: React.FC<VaultOverviewProps> = ({
 }) => {
   const stats = [
     {
-      label: 'Identity Coherence',
+      label: 'Identity Completion',
       value: '98%',
       icon: Shield,
-      color: 'text-emerald-400',
-      bg: 'bg-emerald-500/10',
+      color: 'text-emerald-300',
+      bg: 'bg-emerald-500/12',
     },
     {
-      label: 'Neural Logs',
+      label: 'Journal Logs',
       value: memoryCount.toString(),
       icon: FileText,
-      color: 'text-indigo-400',
-      bg: 'bg-indigo-500/10',
+      color: 'text-blue-200',
+      bg: 'bg-blue-500/14',
     },
     {
       label: 'Knowledge Nodes',
       value: claimCount.toString(),
       icon: Database,
-      color: 'text-amber-400',
-      bg: 'bg-amber-500/10',
+      color: 'text-amber-300',
+      bg: 'bg-amber-500/12',
     },
     {
-      label: 'System Storage',
-      value: '2.4 GB',
+      label: 'Storage Used',
+      value: `${storageUsage} GB`,
       icon: HardDrive,
-      color: 'text-slate-400',
-      bg: 'bg-slate-500/10',
+      color: 'text-slate-300',
+      bg: 'bg-slate-500/12',
     },
   ];
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-mono text-white mb-2">VAULT OVERVIEW</h1>
-        <p className="text-slate-500 text-xs font-mono">
-          System Status: ONLINE // Encryption: AES-256
+    <div className="mx-auto max-w-6xl p-8">
+      <div className="mb-8 rounded-3xl border border-white/10 bg-[linear-gradient(165deg,rgba(17,24,39,0.82),rgba(6,10,18,0.92))] p-6">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-200">My Life</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-100">Vault Overview</h1>
+        <p className="mt-2 text-sm text-slate-300">
+          Encrypted personal knowledge, organized by identity and timeline context.
+        </p>
+        <p className="mt-2 text-xs text-slate-400">
+          Active profile: {profile.identify?.name || 'User'}
         </p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat, i) => (
           <div
             key={i}
-            className="bg-[#050608] border border-white/5 p-4 rounded-xl flex items-center gap-4"
+            className="flex items-center gap-4 rounded-2xl border border-white/10 bg-black/20 p-4"
           >
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${stat.bg}`}>
+            <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${stat.bg}`}>
               <stat.icon size={18} className={stat.color} />
             </div>
             <div>
-              <div className="text-xs text-slate-500 uppercase tracking-widest font-bold mb-0.5">
+              <div className="mb-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                 {stat.label}
               </div>
-              <div className="text-xl font-mono text-white">{stat.value}</div>
+              <div className="text-2xl font-semibold text-slate-100">{stat.value}</div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Recent Activity / Quick Actions Mockup */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-[#050608] border border-white/5 rounded-xl p-6">
-          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <section className="rounded-2xl border border-white/10 bg-black/20 p-6">
+          <h3 className="mb-4 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
             <Activity size={14} /> System Activity
           </h3>
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="flex gap-3 items-start border-l-2 border-white/5 pl-3 py-1">
-                <div className="text-[10px] text-slate-600 font-mono mt-0.5">Today 14:0{i}</div>
-                <div className="text-xs text-slate-400">
-                  System synchronized with {i * 12} new signals.
-                </div>
+              <div
+                key={i}
+                className="flex items-start gap-3 rounded-xl border border-white/8 bg-white/[0.02] p-3"
+              >
+                <div className="mt-0.5 text-[10px] text-slate-500">Today 14:0{i}</div>
+                <div className="text-sm text-slate-300">Synchronized {i * 12} new life signals.</div>
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
-        <div className="bg-[#050608] border border-white/5 rounded-xl p-6">
-          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-            <Zap size={14} /> Optimization
+        <section className="rounded-2xl border border-white/10 bg-black/20 p-6">
+          <h3 className="mb-4 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+            <Zap size={14} /> Recommended Action
           </h3>
-          <div className="p-4 bg-indigo-500/5 border border-indigo-500/20 rounded-lg">
-            <div className="text-indigo-400 font-bold text-sm mb-1">Backup Recommended</div>
-            <div className="text-slate-400 text-xs mb-3">
-              Last full encryption backup was 7 days ago.
+          <div className="rounded-xl border border-blue-300/25 bg-blue-500/10 p-4">
+            <div className="mb-1 text-sm font-semibold text-blue-100">Backup Recommended</div>
+            <div className="mb-3 text-sm text-slate-300">
+              Last full encrypted backup is older than 7 days. Create one to keep your vault safe.
             </div>
-            <button className="text-[10px] bg-indigo-500 hover:bg-indigo-400 text-white px-3 py-1.5 rounded transition-colors">
-              INITIATE BACKUP
+            <button className="rounded-lg bg-blue-500 px-3 py-2 text-[11px] font-semibold text-white transition hover:bg-blue-400">
+              Create Backup
             </button>
           </div>
-        </div>
+          <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+              Insight
+            </p>
+            <p className="mt-1 text-sm text-slate-300">
+              Journal quality improves when each entry includes category + outcome + next action.
+            </p>
+          </div>
+        </section>
       </div>
     </div>
   );

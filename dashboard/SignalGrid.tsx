@@ -149,7 +149,7 @@ export const SignalGrid: React.FC<SignalGridProps> = ({
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
             Life Signals
           </p>
           <p className="text-sm text-slate-300">
@@ -166,9 +166,9 @@ export const SignalGrid: React.FC<SignalGridProps> = ({
               key={row.category}
               className={`min-h-[206px] rounded-2xl border p-4 transition-all ${
                 highlight
-                  ? 'border-indigo-400/40 bg-indigo-500/10 shadow-[0_0_22px_rgba(99,102,241,0.22)]'
+                  ? 'border-blue-300/40 bg-blue-500/14 shadow-[0_0_20px_rgba(59,130,246,0.22)]'
                   : row.hasData
-                    ? 'border-white/8 bg-white/[0.03] hover:border-indigo-400/25'
+                    ? 'border-white/10 bg-white/[0.03] hover:border-blue-300/30'
                     : 'border-dashed border-white/10 bg-white/[0.015] hover:border-white/20'
               }`}
             >
@@ -204,7 +204,7 @@ export const SignalGrid: React.FC<SignalGridProps> = ({
                 <button
                   type="button"
                   onClick={() => onInsertTemplate?.(TEMPLATE_BY_CATEGORY[row.category])}
-                  className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[11px] font-semibold text-slate-200 hover:border-indigo-500/30 hover:text-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                  className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[11px] font-semibold text-slate-200 transition-all hover:border-blue-300/35 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
                 >
                   {row.hasData ? 'Log' : 'Start'}
                 </button>

@@ -53,66 +53,66 @@ const categoryTone = (category: Category) => {
   switch (category) {
     case Category.HEALTH:
       return {
-        pill: 'text-emerald-200 border-emerald-300/40 bg-emerald-500/20',
-        node: 'border-emerald-300/50 bg-emerald-500/20 text-emerald-100 shadow-[0_0_30px_rgba(16,185,129,0.22)]',
+        pill: 'text-emerald-200 border-emerald-300/30 bg-emerald-500/14',
+        node: 'border-emerald-300/40 bg-emerald-500/16 text-emerald-100',
       };
     case Category.FINANCE:
       return {
-        pill: 'text-amber-200 border-amber-300/40 bg-amber-500/20',
-        node: 'border-amber-300/50 bg-amber-500/20 text-amber-100 shadow-[0_0_30px_rgba(245,158,11,0.22)]',
+        pill: 'text-amber-200 border-amber-300/30 bg-amber-500/14',
+        node: 'border-amber-300/40 bg-amber-500/16 text-amber-100',
       };
     case Category.RELATIONSHIPS:
       return {
-        pill: 'text-cyan-200 border-cyan-300/40 bg-cyan-500/20',
-        node: 'border-cyan-300/50 bg-cyan-500/20 text-cyan-100 shadow-[0_0_30px_rgba(6,182,212,0.22)]',
+        pill: 'text-cyan-200 border-cyan-300/30 bg-cyan-500/14',
+        node: 'border-cyan-300/40 bg-cyan-500/16 text-cyan-100',
       };
     case Category.SPIRITUAL:
       return {
-        pill: 'text-indigo-200 border-indigo-300/40 bg-indigo-500/20',
-        node: 'border-indigo-300/50 bg-indigo-500/20 text-indigo-100 shadow-[0_0_30px_rgba(99,102,241,0.22)]',
+        pill: 'text-indigo-200 border-indigo-300/30 bg-indigo-500/14',
+        node: 'border-indigo-300/40 bg-indigo-500/16 text-indigo-100',
       };
     case Category.WORK:
       return {
-        pill: 'text-sky-200 border-sky-300/40 bg-sky-500/20',
-        node: 'border-sky-300/50 bg-sky-500/20 text-sky-100 shadow-[0_0_30px_rgba(14,165,233,0.22)]',
+        pill: 'text-sky-200 border-sky-300/30 bg-sky-500/14',
+        node: 'border-sky-300/40 bg-sky-500/16 text-sky-100',
       };
     case Category.SOCIAL:
       return {
-        pill: 'text-teal-200 border-teal-300/40 bg-teal-500/20',
-        node: 'border-teal-300/50 bg-teal-500/20 text-teal-100 shadow-[0_0_30px_rgba(20,184,166,0.22)]',
+        pill: 'text-teal-200 border-teal-300/30 bg-teal-500/14',
+        node: 'border-teal-300/40 bg-teal-500/16 text-teal-100',
       };
     case Category.PERSONAL:
       return {
-        pill: 'text-fuchsia-200 border-fuchsia-300/40 bg-fuchsia-500/20',
-        node: 'border-fuchsia-300/50 bg-fuchsia-500/20 text-fuchsia-100 shadow-[0_0_30px_rgba(217,70,239,0.22)]',
+        pill: 'text-fuchsia-200 border-fuchsia-300/30 bg-fuchsia-500/14',
+        node: 'border-fuchsia-300/40 bg-fuchsia-500/16 text-fuchsia-100',
       };
     case Category.MEALS:
       return {
-        pill: 'text-orange-200 border-orange-300/40 bg-orange-500/20',
-        node: 'border-orange-300/50 bg-orange-500/20 text-orange-100 shadow-[0_0_30px_rgba(249,115,22,0.22)]',
+        pill: 'text-orange-200 border-orange-300/30 bg-orange-500/14',
+        node: 'border-orange-300/40 bg-orange-500/16 text-orange-100',
       };
     case Category.TRAVEL:
       return {
-        pill: 'text-blue-200 border-blue-300/40 bg-blue-500/20',
-        node: 'border-blue-300/50 bg-blue-500/20 text-blue-100 shadow-[0_0_30px_rgba(59,130,246,0.22)]',
+        pill: 'text-blue-200 border-blue-300/30 bg-blue-500/14',
+        node: 'border-blue-300/40 bg-blue-500/16 text-blue-100',
       };
     case Category.HABIT:
       return {
-        pill: 'text-lime-200 border-lime-300/40 bg-lime-500/20',
-        node: 'border-lime-300/50 bg-lime-500/20 text-lime-100 shadow-[0_0_30px_rgba(132,204,22,0.22)]',
+        pill: 'text-lime-200 border-lime-300/30 bg-lime-500/14',
+        node: 'border-lime-300/40 bg-lime-500/16 text-lime-100',
       };
     default:
       return {
-        pill: 'text-slate-200 border-slate-300/30 bg-slate-500/20',
-        node: 'border-slate-300/40 bg-slate-500/20 text-slate-100 shadow-[0_0_30px_rgba(148,163,184,0.2)]',
+        pill: 'text-slate-200 border-slate-300/30 bg-slate-500/14',
+        node: 'border-slate-300/40 bg-slate-500/16 text-slate-100',
       };
   }
 };
 
 const sourceTone = (source: JournalLog['source']) => {
-  if (source === 'telegram') return 'text-sky-200 border-sky-300/40 bg-sky-500/20';
-  if (source === 'event') return 'text-indigo-200 border-indigo-300/40 bg-indigo-500/20';
-  return 'text-slate-200 border-slate-300/30 bg-slate-500/20';
+  if (source === 'telegram') return 'text-sky-200 border-sky-300/30 bg-sky-500/14';
+  if (source === 'event') return 'text-indigo-200 border-indigo-300/30 bg-indigo-500/14';
+  return 'text-slate-200 border-slate-300/30 bg-slate-500/14';
 };
 
 const toConfidencePercent = (value: unknown): number | null => {
@@ -262,114 +262,99 @@ export const LifeStreamView: React.FC<LifeStreamViewProps> = (props) => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto pb-32 space-y-8">
-      <section className="relative overflow-hidden rounded-[2.2rem] border border-white/10 bg-[radial-gradient(circle_at_10%_20%,rgba(56,189,248,0.18),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(59,130,246,0.18),transparent_35%),linear-gradient(180deg,rgba(15,23,42,0.95),rgba(2,6,23,0.95))] p-6 md:p-8">
-        <div className="absolute inset-0 opacity-25 [background-size:28px_28px] [background-image:linear-gradient(to_right,rgba(148,163,184,0.12)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.12)_1px,transparent_1px)]" />
-        <div className="relative flex flex-col gap-5">
-          <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-            <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-sky-300">
-                Journal Intelligence
-              </p>
-              <h3 className="text-3xl md:text-4xl font-black tracking-tight text-white">
-                Neural Mind Map
-              </h3>
-              <p className="text-sm text-slate-300">
-                Explore every log in a categorized graph and inspect each entry with full context.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2">
-                <p className="text-slate-400 uppercase tracking-[0.12em]">Visible Logs</p>
-                <p className="text-xl font-black text-white">{filteredLogs.length}</p>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2">
-                <p className="text-slate-400 uppercase tracking-[0.12em]">Categories</p>
-                <p className="text-xl font-black text-white">{groupedByCategory.length}</p>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2">
-                <p className="text-slate-400 uppercase tracking-[0.12em]">Telegram</p>
-                <p className="text-xl font-black text-white">{telegramCount}</p>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2">
-                <p className="text-slate-400 uppercase tracking-[0.12em]">Avg Confidence</p>
-                <p className="text-xl font-black text-white">{averageConfidence}%</p>
-              </div>
-            </div>
+    <div className="mx-auto w-full max-w-[1460px] space-y-6 pb-32">
+      <section className="rounded-[28px] border border-white/10 bg-[linear-gradient(165deg,rgba(17,24,39,0.9),rgba(8,12,24,0.9))] p-6 xl:p-7">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-blue-200">
+              Journal Intelligence
+            </p>
+            <h3 className="mt-1 text-3xl font-semibold tracking-tight text-slate-100 xl:text-[2.1rem]">
+              Neural Mind Map
+            </h3>
+            <p className="mt-2 text-sm text-slate-300">
+              Visualize all logs by category and inspect each entry with source confidence.
+            </p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
-            <div className="relative">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search logs, facts, events..."
-                className="w-full rounded-xl border border-white/15 bg-black/30 pl-10 pr-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-300/40"
-              />
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {(['all', 'memory', 'telegram', 'event'] as SourceFilter[]).map((source) => (
-                <button
-                  key={source}
-                  type="button"
-                  onClick={() => setSelectedSource(source)}
-                  className={`rounded-xl border px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] transition ${
-                    selectedSource === source
-                      ? 'border-sky-300/40 bg-sky-500/20 text-sky-100'
-                      : 'border-white/15 bg-black/20 text-slate-300 hover:border-white/30'
-                  }`}
-                >
-                  {source}
-                </button>
-              ))}
-            </div>
+          <div className="grid grid-cols-2 gap-2 text-xs md:grid-cols-4">
+            <MetricCard label="Visible Logs" value={String(filteredLogs.length)} />
+            <MetricCard label="Categories" value={String(groupedByCategory.length)} />
+            <MetricCard label="Telegram" value={String(telegramCount)} />
+            <MetricCard label="Avg Confidence" value={`${averageConfidence}%`} />
           </div>
+        </div>
 
+        <div className="mt-5 grid grid-cols-1 gap-3 xl:grid-cols-[1fr_auto]">
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search logs, facts, events..."
+              className="w-full rounded-xl border border-white/15 bg-black/25 py-2.5 pl-10 pr-4 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-300/40 focus:outline-none"
+            />
+          </div>
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setSelectedCategory(ALL_CATEGORY_FILTER)}
-              className={`rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] transition ${
-                selectedCategory === ALL_CATEGORY_FILTER
-                  ? 'border-white/60 bg-white/20 text-white'
-                  : 'border-white/20 bg-black/20 text-slate-300 hover:border-white/40'
-              }`}
-            >
-              All
-            </button>
-            {mapCategories.map((category) => (
+            {(['all', 'memory', 'telegram', 'event'] as SourceFilter[]).map((source) => (
               <button
-                key={category}
+                key={source}
                 type="button"
-                onClick={() =>
-                  setSelectedCategory((prev) => (prev === category ? ALL_CATEGORY_FILTER : category))
-                }
-                className={`rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] transition ${
-                  selectedCategory === category
-                    ? categoryTone(category).pill
-                    : 'border-white/20 bg-black/20 text-slate-300 hover:border-white/40'
+                onClick={() => setSelectedSource(source)}
+                className={`rounded-xl border px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] transition ${
+                  selectedSource === source
+                    ? 'border-blue-300/40 bg-blue-500/18 text-blue-100'
+                    : 'border-white/15 bg-black/20 text-slate-300 hover:border-white/30'
                 }`}
               >
-                {category}
+                {source}
               </button>
             ))}
           </div>
         </div>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setSelectedCategory(ALL_CATEGORY_FILTER)}
+            className={`rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] transition ${
+              selectedCategory === ALL_CATEGORY_FILTER
+                ? 'border-white/50 bg-white/15 text-slate-100'
+                : 'border-white/20 bg-black/20 text-slate-300 hover:border-white/35'
+            }`}
+          >
+            All
+          </button>
+          {mapCategories.map((category) => (
+            <button
+              key={category}
+              type="button"
+              onClick={() =>
+                setSelectedCategory((prev) => (prev === category ? ALL_CATEGORY_FILTER : category))
+              }
+              className={`rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] transition ${
+                selectedCategory === category
+                  ? categoryTone(category).pill
+                  : 'border-white/20 bg-black/20 text-slate-300 hover:border-white/35'
+              }`}
+            >
+              {category}
+            </button>
+          ))}
+        </div>
       </section>
 
-      <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-8 rounded-[2rem] border border-white/10 bg-slate-950/70 p-5 md:p-6">
+      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="rounded-[28px] border border-white/10 bg-white/[0.02] p-5 xl:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Map</p>
-              <h4 className="text-xl font-black text-white">Category Neural Graph</h4>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Map</p>
+              <h4 className="text-xl font-semibold text-slate-100">Category Graph</h4>
             </div>
-            <Sparkles size={16} className="text-sky-300" />
+            <Sparkles size={16} className="text-blue-200" />
           </div>
 
-          <div className="relative mt-5 h-[420px] rounded-2xl border border-white/10 bg-[radial-gradient(circle_at_center,rgba(30,41,59,0.9),rgba(2,6,23,0.95))] overflow-hidden">
-            <div className="absolute inset-0 opacity-30 [background-size:22px_22px] [background-image:linear-gradient(to_right,rgba(148,163,184,0.12)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.12)_1px,transparent_1px)]" />
+          <div className="relative mt-5 h-[460px] overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_50%_40%,rgba(15,23,42,0.9),rgba(2,6,23,0.95))]">
+            <div className="absolute inset-0 opacity-25 [background-size:24px_24px] [background-image:linear-gradient(to_right,rgba(148,163,184,0.14)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.14)_1px,transparent_1px)]" />
 
             <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
               {mapCategories.map((category, index) => {
@@ -381,25 +366,34 @@ export const LifeStreamView: React.FC<LifeStreamViewProps> = (props) => {
                     y1="50"
                     x2={x}
                     y2={y}
-                    stroke={selectedCategory === category ? 'rgba(125,211,252,0.85)' : 'rgba(148,163,184,0.25)'}
-                    strokeWidth={selectedCategory === category ? 0.45 : 0.24}
+                    stroke={
+                      selectedCategory === category
+                        ? 'rgba(191,219,254,0.85)'
+                        : 'rgba(148,163,184,0.26)'
+                    }
+                    strokeWidth={selectedCategory === category ? 0.44 : 0.22}
                   />
                 );
               })}
             </svg>
 
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-sky-300/40 bg-sky-500/20 px-5 py-4 text-center text-sky-100 shadow-[0_0_35px_rgba(56,189,248,0.24)]">
-              <p className="text-[10px] uppercase tracking-[0.14em] text-sky-200">Core</p>
-              <p className="text-sm font-black">
-                {profile.identify?.name ? `${profile.identify.name.split(' ')[0]}'s Vault` : 'Your Vault'}
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-blue-300/30 bg-blue-500/18 px-5 py-4 text-center text-blue-100">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-blue-200">Core</p>
+              <p className="text-sm font-semibold">
+                {profile.identify?.name
+                  ? `${profile.identify.name.split(' ')[0]}'s Vault`
+                  : 'Your Vault'}
               </p>
             </div>
 
             {mapCategories.map((category, index) => {
               const stats = categoryStats.get(category);
               const count = stats?.count || 0;
-              const maxCount = Math.max(...mapCategories.map((cat) => categoryStats.get(cat)?.count || 0), 1);
-              const size = 70 + Math.round((count / maxCount) * 28);
+              const maxCount = Math.max(
+                ...mapCategories.map((cat) => categoryStats.get(cat)?.count || 0),
+                1
+              );
+              const size = 72 + Math.round((count / maxCount) * 24);
               const { x, y } = getOrbitPosition(index, mapCategories.length);
               const tone = categoryTone(category);
               const isActive = selectedCategory === category;
@@ -410,44 +404,52 @@ export const LifeStreamView: React.FC<LifeStreamViewProps> = (props) => {
                   onClick={() =>
                     setSelectedCategory((prev) => (prev === category ? ALL_CATEGORY_FILTER : category))
                   }
-                  className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-2xl border px-2 py-2 text-center transition-all duration-200 hover:scale-105 ${tone.node} ${isActive ? 'ring-2 ring-white/60 scale-105' : ''}`}
+                  className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-2xl border px-2 py-2 text-center transition hover:scale-105 ${tone.node} ${
+                    isActive ? 'ring-2 ring-white/55' : ''
+                  }`}
                   style={{ left: `${x}%`, top: `${y}%`, width: `${size}px`, minHeight: '56px' }}
                 >
                   <div className="mx-auto mb-1 flex w-fit items-center justify-center">
                     {getCategoryIcon(category, 14)}
                   </div>
-                  <p className="text-[9px] font-black uppercase tracking-[0.12em]">{category}</p>
-                  <p className="text-[11px] font-black">{count}</p>
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.11em]">{category}</p>
+                  <p className="text-[11px] font-semibold">{count}</p>
                 </button>
               );
             })}
           </div>
         </div>
 
-        <aside className="lg:col-span-4 rounded-[2rem] border border-white/10 bg-slate-950/70 p-5 md:p-6">
-          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Focus</p>
-          <h4 className="text-xl font-black text-white">Selected Log</h4>
+        <aside className="rounded-[28px] border border-white/10 bg-white/[0.02] p-5 xl:p-6">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Focus</p>
+          <h4 className="text-xl font-semibold text-slate-100">Selected Log</h4>
           {!selectedLog ? (
             <p className="mt-4 text-sm text-slate-400">
-              No entry matches your current filters. Adjust search/category/source.
+              No entry matches your current filters. Adjust search, source, or category.
             </p>
           ) : (
             <div className="mt-4 space-y-4">
               <div className="flex flex-wrap gap-2">
-                <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${categoryTone(selectedLog.category).pill}`}>
+                <span
+                  className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${categoryTone(selectedLog.category).pill}`}
+                >
                   {selectedLog.category}
                 </span>
-                <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${sourceTone(selectedLog.source)}`}>
+                <span
+                  className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${sourceTone(selectedLog.source)}`}
+                >
                   {selectedLog.source}
                 </span>
               </div>
-              <div>
+
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <p className="text-[11px] text-slate-400">{formatLogTime(selectedLog.timestamp)}</p>
-                <h5 className="mt-1 text-base font-black text-white">{selectedLog.title}</h5>
+                <h5 className="mt-1 text-base font-semibold text-slate-100">{selectedLog.title}</h5>
                 {selectedLog.body && (
                   <p className="mt-2 text-sm leading-relaxed text-slate-300">{selectedLog.body}</p>
                 )}
               </div>
+
               {selectedLog.confidence !== null && (
                 <div>
                   <div className="mb-1 flex items-center justify-between text-[11px] text-slate-400">
@@ -456,30 +458,35 @@ export const LifeStreamView: React.FC<LifeStreamViewProps> = (props) => {
                   </div>
                   <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
                     <div
-                      className="h-full bg-gradient-to-r from-sky-400 to-indigo-400"
+                      className="h-full bg-gradient-to-r from-blue-300 to-indigo-300"
                       style={{ width: `${selectedLog.confidence}%` }}
                     />
                   </div>
                 </div>
               )}
+
               {selectedLog.facts.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
                     Extracted Facts
                   </p>
                   {selectedLog.facts.slice(0, 4).map((fact, index) => (
-                    <div key={`${selectedLog.id}-fact-${index}`} className="rounded-xl border border-white/10 bg-black/20 p-2.5 text-xs text-slate-200">
+                    <div
+                      key={`${selectedLog.id}-fact-${index}`}
+                      className="rounded-xl border border-white/10 bg-black/20 p-2.5 text-xs text-slate-200"
+                    >
                       {fact}
                     </div>
                   ))}
                 </div>
               )}
-              <div className="flex items-center gap-2 pt-2">
+
+              <div className="flex items-center gap-2 pt-1">
                 <button
                   type="button"
                   disabled={selectedIndex <= 0}
                   onClick={() => selectedIndex > 0 && setSelectedLogId(filteredLogs[selectedIndex - 1].id)}
-                  className="rounded-lg border border-white/20 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 disabled:opacity-40"
+                  className="rounded-lg border border-white/20 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-200 disabled:opacity-40"
                 >
                   Prev
                 </button>
@@ -491,7 +498,7 @@ export const LifeStreamView: React.FC<LifeStreamViewProps> = (props) => {
                     selectedIndex < filteredLogs.length - 1 &&
                     setSelectedLogId(filteredLogs[selectedIndex + 1].id)
                   }
-                  className="rounded-lg border border-white/20 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 disabled:opacity-40"
+                  className="rounded-lg border border-white/20 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-200 disabled:opacity-40"
                 >
                   Next
                 </button>
@@ -501,26 +508,26 @@ export const LifeStreamView: React.FC<LifeStreamViewProps> = (props) => {
         </aside>
       </section>
 
-      <section className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-5 md:p-6">
-        <div className="mb-5 flex items-end justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Ledger</p>
-            <h4 className="text-2xl font-black text-white">Categorized Journal Logs</h4>
-            <p className="text-sm text-slate-400">
-              Full log history grouped by category for clean daily review.
-            </p>
-          </div>
+      <section className="rounded-[28px] border border-white/10 bg-white/[0.02] p-5 xl:p-6">
+        <div className="mb-5">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Ledger</p>
+          <h4 className="text-2xl font-semibold text-slate-100">Categorized Journal Logs</h4>
+          <p className="text-sm text-slate-400">
+            Review history grouped by category with quick detail selection.
+          </p>
         </div>
 
-        <div className="space-y-5">
+        <div className="space-y-4">
           {groupedByCategory.map(({ category, logs }) => {
             const expanded = Boolean(expandedCategories[category]);
             const visibleLogs = expanded ? logs : logs.slice(0, 6);
             return (
               <article key={category} className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <div className="mb-3 flex items-center justify-between">
+                <div className="mb-3 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2.5">
-                    <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${categoryTone(category).pill}`}>
+                    <span
+                      className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${categoryTone(category).pill}`}
+                    >
                       {category}
                     </span>
                     <span className="text-xs text-slate-400">{logs.length} logs</span>
@@ -531,7 +538,7 @@ export const LifeStreamView: React.FC<LifeStreamViewProps> = (props) => {
                       onClick={() =>
                         setExpandedCategories((prev) => ({ ...prev, [category]: !expanded }))
                       }
-                      className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-300 hover:text-white"
+                      className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-300 hover:text-white"
                     >
                       {expanded ? 'Show less' : `Show all ${logs.length}`}
                     </button>
@@ -546,16 +553,20 @@ export const LifeStreamView: React.FC<LifeStreamViewProps> = (props) => {
                       onClick={() => setSelectedLogId(log.id)}
                       className={`w-full rounded-xl border p-3 text-left transition ${
                         selectedLog?.id === log.id
-                          ? 'border-sky-300/40 bg-sky-500/15'
+                          ? 'border-blue-300/40 bg-blue-500/14'
                           : 'border-white/10 bg-slate-950/35 hover:border-white/25'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-bold text-slate-100">{log.title}</p>
-                          <p className="mt-0.5 text-[11px] text-slate-400">{formatLogTime(log.timestamp)}</p>
+                          <p className="truncate text-sm font-semibold text-slate-100">{log.title}</p>
+                          <p className="mt-0.5 text-[11px] text-slate-400">
+                            {formatLogTime(log.timestamp)}
+                          </p>
                         </div>
-                        <span className={`rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] ${sourceTone(log.source)}`}>
+                        <span
+                          className={`rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] ${sourceTone(log.source)}`}
+                        >
                           {log.source}
                         </span>
                       </div>
@@ -571,3 +582,9 @@ export const LifeStreamView: React.FC<LifeStreamViewProps> = (props) => {
   );
 };
 
+const MetricCard: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+  <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+    <p className="text-[10px] uppercase tracking-[0.12em] text-slate-400">{label}</p>
+    <p className="text-xl font-semibold text-slate-100">{value}</p>
+  </div>
+);

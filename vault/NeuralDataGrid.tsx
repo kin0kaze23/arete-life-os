@@ -1,17 +1,8 @@
 import React, { useState } from 'react';
-import {
-  MoreHorizontal,
-  Trash2,
-  CheckCircle2,
-  Edit3,
-  Clock,
-  Shield,
-  AlertTriangle,
-} from 'lucide-react';
+import { Trash2, CheckCircle2, Edit3, Clock, Shield } from 'lucide-react';
 import { Category } from '@/data/types';
 import { getCategoryColor } from '@/shared';
 
-// Generic Type for Grid Items
 export interface GridItem {
   id: string;
   timestamp: number;
@@ -60,39 +51,41 @@ export const NeuralDataGrid: React.FC<NeuralDataGridProps> = ({
 
   const handleEditSave = () => {
     if (editingId && editVal.trim()) {
-      onEdit(editingId, editVal);
+      onEdit(editingId, editVal.trim());
       setEditingId(null);
     }
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#050608]/50 backdrop-blur-sm rounded-xl border border-white/5 overflow-hidden">
-      {/* Grid Toolbar */}
-      <div className="h-12 border-b border-white/5 flex items-center justify-between px-4 bg-slate-950/30">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
+    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-black/20">
+      <div className="flex items-center justify-between border-b border-white/10 bg-[#0b1323] px-4 py-3">
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 text-xs text-slate-400">
             <input
               type="checkbox"
               checked={selected.size === items.length && items.length > 0}
               onChange={toggleAll}
-              className="rounded border-slate-700 bg-slate-900 text-indigo-500 focus:ring-indigo-500/50"
+              className="rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-blue-500/50"
             />
-            <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
-              Select All
-            </span>
-          </div>
+            <span>Select all</span>
+          </label>
           {selected.size > 0 && (
-            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-200">
-              <span className="text-[10px] text-indigo-400 font-mono bg-indigo-500/10 px-2 py-0.5 rounded">
-                {selected.size} SELECTED
-              </span>
+            <span className="rounded-md border border-blue-300/25 bg-blue-500/12 px-2 py-0.5 text-[11px] text-blue-100">
+              {selected.size} selected
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {selected.size > 0 && (
+            <>
               <button
                 onClick={() => {
                   onDelete(Array.from(selected));
                   setSelected(new Set());
                 }}
-                className="p-1 hover:bg-rose-500/20 text-slate-500 hover:text-rose-500 rounded transition-colors"
-                title="Bulk Delete"
+                className="rounded-lg border border-rose-300/25 bg-rose-500/12 p-2 text-rose-200 transition hover:bg-rose-500/20"
+                title="Delete selected"
               >
                 <Trash2 size={14} />
               </button>
@@ -102,151 +95,122 @@ export const NeuralDataGrid: React.FC<NeuralDataGridProps> = ({
                     onVerify(Array.from(selected));
                     setSelected(new Set());
                   }}
-                  className="p-1 hover:bg-emerald-500/20 text-slate-500 hover:text-emerald-500 rounded transition-colors"
-                  title="Bulk Verify"
+                  className="rounded-lg border border-emerald-300/25 bg-emerald-500/12 p-2 text-emerald-200 transition hover:bg-emerald-500/20"
+                  title="Verify selected"
                 >
                   <CheckCircle2 size={14} />
                 </button>
               )}
-            </div>
+            </>
           )}
-        </div>
-        <div className="flex items-center gap-4">
-          {/* Add Button */}
           {onAdd && (
             <button
               onClick={onAdd}
-              className="flex items-center gap-2 px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 rounded-md transition-colors group"
+              className="rounded-lg border border-blue-300/30 bg-blue-500/14 px-3 py-1.5 text-[11px] font-semibold text-blue-100 transition hover:bg-blue-500/22"
             >
-              <span className="text-indigo-400 group-hover:text-indigo-300 text-[10px] font-bold tracking-wider">
-                NEW ENTRY
-              </span>
+              New Entry
             </button>
           )}
-          <div className="text-[10px] text-slate-600 font-mono">SHOWING {items.length} RECORDS</div>
         </div>
       </div>
 
-      {/* Grid Header */}
-      <div className="grid grid-cols-[40px_140px_100px_1fr_100px_60px] gap-4 px-4 py-2 border-b border-white/5 bg-slate-950/20 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-        <div></div>
-        <div>Timestamp</div>
-        <div>Type</div>
-        <div>Content Description</div>
-        <div>Category</div>
-        <div className="text-right">Action</div>
+      <div className="grid grid-cols-[36px_130px_96px_1fr_140px_96px] gap-3 border-b border-white/10 bg-[#0b1323]/70 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+        <span />
+        <span>Timestamp</span>
+        <span>Type</span>
+        <span>Content</span>
+        <span>Category</span>
+        <span className="text-right">Action</span>
       </div>
 
-      {/* Grid Body */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="premium-scrollbar flex-1 overflow-y-auto">
         {items.map((item) => (
           <div
             key={item.id}
-            className={`
-                 grid grid-cols-[40px_140px_100px_1fr_100px_60px] gap-4 px-4 py-3 border-b border-white/[0.02] hover:bg-white/[0.02] group transition-colors items-center
-                 ${selected.has(item.id) ? 'bg-indigo-500/[0.03]' : ''}
-               `}
+            className={`grid grid-cols-[36px_130px_96px_1fr_140px_96px] items-center gap-3 border-b border-white/[0.06] px-4 py-3 transition hover:bg-white/[0.03] ${selected.has(item.id) ? 'bg-blue-500/[0.08]' : ''}`}
           >
-            {/* Checkbox */}
-            <div>
-              <input
-                type="checkbox"
-                checked={selected.has(item.id)}
-                onChange={() => toggleSelect(item.id)}
-                className="rounded border-slate-700 bg-slate-900 text-indigo-500 focus:ring-0 cursor-pointer"
-              />
+            <input
+              type="checkbox"
+              checked={selected.has(item.id)}
+              onChange={() => toggleSelect(item.id)}
+              className="rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-0"
+            />
+
+            <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+              <Clock size={12} className="text-slate-500" />
+              {new Date(item.timestamp).toLocaleString(undefined, {
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+              })}
             </div>
 
-            {/* Timestamp */}
-            <div className="font-mono text-[10px] text-slate-500 flex items-center gap-2">
-              <Clock size={10} className="opacity-50" />
-              {new Date(item.timestamp)
-                .toLocaleString(undefined, {
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  hour12: false,
-                })
-                .replace(',', '')}
-            </div>
+            <span
+              className={`w-fit rounded-md border px-2 py-0.5 text-[10px] font-semibold ${
+                item.type === 'CLAIM'
+                  ? 'border-emerald-300/30 bg-emerald-500/12 text-emerald-200'
+                  : item.type === 'MEMORY'
+                    ? 'border-blue-300/30 bg-blue-500/12 text-blue-100'
+                    : 'border-white/15 bg-white/[0.02] text-slate-300'
+              }`}
+            >
+              {item.type}
+            </span>
 
-            {/* Type Badge */}
-            <div>
-              <span
-                className={`
-                    text-[9px] font-bold px-1.5 py-0.5 rounded border
-                    ${
-                      item.type === 'CLAIM'
-                        ? 'border-emerald-500/20 text-emerald-400 bg-emerald-500/5'
-                        : item.type === 'MEMORY'
-                          ? 'border-indigo-500/20 text-indigo-400 bg-indigo-500/5'
-                          : 'border-slate-700 text-slate-500'
-                    }
-                  `}
-              >
-                {item.type}
-              </span>
-            </div>
-
-            {/* Content */}
-            <div className="text-xs text-slate-300 truncate pr-4">
+            <div className="min-w-0 text-sm text-slate-200">
               {editingId === item.id ? (
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    autoFocus
-                    className="w-full bg-black border border-indigo-500/50 rounded px-2 py-1 text-white outline-none"
-                    value={editVal}
-                    onChange={(e) => setEditVal(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleEditSave()}
-                  />
-                </div>
+                <input
+                  type="text"
+                  autoFocus
+                  className="w-full rounded-lg border border-blue-300/35 bg-black/30 px-2 py-1 text-sm text-slate-100 outline-none"
+                  value={editVal}
+                  onChange={(e) => setEditVal(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleEditSave()}
+                />
               ) : (
-                <span className="opacity-90">{item.content}</span>
+                <span className="block truncate">{item.content}</span>
               )}
             </div>
 
-            {/* Category */}
-            <div>
-              <span
-                className={`text-[9px] uppercase tracking-wider font-bold ${getCategoryColor(item.category)}`}
-              >
-                {item.category}
-              </span>
-            </div>
+            <span className={`text-[11px] font-semibold uppercase ${getCategoryColor(item.category)}`}>
+              {item.category}
+            </span>
 
-            {/* Actions */}
-            <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex items-center justify-end gap-1">
               {editingId === item.id ? (
                 <button
                   onClick={handleEditSave}
-                  className="text-emerald-400 hover:text-emerald-300 p-1"
+                  className="rounded-md p-1.5 text-emerald-300 transition hover:bg-emerald-500/15"
+                  title="Save"
                 >
-                  <CheckCircle2 size={12} />
+                  <CheckCircle2 size={13} />
                 </button>
               ) : (
                 <button
                   onClick={() => handleEditStart(item)}
-                  className="text-slate-500 hover:text-indigo-400 p-1"
+                  className="rounded-md p-1.5 text-slate-400 transition hover:bg-white/10 hover:text-slate-100"
+                  title="Edit"
                 >
-                  <Edit3 size={12} />
+                  <Edit3 size={13} />
                 </button>
               )}
               <button
                 onClick={() => onDelete([item.id])}
-                className="text-slate-500 hover:text-rose-400 p-1"
+                className="rounded-md p-1.5 text-slate-400 transition hover:bg-rose-500/15 hover:text-rose-200"
+                title="Delete"
               >
-                <Trash2 size={12} />
+                <Trash2 size={13} />
               </button>
             </div>
           </div>
         ))}
 
         {items.length === 0 && (
-          <div className="h-full flex flex-col items-center justify-center text-slate-600 space-y-2">
-            <Shield size={24} className="opacity-20" />
-            <span className="text-xs font-mono">NO RECORDS FOUND IN SECTOR</span>
+          <div className="flex h-full min-h-[240px] flex-col items-center justify-center gap-2 text-slate-500">
+            <Shield size={24} className="opacity-30" />
+            <span className="text-xs">No records found</span>
           </div>
         )}
       </div>

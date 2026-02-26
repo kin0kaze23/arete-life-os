@@ -47,52 +47,51 @@ export const VaultSidebar: React.FC<VaultSidebarProps> = ({ activePath, onNaviga
   ];
 
   return (
-    <div className="w-64 bg-[#09090b] border-r border-white/5 flex flex-col h-full">
-      <div className="p-4 border-b border-white/5">
-        <div className="flex items-center gap-2 text-indigo-400">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="font-mono text-[10px] tracking-widest">SYSTEM ONLINE</span>
+    <aside className="flex h-full w-72 flex-col border-r border-white/10 bg-[#0a1426]">
+      <div className="border-b border-white/10 p-4">
+        <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
+            Vault Active
+          </p>
+          <p className="mt-1 text-sm font-semibold text-slate-100">
+            {profile?.identify?.name || 'User'} Workspace
+          </p>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 font-mono text-xs">
+      <div className="premium-scrollbar flex-1 overflow-y-auto p-4 text-xs">
         <div
-          className="mb-6 pl-2 opacity-80 flex items-center gap-2 text-indigo-400 hover:text-indigo-300 cursor-pointer"
+          className="mb-6 flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-slate-200 transition hover:border-white/20"
           onClick={() => onNavigate('/')}
         >
           <HardDrive size={14} />
-          <span className="font-bold tracking-wider">SYSTEM OVERVIEW</span>
+          <span className="font-medium tracking-[0.02em]">Overview</span>
         </div>
 
         {menu.map((item) => (
           <div key={item.label} className="mb-6">
-            <div className="flex items-center gap-2 text-slate-500 mb-2 pl-2">
+            <div className="mb-2 flex items-center gap-2 pl-2 text-slate-500">
               <item.icon size={12} />
-              <span>{item.label}</span>
+              <span className="font-semibold uppercase tracking-[0.14em] text-[10px]">{item.label}</span>
             </div>
             <div className="space-y-0.5">
               {item.children.map((child) => (
                 <div
                   key={child.id}
                   onClick={() => onNavigate(child.id)}
-                  className={`
-                        group flex items-center gap-3 px-3 py-2 rounded cursor-pointer transition-colors
-                        ${
-                          activePath === child.id
-                            ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
-                            : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border border-transparent'
-                        }
-                      `}
+                  className={`group flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 transition-colors ${
+                    activePath === child.id
+                      ? 'border-blue-300/35 bg-blue-500/16 text-blue-100'
+                      : 'border-transparent text-slate-400 hover:border-white/10 hover:bg-white/[0.04] hover:text-slate-200'
+                  }`}
                 >
                   <child.icon
                     size={14}
                     className={
-                      activePath === child.id
-                        ? 'text-indigo-400'
-                        : 'text-slate-600 group-hover:text-slate-400'
+                      activePath === child.id ? 'text-blue-200' : 'text-slate-500 group-hover:text-slate-300'
                     }
                   />
-                  <span>{child.label}</span>
+                  <span className="text-[12px]">{child.label}</span>
                 </div>
               ))}
             </div>
@@ -100,18 +99,19 @@ export const VaultSidebar: React.FC<VaultSidebarProps> = ({ activePath, onNaviga
         ))}
       </div>
 
-      <div className="p-4 border-t border-white/5">
-        <div className="text-[10px] text-slate-600 font-mono flex justify-between">
-          <span>SYSTEM USAGE (DEMO)</span>
-        </div>
-        <div className="w-full bg-slate-800 h-1 mt-2 rounded-full overflow-hidden">
-          <div className="bg-indigo-500 w-[24%] h-full" />
-        </div>
-        <div className="flex justify-between text-[10px] text-slate-500 font-mono mt-1">
+      <div className="border-t border-white/10 p-4">
+        <div className="flex justify-between text-[10px] text-slate-500">
+          <span>Storage Usage</span>
           <span>2.4 GB</span>
-          <span>UNLIMITED</span>
+        </div>
+        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-slate-800">
+          <div className="h-full w-[24%] bg-blue-400" />
+        </div>
+        <div className="mt-1 flex justify-between text-[10px] text-slate-500">
+          <span>Used</span>
+          <span>Unlimited</span>
         </div>
       </div>
-    </div>
+    </aside>
   );
 };

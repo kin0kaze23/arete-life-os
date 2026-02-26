@@ -7,39 +7,38 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Manrope:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
     <style>
       :root {
-        /* Standardizing to Token Values */
-        --bg-void: #02040a;
-        --bg-deep: #08090c;
-        --bg-elevated: #0d1117;
-        --border-subtle: rgba(255, 255, 255, 0.08);
-        --accent-indigo: #6366f1;
-        --accent-emerald: #10b981;
-        --accent-rose: #f43f5e;
-        --accent-amber: #f59e0b;
-
-        --radius-panel: 3rem;
-        --radius-item: 1.5rem;
+        --bg-app: #070b14;
+        --bg-elevated: #0f1625;
+        --bg-card: #121b2d;
+        --border-subtle: rgba(148, 163, 184, 0.22);
+        --text-primary: #e7edf8;
+        --text-secondary: #99a6bf;
+        --accent-primary: #5b8cff;
+        --accent-success: #26b47f;
       }
 
       body {
-        font-family: 'Inter', sans-serif;
-        background-color: var(--bg-void);
-        color: #e6edf3;
+        font-family: 'Manrope', sans-serif;
+        background:
+          radial-gradient(circle at 12% 4%, rgba(91, 140, 255, 0.16), transparent 38%),
+          radial-gradient(circle at 90% 0%, rgba(37, 99, 235, 0.08), transparent 34%),
+          var(--bg-app);
+        color: var(--text-primary);
         margin: 0;
         overflow: hidden;
         -webkit-font-smoothing: antialiased;
       }
 
       .glass-panel {
-        background: rgba(13, 17, 23, 0.7);
-        backdrop-filter: blur(40px);
+        background: rgba(18, 27, 45, 0.72);
+        backdrop-filter: blur(24px);
         border: 1px solid var(--border-subtle);
-        box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+        box-shadow: 0 18px 44px -28px rgba(15, 23, 42, 0.85);
       }
 
       .mono {
@@ -54,100 +53,18 @@
         scrollbar-width: none;
       }
 
-      @keyframes flow {
-        0% {
-          background-position: 0% 50%;
-        }
-        50% {
-          background-position: 100% 50%;
-        }
-        100% {
-          background-position: 0% 50%;
-        }
-      }
-
-      .animate-flow {
-        background:
-          radial-gradient(circle at top left, #0f172a 0%, #02040a 50%),
-          radial-gradient(circle at bottom right, #1e1b4b 0%, #02040a 50%);
-        background-size: 200% 200%;
-        animation: flow 20s ease infinite;
-      }
-
-      .text-glow-indigo {
-        text-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
-      }
-
-      @keyframes neural-pulse {
-        0%,
-        100% {
-          opacity: 1;
-          transform: scale(1);
-          filter: brightness(1);
-        }
-        50% {
-          opacity: 0.85;
-          transform: scale(0.99);
-          filter: brightness(1.1);
-        }
-      }
-      .neural-pulse {
-        animation: neural-pulse 6s infinite ease-in-out;
-      }
-
-      @keyframes scanline {
-        0% {
-          transform: translateY(-100%);
-          opacity: 0;
-        }
-        10% {
-          opacity: 1;
-        }
-        90% {
-          opacity: 1;
-        }
-        100% {
-          transform: translateY(100vh);
-          opacity: 0;
-        }
-      }
-      .scanline {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 1px;
-        background: linear-gradient(to right, transparent, rgba(99, 102, 241, 0.2), transparent);
-        z-index: 100;
-        pointer-events: none;
-        animation: scanline 12s linear infinite;
-      }
-
-      .noise-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-image: url('https://grainy-gradients.vercel.app/noise.svg');
-        opacity: 0.02;
-        z-index: 99;
-        pointer-events: none;
-      }
-
-      /* Premium Scrollbar for overflow areas */
       .premium-scrollbar::-webkit-scrollbar {
-        width: 4px;
+        width: 6px;
       }
       .premium-scrollbar::-webkit-scrollbar-track {
         background: transparent;
       }
       .premium-scrollbar::-webkit-scrollbar-thumb {
-        background: var(--border-subtle);
+        background: rgba(148, 163, 184, 0.4);
         border-radius: 10px;
       }
       .premium-scrollbar::-webkit-scrollbar-thumb:hover {
-        background: var(--accent-indigo);
+        background: var(--accent-primary);
       }
     </style>
     <script type="importmap">
@@ -163,9 +80,7 @@
       }
     </script>
   </head>
-  <body class="dark animate-flow">
-    <div class="scanline"></div>
-    <div class="noise-overlay"></div>
+  <body class="dark">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

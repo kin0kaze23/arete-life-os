@@ -1,13 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   LayoutDashboard,
   Database,
-  BookOpen, // Changed from Activity for Journal
-  MessageSquare, // Changed from BrainCircuit for Assistant
+  BookOpen,
+  MessageSquare,
   Settings,
   Plus,
-  X,
-  Check,
+  ChevronsUpDown,
 } from 'lucide-react';
 import { FamilySpace } from '@/data';
 import { AreteLogo } from '@/shared';
@@ -31,108 +30,124 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onAddMember,
   onCapture,
 }) => {
-  const [isAdding, setIsAdding] = useState(false);
-  const [newName, setNewName] = useState('');
-
-  const handleAddSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newName.trim() && onAddMember) {
-      onAddMember(newName.trim());
-      setNewName('');
-      setIsAdding(false);
-    }
-  };
-
+  const activeMember = familySpace.members.find((member) => member.id === activeUserId);
   return (
-    <nav className="w-20 md:w-64 bg-[#08090C] border-r border-slate-800/50 flex flex-col items-center md:items-stretch p-4 gap-6 transition-all h-full">
-      <div
-        className="flex items-center gap-3 px-2 mt-2 group cursor-pointer"
-        onClick={() => setActiveTab('dashboard')}
-      >
-        <AreteLogo size={36} />
-        <div className="hidden md:flex flex-col">
-          <span className="font-black text-sm tracking-tighter text-white uppercase group-hover:text-indigo-400 transition-colors">
-            Areté OS
-          </span>
-          <span className="text-[8px] font-black tracking-[0.3em] text-indigo-500 uppercase">
-            Life OS
-          </span>
-        </div>
-      </div>
-
-      <div className="px-1 space-y-4">
-        <div className="flex flex-col gap-2">
-          {familySpace.members.map((member) => (
-            <button
-              key={member.id}
-              onClick={() => onSwitchUser(member.id)}
-              className={`flex items-center gap-3 p-2 rounded-xl transition-all border w-full text-left group ${
-                activeUserId === member.id
-                  ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400'
-                  : 'bg-transparent border-transparent text-slate-500 hover:bg-white/5'
-              }`}
-            >
-              <div
-                className={`w-6 h-6 rounded-lg flex items-center justify-center font-black text-[10px] shrink-0 ${
-                  activeUserId === member.id
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-slate-800 text-slate-400'
-                }`}
-              >
-                {member.identify.name.charAt(0)}
-              </div>
-              <span className="hidden md:block text-[10px] font-black uppercase tracking-widest truncate flex-1">
-                {member.identify.name || 'User'}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <button
-        onClick={onCapture}
-        className="w-full bg-slate-100 hover:bg-white text-slate-900 rounded-xl p-3 flex items-center justify-center gap-2 transition-all shadow-lg shadow-white/5 group border border-transparent hover:scale-[1.02] active:scale-[0.98]"
-      >
-        <Plus size={18} className="text-slate-900" />
-        <span className="hidden md:block font-black uppercase tracking-widest text-[10px]">
-          Capture
-        </span>
-      </button>
-
-      <div className="flex flex-col gap-1 w-full mt-2">
-        <NavButton
-          active={activeTab === 'dashboard'}
+    <nav className="h-full w-[90px] border-r border-white/10 bg-[#0a111f]/90 p-4 backdrop-blur-xl xl:w-[290px]">
+      <div className="flex h-full flex-col gap-5">
+        <button
+          type="button"
           onClick={() => setActiveTab('dashboard')}
-          icon={<LayoutDashboard size={18} />}
-          label="Dashboard"
-        />
-        <NavButton
-          active={activeTab === 'vault'}
-          onClick={() => setActiveTab('vault')}
-          icon={<Database size={18} />}
-          label="My Life"
-        />
-        <NavButton
-          active={activeTab === 'stream'}
-          onClick={() => setActiveTab('stream')}
-          icon={<BookOpen size={18} />}
-          label="Journal"
-        />
-        <NavButton
-          active={activeTab === 'chat'}
-          onClick={() => setActiveTab('chat')}
-          icon={<MessageSquare size={18} />}
-          label="Assistant"
-        />
-      </div>
+          className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-left transition hover:border-white/20 hover:bg-white/[0.06]"
+        >
+          <AreteLogo size={34} />
+          <div className="hidden xl:block">
+            <p className="text-sm font-semibold tracking-tight text-slate-100">Areté OS</p>
+            <p className="text-[10px] uppercase tracking-[0.16em] text-slate-400">
+              Personal Operating Layer
+            </p>
+          </div>
+        </button>
 
-      <div className="mt-auto w-full">
-        <NavButton
-          active={activeTab === 'settings'}
-          onClick={() => setActiveTab('settings')}
-          icon={<Settings size={18} />}
-          label="Settings"
-        />
+        <button
+          type="button"
+          onClick={onCapture}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white shadow-[0_10px_22px_rgba(37,99,235,0.35)] transition hover:bg-blue-400"
+        >
+          <Plus size={16} />
+          <span className="hidden xl:inline">Capture</span>
+        </button>
+
+        <div className="space-y-1.5">
+          <NavButton
+            active={activeTab === 'dashboard'}
+            onClick={() => setActiveTab('dashboard')}
+            icon={<LayoutDashboard size={18} />}
+            label="Dashboard"
+          />
+          <NavButton
+            active={activeTab === 'vault'}
+            onClick={() => setActiveTab('vault')}
+            icon={<Database size={18} />}
+            label="My Life"
+          />
+          <NavButton
+            active={activeTab === 'stream'}
+            onClick={() => setActiveTab('stream')}
+            icon={<BookOpen size={18} />}
+            label="Journal"
+          />
+          <NavButton
+            active={activeTab === 'chat'}
+            onClick={() => setActiveTab('chat')}
+            icon={<MessageSquare size={18} />}
+            label="Assistant"
+          />
+        </div>
+
+        <div className="hidden rounded-2xl border border-white/10 bg-white/[0.03] p-2 xl:block">
+          <div className="mb-3 flex items-center justify-between px-2">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+              Workspace
+            </p>
+            <ChevronsUpDown size={12} className="text-slate-500" />
+          </div>
+          <div className="mb-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-slate-200">
+            Active: <span className="font-semibold">{activeMember?.identify.name || 'User'}</span>
+          </div>
+          <div className="space-y-1">
+            {familySpace.members.map((member) => {
+              const active = activeUserId === member.id;
+              return (
+                <button
+                  key={member.id}
+                  type="button"
+                  onClick={() => onSwitchUser(member.id)}
+                  className={`flex w-full items-center gap-2 rounded-xl border px-2.5 py-2 text-left text-xs transition ${
+                    active
+                      ? 'border-blue-300/40 bg-blue-500/18 text-white'
+                      : 'border-transparent text-slate-300 hover:border-white/10 hover:bg-white/[0.04]'
+                  }`}
+                >
+                  <span
+                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold ${
+                      active ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-300'
+                    }`}
+                  >
+                    {member.identify.name.charAt(0).toUpperCase()}
+                  </span>
+                  <span className="truncate">{member.identify.name || 'User'}</span>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => {
+                const name = prompt('Add member name');
+                if (name && name.trim()) onAddMember?.(name.trim());
+              }}
+              className="mt-1 w-full rounded-xl border border-dashed border-white/14 px-2.5 py-2 text-left text-xs text-slate-400 transition hover:border-white/30 hover:text-slate-200"
+            >
+              + Add workspace user
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-auto hidden rounded-2xl border border-white/10 bg-black/20 p-3 text-xs text-slate-400 xl:block">
+          <p className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Daily Workflow</p>
+          <p className="mt-1">Capture, Journal, Review, Plan</p>
+        </div>
+
+        <div className="mt-auto xl:mt-0">
+          <p className="mb-1 hidden px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 xl:block">
+            System
+          </p>
+          <NavButton
+            active={activeTab === 'settings'}
+            onClick={() => setActiveTab('settings')}
+            icon={<Settings size={18} />}
+            label="Settings"
+          />
+        </div>
       </div>
     </nav>
   );
@@ -145,18 +160,15 @@ const NavButton: React.FC<{
   onClick?: () => void;
 }> = ({ icon, label, active, onClick }) => (
   <button
+    type="button"
     onClick={onClick}
-    className={`flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all w-full group ${
+    className={`flex w-full items-center gap-3 rounded-xl border px-3 py-3 transition ${
       active
-        ? 'bg-white/5 text-white border border-white/10 shadow-lg shadow-black/20'
-        : 'text-slate-500 hover:bg-white/5 hover:text-slate-300 border border-transparent'
+        ? 'border-blue-300/35 bg-blue-500/14 text-white'
+        : 'border-transparent text-slate-400 hover:border-white/10 hover:bg-white/[0.04] hover:text-slate-200'
     }`}
   >
-    <div className={`transition-colors ${active ? 'text-indigo-400' : 'group-hover:text-white'}`}>
-      {icon}
-    </div>
-    <span className="hidden md:block font-bold text-[11px] uppercase tracking-widest transition-opacity duration-300">
-      {label}
-    </span>
+    <span className={active ? 'text-blue-200' : ''}>{icon}</span>
+    <span className="hidden text-[12px] font-medium tracking-[0.02em] xl:block">{label}</span>
   </button>
 );

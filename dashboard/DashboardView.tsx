@@ -27,6 +27,8 @@ import { computeScoreInternal } from './ScoreStrip';
 import { LifeContextPanel } from './LifeContextPanel';
 import { AdvanceProtectPanel } from './AdvanceProtectPanel';
 import { ReportsSection } from './ReportsSection';
+import { StatusSidebar } from './StatusSidebar';
+import { getProfileCompletion } from '@/shared';
 
 interface DashboardViewProps {
   memory: MemoryEntry[];
@@ -84,6 +86,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   planMyDay,
   onNavigate,
   updateMemoryItem,
+  keepRecommendation,
+  removeRecommendation,
   activatePrepPlan,
   onToast,
   isPlanningDay,
@@ -95,6 +99,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   inboxReviewConfidence = 0.65,
   onMergeInbox,
   onRefreshInbox,
+  alwaysDoChips = [],
+  alwaysWatchChips = [],
 }) => {
   const [activePrepEvent, setActivePrepEvent] = useState<TimelineEvent | null>(null);
   const [editingEvent, setEditingEvent] = useState<TimelineEvent | null>(null);
@@ -201,6 +207,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
     return 'Log a check-in to personalize today’s mission.';
   }, [timelineEvents, focusTasks]);
+
+  const profileCompletion = useMemo(() => getProfileCompletion(profile).overall, [profile]);
 
   const headerStats = useMemo(() => {
     const now = Date.now();
@@ -487,6 +495,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             onOpenEvent={setActivePrepEvent}
             onActivateRecommendation={(rec) => activatePrepPlan?.(rec, (rec as any).metadata?.eventId)}
           />
+
+          <section className="rounded-[24px] border border-white/10 bg-white/[0.02] p-5">
+            <StatusSidebar
+              profile={profile}
+              completion={profileCompletion}
+              blindSpots={blindSpots}
+              recommendations={recommendations}
+              onNavigate={onNavigate}
+              onActivate={(rec) => activatePrepPlan?.(rec, (rec as any).metadata?.eventId)}
+              onKeepRecommendation={keepRecommendation}
+              onRemoveRecommendation={removeRecommendation}
+              alwaysDoChips={alwaysDoChips}
+              alwaysWatchChips={alwaysWatchChips}
+            />
+          </section>
         </aside>
       </div>
 
