@@ -130,34 +130,32 @@ export const ReportsSection: React.FC<ReportsSectionProps> = ({ memory, profile 
   }, [cache]);
 
   return (
-    <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500 font-semibold">Reports</p>
-          <p className="text-sm text-slate-300">Generate health, financial, faith, and habits reports.</p>
-        </div>
+    <section className="rounded-[24px] border border-white/10 bg-white/[0.02] p-5 space-y-4">
+      <div>
+        <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500 font-semibold">Reports</p>
+        <p className="text-sm text-slate-300">Generate health, financial, faith, and habits reports.</p>
       </div>
 
       {error && <p className="text-xs text-rose-300">{error}</p>}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {cards.map((card) => (
-          <article key={card.type} className="rounded-xl border border-white/10 bg-black/20 p-4">
+          <article key={card.type} className="rounded-xl border border-white/10 bg-black/20 p-4 flex min-h-[188px] flex-col">
             <div className="flex items-center justify-between">
               <p className="text-sm font-bold text-white">{card.label}</p>
               <span className="text-[10px] text-slate-400 uppercase tracking-[0.14em]">{card.ageLabel}</span>
             </div>
 
-            <p className="mt-2 text-xs text-slate-400 line-clamp-2">
+            <p className="mt-2 min-h-[34px] text-xs text-slate-400 line-clamp-2">
               {card.record?.data?.summary || card.record?.data?.personalFaithState || 'No report generated yet.'}
             </p>
 
-            <div className="mt-3 flex gap-2">
+            <div className="mt-4 grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => generateReport(card.type)}
                 disabled={loading === card.type}
-                className="rounded-lg border border-indigo-500/40 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-indigo-300"
+                className="rounded-lg border border-indigo-500/40 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-indigo-300 disabled:opacity-60"
               >
                 {loading === card.type ? 'Generating...' : 'Open'}
               </button>
@@ -165,14 +163,14 @@ export const ReportsSection: React.FC<ReportsSectionProps> = ({ memory, profile 
                 type="button"
                 onClick={() => generateReport(card.type, true)}
                 disabled={loading === card.type}
-                className="rounded-lg border border-white/20 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-200"
+                className="rounded-lg border border-white/20 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-200 disabled:opacity-60"
               >
                 Regenerate
               </button>
             </div>
 
             {expanded === card.type && card.record?.data && (
-              <pre className="mt-3 rounded-lg bg-black/40 p-3 text-[11px] leading-relaxed text-slate-300 whitespace-pre-wrap overflow-x-auto">
+              <pre className="mt-3 max-h-64 overflow-auto rounded-lg bg-black/45 p-3 text-[10px] leading-relaxed text-slate-300 whitespace-pre-wrap">
                 {JSON.stringify(card.record.data, null, 2)}
               </pre>
             )}

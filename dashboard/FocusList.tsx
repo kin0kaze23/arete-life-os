@@ -9,8 +9,6 @@ import {
   Rocket,
   Trash2,
   RefreshCw,
-  Check,
-  X,
   ChevronDown,
 } from 'lucide-react';
 import { DailyTask, Category, MemoryEntry, TimelineEvent } from '@/data';
@@ -121,7 +119,7 @@ export const FocusList: React.FC<FocusListProps> = ({
     return (
       <div
         key={task.id}
-        className={`group relative flex flex-col gap-3 p-5 rounded-2xl border transition-all duration-300 ${
+        className={`group relative flex flex-col gap-3 p-4 rounded-2xl border transition-all duration-300 ${
           task.completed
             ? 'opacity-40 bg-slate-900/20 border-white/5'
             : isStrategic
@@ -301,7 +299,7 @@ export const FocusList: React.FC<FocusListProps> = ({
     const isFullyComplete = completedCount === totalCount;
 
     return (
-      <div key={eventId} className="space-y-3">
+      <div key={eventId} className="space-y-2.5">
       <div
         onClick={() => toggleGroup(eventId)}
         data-testid="prep-group"
@@ -355,9 +353,9 @@ export const FocusList: React.FC<FocusListProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full space-y-8 no-scrollbar" data-testid="focus-list">
+    <div className="flex flex-col h-full space-y-6 no-scrollbar" data-testid="focus-list">
       {/* STRATEGIC MISSION */}
-      <div className="space-y-6">
+      <div className="space-y-5">
         <div className="flex items-center justify-between">
           <h3 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-indigo-400 flex items-center gap-2">
             <Crown size={12} /> Strategic Focus
@@ -397,7 +395,7 @@ export const FocusList: React.FC<FocusListProps> = ({
 
       {/* RITUALS CHIPS */}
       {rituals.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           <h3 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-400 flex items-center gap-2">
             <Repeat size={12} /> Habits
           </h3>
@@ -437,7 +435,7 @@ export const FocusList: React.FC<FocusListProps> = ({
           {queueTasks.length > 0 ? (
             queueTasks.map((t) => renderTaskItem(t))
           ) : (
-            <div className="text-center py-12 border border-dashed border-white/5 rounded-3xl bg-white/[0.01] flex flex-col items-center gap-2">
+            <div className="text-center py-10 border border-dashed border-white/5 rounded-3xl bg-white/[0.01] flex flex-col items-center gap-2">
               <Rocket size={24} className="text-slate-800" />
               <div className="space-y-1">
                 <p className="text-[11px] font-semibold text-slate-700 uppercase tracking-[0.2em]">

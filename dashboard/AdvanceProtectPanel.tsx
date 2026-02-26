@@ -1,4 +1,5 @@
 import React from 'react';
+import { CalendarCheck2, ShieldCheck, Sparkles } from 'lucide-react';
 
 interface AdvanceProtectPanelProps {
   onPlanDay?: () => void;
@@ -11,30 +12,33 @@ export const AdvanceProtectPanel: React.FC<AdvanceProtectPanelProps> = ({
   onInsertTemplate,
 }) => {
   return (
-    <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
-      <div className="flex flex-wrap gap-2 items-center justify-between">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500 font-semibold">
-            Advance & Protect
-          </p>
-          <p className="text-sm text-slate-300">Plan today and capture a high-signal check-in.</p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={onPlanDay}
-            className="rounded-lg bg-indigo-500 px-3 py-2 text-xs font-bold uppercase tracking-[0.14em] text-white"
-          >
-            Plan Day
-          </button>
-          <button
-            type="button"
-            onClick={() => onInsertTemplate?.('Health check-in: sleep, training, nutrition')}
-            className="rounded-lg border border-white/20 px-3 py-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-200"
-          >
-            Insert Template
-          </button>
-        </div>
+    <section className="rounded-[24px] border border-white/10 bg-white/[0.02] p-5 space-y-4">
+      <div className="flex items-center gap-2">
+        <ShieldCheck size={14} className="text-emerald-300" />
+        <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500 font-semibold">
+          Advance & Protect
+        </p>
+      </div>
+      <p className="text-sm text-slate-300">
+        Plan the day and capture one high-signal check-in to keep the dashboard accurate.
+      </p>
+      <div className="grid grid-cols-1 gap-2">
+        <button
+          type="button"
+          onClick={onPlanDay}
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-500 px-3 py-2.5 text-xs font-bold uppercase tracking-[0.14em] text-white"
+        >
+          <CalendarCheck2 size={14} />
+          Plan Day
+        </button>
+        <button
+          type="button"
+          onClick={() => onInsertTemplate?.('Health check-in: sleep, training, nutrition')}
+          className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/20 px-3 py-2.5 text-xs font-bold uppercase tracking-[0.14em] text-slate-200"
+        >
+          <Sparkles size={14} />
+          Insert Template
+        </button>
       </div>
     </section>
   );

@@ -368,23 +368,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
               Execution Board
             </p>
-            <FocusList
-              tasks={focusTasks}
-              habitItems={habitItems}
-              onToggleTask={(id) => toggleTask(id)}
-              onToggleHabit={handleToggleHabit}
-              onDeleteTask={(id) => deleteTask(id)}
-              onRefreshPlan={planMyDay}
-              onRefreshQueue={planMyDay}
-              isPlanning={isPlanningDay}
-              events={timelineEvents}
-            />
+            <div className="xl:max-h-[860px] xl:overflow-y-auto xl:pr-1">
+              <FocusList
+                tasks={focusTasks}
+                habitItems={habitItems}
+                onToggleTask={(id) => toggleTask(id)}
+                onToggleHabit={handleToggleHabit}
+                onDeleteTask={(id) => deleteTask(id)}
+                onRefreshPlan={planMyDay}
+                onRefreshQueue={planMyDay}
+                isPlanning={isPlanningDay}
+                events={timelineEvents}
+              />
+            </div>
           </section>
 
           <ReportsSection memory={memory} profile={profile} />
         </div>
 
-        <aside className="space-y-6 xl:sticky xl:top-24 xl:self-start">
+        <aside className="space-y-6 xl:sticky xl:top-20 xl:self-start">
           <section className="rounded-[24px] border border-white/10 bg-white/[0.02] p-5 space-y-3">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
