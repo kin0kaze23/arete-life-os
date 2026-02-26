@@ -158,18 +158,18 @@ export const SignalGrid: React.FC<SignalGridProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
         {rows.map((row) => {
           const highlight = highlighted.has(row.category);
           return (
             <div
               key={row.category}
-              className={`rounded-2xl border p-4 transition-all ${
+              className={`min-h-[206px] rounded-2xl border p-4 transition-all ${
                 highlight
-                  ? 'border-indigo-500/40 bg-indigo-500/10 shadow-[0_0_20px_rgba(99,102,241,0.2)]'
+                  ? 'border-cyan-400/40 bg-cyan-500/10 shadow-[0_0_28px_rgba(34,211,238,0.24)]'
                   : row.hasData
-                    ? 'border-white/5 bg-white/[0.02] hover:border-indigo-500/20'
-                    : 'border-dashed border-white/8 bg-white/[0.01] hover:border-white/15'
+                    ? 'border-white/8 bg-white/[0.03] hover:border-cyan-400/30'
+                    : 'border-dashed border-white/10 bg-white/[0.015] hover:border-white/20'
               }`}
             >
               <div className="flex items-center justify-between">

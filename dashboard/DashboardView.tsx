@@ -202,6 +202,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return 'Log a check-in to personalize today’s mission.';
   }, [timelineEvents, focusTasks]);
 
+  const headerStats = useMemo(() => {
+    const now = Date.now();
+    const openTasks = focusTasks.filter((task) => !task.completed).length;
+    const upcomingEvents = timelineEvents.filter((event) => new Date(event.date).getTime() > now).length;
+    return [
+      { label: 'Signals Logged', value: String(memory.length) },
+      { label: 'Open Focus', value: String(openTasks) },
+      { label: 'Upcoming Events', value: String(upcomingEvents) },
+    ];
+  }, [focusTasks, memory.length, timelineEvents]);
+
   useEffect(() => {
     const now = Date.now();
     const categories = [
@@ -280,183 +291,197 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }, []);
 
   return (
-    <div className="max-w-6xl mx-auto pb-32 space-y-8">
-      <DashboardHeader greeting={greeting} summary={headerSummary} />
+    <div className="mx-auto w-full max-w-[1700px] pb-32">
+      <div className="relative space-y-8">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[460px] bg-[radial-gradient(circle_at_15%_20%,rgba(56,189,248,0.16),transparent_50%),radial-gradient(circle_at_82%_3%,rgba(34,197,94,0.12),transparent_40%)]" />
+        <div className="relative grid grid-cols-12 gap-6">
+          <div className="col-span-12 xl:col-span-8 space-y-6">
+            <DashboardHeader greeting={greeting} summary={headerSummary} stats={headerStats} />
 
-      {inboxEntries.length > 0 && (
-        <section className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5 space-y-3">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-300">
-                Inbox
-              </p>
-              <p className="text-sm text-slate-200">{inboxEntries.length} new entr{inboxEntries.length === 1 ? 'y' : 'ies'} from Telegram</p>
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => onMergeInbox?.()}
-                className="rounded-lg bg-emerald-500 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-black"
-              >
-                Merge all
-              </button>
-              <button
-                type="button"
-                onClick={() => onRefreshInbox?.()}
-                className="rounded-lg border border-emerald-400/40 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-200"
-              >
-                Refresh
-              </button>
-            </div>
-          </div>
-          <div className="space-y-2">
-            {inboxEntries.slice(0, 5).map((entry) => {
-              const confidence = estimateInboxConfidence(entry);
-              const needsReview = confidence < inboxReviewConfidence;
-              const preview = getInboxPreview(entry);
-              return (
-                <div key={entry.id} className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-slate-200">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="space-y-1.5 min-w-0">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-emerald-300">•</span>
-                        <span className="rounded-md border border-white/20 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-300">
-                          {entry.content_type}
-                        </span>
-                        <span className="rounded-md border border-indigo-400/30 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.12em] text-indigo-200">
-                          {Math.round(confidence * 100)}% confidence
-                        </span>
-                        {needsReview && (
-                          <span className="rounded-md border border-amber-400/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-200">
-                            needs review
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-slate-200">{(entry.raw_content || '').slice(0, 140) || 'Inbox entry'}</p>
-                      {preview && <p className="text-[11px] text-slate-400 line-clamp-2">AI: {preview}</p>}
+            {/* Getting Started — shown only when no memory items exist */}
+            {memory.length === 0 && (
+              <section className="rounded-3xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/5 to-transparent p-6 animate-in fade-in duration-500">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-indigo-400">
+                  Getting Started
+                </p>
+                <h2 className="mt-2 text-lg font-semibold text-white text-balance">
+                  Your dashboard personalises as you log. Start with one of these:
+                </h2>
+                <div className="mt-5 grid grid-cols-1 gap-3 xl:grid-cols-3">
+                  <button
+                    type="button"
+                    onClick={() => handleInsertTemplate('DAILY_CHECKIN')}
+                    className="flex items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-left hover:border-indigo-500/30 hover:bg-indigo-500/5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                  >
+                    <BookOpen size={16} className="text-indigo-400 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-white">Daily check-in</p>
+                      <p className="text-[12px] text-slate-400 mt-0.5 text-pretty">
+                        Log your energy, mood, and top focus for the day.
+                      </p>
                     </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleInsertTemplate('SCHEDULE_EVENT')}
+                    className="flex items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-left hover:border-indigo-500/30 hover:bg-indigo-500/5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                  >
+                    <CalendarPlus size={16} className="text-emerald-400 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-white">Schedule an event</p>
+                      <p className="text-[12px] text-slate-400 mt-0.5 text-pretty">
+                        Add an upcoming event so Areté can help you prepare.
+                      </p>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleInsertTemplate('WORK_PROGRESS')}
+                    className="flex items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-left hover:border-indigo-500/30 hover:bg-indigo-500/5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                  >
+                    <Target size={16} className="text-amber-400 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-white">Log work progress</p>
+                      <p className="text-[12px] text-slate-400 mt-0.5 text-pretty">
+                        Record what you moved forward and what&apos;s next.
+                      </p>
+                    </div>
+                  </button>
+                </div>
+                <p className="mt-4 text-[11px] text-slate-500">
+                  Just type anything into the log bar below. Areté will categorise and analyse it.
+                </p>
+              </section>
+            )}
+
+            <SignalGrid
+              memoryItems={memory}
+              goals={goals}
+              baseline={baselineSwot}
+              insights={insights}
+              blindSpots={blindSpots}
+              recommendations={recommendations}
+              onInsertTemplate={handleInsertTemplate}
+            />
+          </div>
+
+          <aside className="col-span-12 xl:col-span-4 space-y-6">
+            {inboxEntries.length > 0 && (
+              <section className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5 space-y-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-300">
+                      Inbox
+                    </p>
+                    <p className="text-sm text-slate-200">
+                      {inboxEntries.length} new entr{inboxEntries.length === 1 ? 'y' : 'ies'} from Telegram
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
                     <button
                       type="button"
-                      onClick={() => void onMergeInbox?.([entry.id])}
-                      className="shrink-0 rounded-md border border-emerald-400/40 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-200 hover:bg-emerald-500/10"
+                      onClick={() => onMergeInbox?.()}
+                      className="rounded-lg bg-emerald-500 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-black"
                     >
-                      Merge
+                      Merge all
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onRefreshInbox?.()}
+                      className="rounded-lg border border-emerald-400/40 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-200"
+                    >
+                      Refresh
                     </button>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
+                <div className="space-y-2">
+                  {inboxEntries.slice(0, 6).map((entry) => {
+                    const confidence = estimateInboxConfidence(entry);
+                    const needsReview = confidence < inboxReviewConfidence;
+                    const preview = getInboxPreview(entry);
+                    return (
+                      <div key={entry.id} className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-slate-200">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="space-y-1.5 min-w-0">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="text-emerald-300">•</span>
+                              <span className="rounded-md border border-white/20 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-300">
+                                {entry.content_type}
+                              </span>
+                              <span className="rounded-md border border-indigo-400/30 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.12em] text-indigo-200">
+                                {Math.round(confidence * 100)}% confidence
+                              </span>
+                              {needsReview && (
+                                <span className="rounded-md border border-amber-400/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-200">
+                                  needs review
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-slate-200">{(entry.raw_content || '').slice(0, 140) || 'Inbox entry'}</p>
+                            {preview && <p className="text-[11px] text-slate-400 line-clamp-2">AI: {preview}</p>}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => void onMergeInbox?.([entry.id])}
+                            className="shrink-0 rounded-md border border-emerald-400/40 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-200 hover:bg-emerald-500/10"
+                          >
+                            Merge
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
 
-      {/* Getting Started — shown only when no memory items exist */}
-      {memory.length === 0 && (
-        <section className="rounded-3xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/5 to-transparent p-6 animate-in fade-in duration-500">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-indigo-400">
-            Getting Started
-          </p>
-          <h2 className="mt-2 text-lg font-semibold text-white text-balance">
-            Your dashboard personalises as you log. Start with one of these:
-          </h2>
-          <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <button
-              type="button"
-              onClick={() => handleInsertTemplate('DAILY_CHECKIN')}
-              className="flex items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-left hover:border-indigo-500/30 hover:bg-indigo-500/5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
-            >
-              <BookOpen size={16} className="text-indigo-400 mt-0.5 shrink-0" />
-              <div>
-                <p className="text-sm font-semibold text-white">Daily check-in</p>
-                <p className="text-[12px] text-slate-400 mt-0.5 text-pretty">
-                  Log your energy, mood, and top focus for the day.
-                </p>
-              </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleInsertTemplate('SCHEDULE_EVENT')}
-              className="flex items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-left hover:border-indigo-500/30 hover:bg-indigo-500/5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
-            >
-              <CalendarPlus size={16} className="text-emerald-400 mt-0.5 shrink-0" />
-              <div>
-                <p className="text-sm font-semibold text-white">Schedule an event</p>
-                <p className="text-[12px] text-slate-400 mt-0.5 text-pretty">
-                  Add an upcoming event so Areté can help you prepare.
-                </p>
-              </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleInsertTemplate('WORK_PROGRESS')}
-              className="flex items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-left hover:border-indigo-500/30 hover:bg-indigo-500/5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
-            >
-              <Target size={16} className="text-amber-400 mt-0.5 shrink-0" />
-              <div>
-                <p className="text-sm font-semibold text-white">Log work progress</p>
-                <p className="text-[12px] text-slate-400 mt-0.5 text-pretty">
-                  Record what you moved forward and what's next.
-                </p>
-              </div>
-            </button>
-          </div>
-          <p className="mt-4 text-[11px] text-slate-500">
-            Just type anything into the log bar below — Areté will categorise and analyse it.
-          </p>
-        </section>
-      )}
-
-      {/* Life Intelligence — always visible above the Decision Deck */}
-      <SignalGrid
-        memoryItems={memory}
-        goals={goals}
-        baseline={baselineSwot}
-        insights={insights}
-        blindSpots={blindSpots}
-        recommendations={recommendations}
-        onInsertTemplate={handleInsertTemplate}
-      />
-
-      <AdvanceProtectPanel
-        profile={profile}
-        memoryItems={memory}
-        goals={goals}
-        recommendations={recommendations}
-        blindSpots={blindSpots}
-        timelineEvents={timelineEvents}
-        onPlanDay={planMyDay}
-        onInsertTemplate={handleInsertTemplate}
-        onOpenEvent={setActivePrepEvent}
-        onActivateRecommendation={(rec) => activatePrepPlan?.(rec, (rec as any).metadata?.eventId)}
-      />
-
-      {/* Execution Zone */}
-      <div className="grid grid-cols-1 lg:grid-cols-[2fr,1fr] gap-8">
-        <div>
-          <FocusList
-            tasks={focusTasks}
-            habitItems={habitItems}
-            onToggleTask={(id) => toggleTask(id)}
-            onToggleHabit={handleToggleHabit}
-            onDeleteTask={(id) => deleteTask(id)}
-            onRefreshPlan={planMyDay}
-            onRefreshQueue={planMyDay}
-            isPlanning={isPlanningDay}
-            events={timelineEvents}
-          />
+            <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 mb-3">
+                Event Radar
+              </p>
+              <UpcomingCalendar
+                events={timelineEvents}
+                onSelectEvent={setActivePrepEvent}
+                onEditEvent={setEditingEvent}
+                onDeleteEvent={deleteTimelineEvent}
+                maxEvents={5}
+              />
+            </section>
+          </aside>
         </div>
-        <div>
-          <UpcomingCalendar
-            events={timelineEvents}
-            onSelectEvent={setActivePrepEvent}
-            onEditEvent={setEditingEvent}
-            onDeleteEvent={deleteTimelineEvent}
-            maxEvents={3}
-          />
+
+        <div className="grid grid-cols-12 gap-6">
+          <div className="col-span-12 xl:col-span-7">
+            <FocusList
+              tasks={focusTasks}
+              habitItems={habitItems}
+              onToggleTask={(id) => toggleTask(id)}
+              onToggleHabit={handleToggleHabit}
+              onDeleteTask={(id) => deleteTask(id)}
+              onRefreshPlan={planMyDay}
+              onRefreshQueue={planMyDay}
+              isPlanning={isPlanningDay}
+              events={timelineEvents}
+            />
+          </div>
+          <div className="col-span-12 xl:col-span-5">
+            <AdvanceProtectPanel
+              profile={profile}
+              memoryItems={memory}
+              goals={goals}
+              recommendations={recommendations}
+              blindSpots={blindSpots}
+              timelineEvents={timelineEvents}
+              onPlanDay={planMyDay}
+              onInsertTemplate={handleInsertTemplate}
+              onOpenEvent={setActivePrepEvent}
+              onActivateRecommendation={(rec) => activatePrepPlan?.(rec, (rec as any).metadata?.eventId)}
+            />
+          </div>
         </div>
+
+        <ReportsSection memory={memory} profile={profile} />
       </div>
-
-      <ReportsSection memory={memory} profile={profile} />
 
       {/* Deep Analysis — collapsible, defaults to expanded */}
       {lifeContext && (
