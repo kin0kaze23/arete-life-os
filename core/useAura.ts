@@ -2563,6 +2563,8 @@ export const useAura = () => {
     isPlanningDay,
     storageUsage,
     cloudMigration,
+    isCloudSyncAvailable: isSupabaseConfigured,
+    isCloudConnected: Boolean(cloudUserId && isSupabaseConfigured),
     inboxEntries,
     inboxAutoMerge,
     inboxReviewConfidence,

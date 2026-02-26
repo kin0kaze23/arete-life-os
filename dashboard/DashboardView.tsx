@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, BookOpen, CalendarPlus, Target } from 'lucide-react';
+import { ChevronDown, BookOpen, CalendarPlus, Target, Inbox, ShieldAlert } from 'lucide-react';
 import {
   AlwaysChip,
   BaselineSwotEntry,
@@ -25,8 +25,6 @@ import { SignalGrid } from './SignalGrid';
 import { DashboardHeader } from './DashboardHeader';
 import { computeScoreInternal } from './ScoreStrip';
 import { LifeContextPanel } from './LifeContextPanel';
-import { AdvanceProtectPanel } from './AdvanceProtectPanel';
-import { ReportsSection } from './ReportsSection';
 import { StatusSidebar } from './StatusSidebar';
 import { getProfileCompletion } from '@/shared';
 
@@ -68,6 +66,8 @@ interface DashboardViewProps {
   inboxReviewConfidence?: number;
   onMergeInbox?: (ids?: string[]) => Promise<void> | void;
   onRefreshInbox?: () => Promise<void> | void;
+  isInboxAvailable?: boolean;
+  inboxUnavailableReason?: string;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -99,6 +99,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   inboxReviewConfidence = 0.65,
   onMergeInbox,
   onRefreshInbox,
+  isInboxAvailable = false,
+  inboxUnavailableReason,
   alwaysDoChips = [],
   alwaysWatchChips = [],
 }) => {
@@ -108,9 +110,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [showContribution, setShowContribution] = useState(false);
   const [isDeepAnalysisExpanded, setIsDeepAnalysisExpanded] = useState(() => {
     try {
-      return localStorage.getItem('arete:deepAnalysisExpanded') !== 'false';
+      return localStorage.getItem('arete:deepAnalysisExpanded') === 'true';
     } catch {
-      return true;
+      return false;
     }
   });
   const prevScoresRef = useRef<Record<string, number> | null>(null);
@@ -221,6 +223,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     ];
   }, [focusTasks, memory.length, timelineEvents]);
 
+  const nextEvent = useMemo(() => {
+    return [...timelineEvents]
+      .filter((event) => new Date(event.date).getTime() > Date.now())
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
+  }, [timelineEvents]);
+
+  const highRiskCount = useMemo(
+    () => blindSpots.filter((spot) => spot.severity === 'high').length,
+    [blindSpots]
+  );
+  const canMergeInbox = isInboxAvailable && Boolean(onMergeInbox);
+  const canRefreshInbox = isInboxAvailable && Boolean(onRefreshInbox);
+
   useEffect(() => {
     const now = Date.now();
     const categories = [
@@ -304,6 +319,38 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(360px,410px)]">
         <div className="space-y-6">
+          <section className="rounded-[24px] border border-white/10 bg-white/[0.02] p-5">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+              Quick Actions
+            </p>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <button
+                type="button"
+                onClick={() => handleInsertTemplate('DAILY_CHECKIN')}
+                className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-left transition hover:border-indigo-400/35"
+              >
+                <p className="text-sm font-semibold text-slate-100">Log Check-In</p>
+                <p className="mt-1 text-xs text-slate-400">Capture mood, focus, and energy.</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => onNavigate('stream')}
+                className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-left transition hover:border-indigo-400/35"
+              >
+                <p className="text-sm font-semibold text-slate-100">Open Journal</p>
+                <p className="mt-1 text-xs text-slate-400">Review your categorized timeline.</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => onNavigate('chat')}
+                className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-left transition hover:border-indigo-400/35"
+              >
+                <p className="text-sm font-semibold text-slate-100">Ask Assistant</p>
+                <p className="mt-1 text-xs text-slate-400">Get advice from your life context.</p>
+              </button>
+            </div>
+          </section>
+
           {/* Getting Started — shown only when no memory items exist */}
           {memory.length === 0 && (
             <section className="rounded-[24px] border border-indigo-500/20 bg-gradient-to-br from-indigo-500/6 to-transparent p-6 animate-in fade-in duration-500">
@@ -390,11 +437,38 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               />
             </div>
           </section>
-
-          <ReportsSection memory={memory} profile={profile} />
         </div>
 
         <aside className="space-y-6 xl:sticky xl:top-20 xl:self-start">
+          <section className="rounded-[24px] border border-white/10 bg-white/[0.02] p-5">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+              Life Overview
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <OverviewMetric label="Profile Complete" value={`${profileCompletion}%`} />
+              <OverviewMetric
+                label="Pending Tasks"
+                value={String(focusTasks.filter((task) => !task.completed).length)}
+              />
+              <OverviewMetric
+                label="Inbox Pending"
+                value={String(inboxEntries.length)}
+                icon={<Inbox size={12} className="text-emerald-300" />}
+              />
+              <OverviewMetric
+                label="High Risks"
+                value={String(highRiskCount)}
+                icon={<ShieldAlert size={12} className="text-rose-300" />}
+              />
+            </div>
+            <div className="mt-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Next Event</p>
+              <p className="text-sm font-semibold text-slate-100">
+                {nextEvent ? nextEvent.title : 'No upcoming events'}
+              </p>
+            </div>
+          </section>
+
           <section className="rounded-[24px] border border-white/10 bg-white/[0.02] p-5 space-y-3">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -411,7 +485,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <button
                   type="button"
                   onClick={() => onMergeInbox?.()}
-                  disabled={inboxEntries.length === 0}
+                  disabled={inboxEntries.length === 0 || !canMergeInbox}
                   className="rounded-lg bg-emerald-500 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-black disabled:opacity-40"
                 >
                   Merge all
@@ -419,12 +493,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <button
                   type="button"
                   onClick={() => onRefreshInbox?.()}
+                  disabled={!canRefreshInbox}
                   className="rounded-lg border border-emerald-400/40 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-200"
                 >
                   Refresh
                 </button>
               </div>
             </div>
+            {!isInboxAvailable && (
+              <div className="rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-100">
+                {inboxUnavailableReason || 'Inbox actions are unavailable in this environment.'}
+              </div>
+            )}
             <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
               {inboxEntries.length === 0 && (
                 <div className="rounded-xl border border-dashed border-white/10 bg-black/20 px-3 py-5 text-center text-xs text-slate-500">
@@ -459,7 +539,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <button
                         type="button"
                         onClick={() => void onMergeInbox?.([entry.id])}
-                        className="shrink-0 rounded-md border border-emerald-400/40 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-200 hover:bg-emerald-500/10"
+                        disabled={!canMergeInbox}
+                        className="shrink-0 rounded-md border border-emerald-400/40 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-200 hover:bg-emerald-500/10 disabled:opacity-40"
                       >
                         Merge
                       </button>
@@ -483,19 +564,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             />
           </section>
 
-          <AdvanceProtectPanel
-            profile={profile}
-            memoryItems={memory}
-            goals={goals}
-            recommendations={recommendations}
-            blindSpots={blindSpots}
-            timelineEvents={timelineEvents}
-            onPlanDay={planMyDay}
-            onInsertTemplate={handleInsertTemplate}
-            onOpenEvent={setActivePrepEvent}
-            onActivateRecommendation={(rec) => activatePrepPlan?.(rec, (rec as any).metadata?.eventId)}
-          />
-
           <section className="rounded-[24px] border border-white/10 bg-white/[0.02] p-5">
             <StatusSidebar
               profile={profile}
@@ -513,7 +581,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </aside>
       </div>
 
-      {/* Deep Analysis — collapsible, defaults to expanded */}
+      {/* Deep Analysis — collapsible, defaults to collapsed */}
       {lifeContext && (
         <section className="rounded-2xl border border-white/8 bg-white/[0.02] p-5">
           <button
@@ -596,3 +664,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     </div>
   );
 };
+
+const OverviewMetric: React.FC<{ label: string; value: string; icon?: React.ReactNode }> = ({
+  label,
+  value,
+  icon,
+}) => (
+  <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5">
+    <div className="flex items-center justify-between gap-2">
+      <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500">{label}</p>
+      {icon}
+    </div>
+    <p className="mt-1 text-lg font-semibold text-slate-100">{value}</p>
+  </div>
+);

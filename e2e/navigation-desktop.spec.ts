@@ -26,5 +26,5 @@ test('desktop navigation remains clear and stable across core pages', async ({ p
 
   await page.getByRole('button', { name: /settings/i }).click();
   await expect(page.getByText(/workspace controls/i)).toBeVisible();
-  await expect(page.getByRole('heading', { name: /data portability/i })).toBeVisible();
+  await expect(page.getByText(/backups/i)).toBeVisible();
 });

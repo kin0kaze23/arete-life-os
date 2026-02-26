@@ -11,4 +11,5 @@ fi
 npx playwright test \
   e2e/core-loop.spec.ts \
   e2e/navigation-desktop.spec.ts \
+  e2e/settings-ux.spec.ts \
   e2e/telegram-inbox.spec.ts

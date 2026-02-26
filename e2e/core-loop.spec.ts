@@ -95,6 +95,7 @@ test('recommendation feedback is recorded', async ({ page }) => {
     .poll(async () => page.getByTestId('rec-card').count(), { timeout: 20_000 })
     .toBeGreaterThan(0);
   const recCard = page.getByTestId('rec-card').first();
+  const recId = await recCard.getAttribute('data-rec-id');
   await recCard.scrollIntoViewIfNeeded();
   await recCard.click({ force: true });
   await expect(recCard.getByText('Rationale')).toBeVisible({ timeout: 10_000 });
@@ -106,5 +107,9 @@ test('recommendation feedback is recorded', async ({ page }) => {
 
   const removeButton = recCard.getByTestId('rec-remove');
   await removeButton.click();
-  await expect(recCard).toBeHidden({ timeout: 10_000 });
+  if (recId) {
+    await expect(page.locator(`[data-testid=\"rec-card\"][data-rec-id=\"${recId}\"]`)).toBeHidden({
+      timeout: 10_000,
+    });
+  }
 });

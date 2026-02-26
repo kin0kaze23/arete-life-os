@@ -90,3 +90,13 @@ What gets merged:
 - `task` or `task_request` items -> Task + Memory entry
 - `profile_update` / `config_update` -> Profile field update + Memory entry
 - Any extracted `facts` -> committed Claims linked to the merged memory
+
+## Dashboard + Settings UX Guide
+
+- `Dashboard -> Quick Actions` gives three direct actions: `Log Check-In`, `Open Journal`, and `Ask Assistant`.
+- `Dashboard -> Inbox` buttons are now explicitly disabled when cloud sync is unavailable, with an inline reason.
+- `Settings -> System Health` surfaces runtime readiness (`AI`, `Telegram`, `Cloud Sync`, `Blob Storage`) from `/api/health`.
+- `Settings -> Telegram` and `Settings -> Cloud Sync` now show clear capability states:
+  - environment missing (`Supabase not configured`)
+  - sign-in/migration required
+  - connected and actionable

@@ -345,6 +345,12 @@ const App: React.FC = () => {
                     inboxReviewConfidence={aura.inboxReviewConfidence}
                     onMergeInbox={aura.mergeInboxEntries}
                     onRefreshInbox={aura.refreshInbox}
+                    isInboxAvailable={aura.isCloudConnected || import.meta.env.VITE_E2E === '1'}
+                    inboxUnavailableReason={
+                      !aura.isCloudSyncAvailable
+                        ? 'Cloud sync is not configured in this deployment.'
+                        : 'Sign in and migrate to cloud to enable Telegram inbox actions.'
+                    }
                   />
                 )}
                 {activeTab === 'vault' && (
@@ -406,6 +412,8 @@ const App: React.FC = () => {
                     clearAllData={aura.clearAllData}
                     storageUsage={aura.storageUsage}
                     cloudMigration={aura.cloudMigration}
+                    isCloudSyncAvailable={aura.isCloudSyncAvailable}
+                    isCloudConnected={aura.isCloudConnected}
                     onMigrateToCloud={aura.migrateToCloud}
                     telegram={aura.telegram}
                     onGenerateTelegramLinkCode={aura.generateTelegramLinkCode}
