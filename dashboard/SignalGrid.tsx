@@ -166,9 +166,9 @@ export const SignalGrid: React.FC<SignalGridProps> = ({
               key={row.category}
               className={`min-h-[206px] rounded-2xl border p-4 transition-all ${
                 highlight
-                  ? 'border-cyan-400/40 bg-cyan-500/10 shadow-[0_0_28px_rgba(34,211,238,0.24)]'
+                  ? 'border-indigo-400/40 bg-indigo-500/10 shadow-[0_0_22px_rgba(99,102,241,0.22)]'
                   : row.hasData
-                    ? 'border-white/8 bg-white/[0.03] hover:border-cyan-400/30'
+                    ? 'border-white/8 bg-white/[0.03] hover:border-indigo-400/25'
                     : 'border-dashed border-white/10 bg-white/[0.015] hover:border-white/20'
               }`}
             >

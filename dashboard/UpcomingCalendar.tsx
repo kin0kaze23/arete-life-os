@@ -64,7 +64,7 @@ export const UpcomingCalendar: React.FC<UpcomingCalendarProps> = ({
   );
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
+    <div className="space-y-5 animate-in fade-in duration-700">
       {Object.entries(grouped).map(([group, groupEvents]) => (
         <div key={group} className="space-y-4">
           <div className="flex items-center gap-3">

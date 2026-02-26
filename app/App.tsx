@@ -309,7 +309,7 @@ const App: React.FC = () => {
           actionLabel={toast?.actionLabel}
         />
 
-        <div className="flex-1 overflow-y-auto p-8 xl:p-12 no-scrollbar">
+        <div className="flex-1 overflow-y-auto p-6 xl:p-10 no-scrollbar">
           <ErrorBoundary>
             <Suspense fallback={LoadingFallback}>
               <div
