@@ -108,7 +108,7 @@ test('recommendation feedback is recorded', async ({ page }) => {
   const removeButton = recCard.getByTestId('rec-remove');
   await removeButton.click();
   if (recId) {
-    await expect(page.locator(`[data-testid=\"rec-card\"][data-rec-id=\"${recId}\"]`)).toBeHidden({
+    await expect(page.locator(`[data-testid="rec-card"][data-rec-id="${recId}"]`)).toBeHidden({
       timeout: 10_000,
     });
   }
