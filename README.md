@@ -100,3 +100,24 @@ What gets merged:
   - environment missing (`Supabase not configured`)
   - sign-in/migration required
   - connected and actionable
+
+## Production Readiness Checklist
+
+1. `GET /api/health` returns `ok: true` and `services.ai.configured: true`.
+2. `services.telegram.configured` is `true` before testing Telegram journaling.
+3. Run `./scripts/run-prod-smoke.sh` and confirm all checks pass.
+4. Verify `Settings -> System Health` shows expected states for AI, Telegram, Cloud Sync, and Blob Storage.
+
+## Recommended Cost Profile
+
+- Default: `AI_DEFAULT_PROVIDER=gemini`, `AI_DEFAULT_MODEL=gemini-2.5-flash`
+- Fast ingestion: `AI_MODEL_PROCESS_INPUT=gemini:gemini-2.5-flash-lite`
+- Assistant: `AI_MODEL_ASK_AURA=gemini:gemini-2.5-flash`
+- Deep planning: `AI_MODEL_GENERATE_DEEP_TASKS=gemini:gemini-2.5-pro`
+- Fallback: `AI_FALLBACK_PROVIDER=openai`, `AI_FALLBACK_MODEL=gpt-4.1-mini`
+
+## Maintenance Rhythm
+
+- Daily: check `Settings -> System Health`; verify AI + Telegram are green.
+- Before each release: run `npm run lint`, `npm run typecheck`, `npm run build`, and `./scripts/run-prod-smoke.sh`.
+- Weekly: rotate/validate external secrets (Telegram, Supabase, AI providers) and review Vercel deployment logs for failing API routes.

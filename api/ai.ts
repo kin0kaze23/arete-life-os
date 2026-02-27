@@ -167,17 +167,50 @@ const askAura = async (
   profile: UserProfile,
   promptConfig: PromptConfig
 ) => {
+  const toFallbackMessage = (err: unknown) => {
+    const message =
+      typeof err === 'object' && err !== null && 'message' in err
+        ? String((err as { message?: unknown }).message || '')
+        : '';
+    if (/missing .*api[_\s-]?key/i.test(message)) {
+      return 'Assistant unavailable: AI credentials are missing on server.';
+    }
+    if (/rate.?limit|quota|too many requests/i.test(message)) {
+      return 'Assistant is temporarily rate limited. Please retry in a minute.';
+    }
+    return 'Oracle connection unstable.';
+  };
+
+  const shouldUseSearchGrounding = (() => {
+    const value = text.toLowerCase();
+    if (value.includes('#research') || value.includes('[research]')) return true;
+    return /\b(latest|today|current|news|market|price|weather|update|trend)\b/.test(value);
+  })();
+
   const finalPrompt = fillTemplate(promptConfig.template || promptConfig.defaultTemplate, {
     profile: JSON.stringify(profile),
     history: JSON.stringify(buildMemoryContext(history, [], 30)),
     input: text,
   });
 
+  if (shouldUseSearchGrounding) {
+    try {
+      return await modelRouter.generateWithSearch('askAura', finalPrompt);
+    } catch (err) {
+      try {
+        const fallbackText = await modelRouter.generateText('askAura', finalPrompt);
+        return { text: fallbackText || 'Oracle connection unstable.', sources: [] };
+      } catch (fallbackErr) {
+        return { text: toFallbackMessage(fallbackErr ?? err), sources: [] };
+      }
+    }
+  }
+
   try {
-    return await modelRouter.generateWithSearch('askAura', finalPrompt);
+    const textOnly = await modelRouter.generateText('askAura', finalPrompt);
+    return { text: textOnly || 'Oracle connection unstable.', sources: [] };
   } catch (err) {
-    const fallbackText = await modelRouter.generateText('askAura', finalPrompt);
-    return { text: fallbackText || 'Oracle connection unstable.', sources: [] };
+    return { text: toFallbackMessage(err), sources: [] };
   }
 };
 

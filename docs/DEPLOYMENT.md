@@ -14,14 +14,37 @@ This repo is a Vite + React static web app. Vercel provides zero‑config builds
 
 ## 2) Environment variables
 
-Set these in **Vercel → Project → Settings → Environment Variables**:
+Set these in **Vercel → Project → Settings → Environment Variables**.
 
-- `GEMINI_API_KEY` = your Gemini API key
-- `OPENAI_API_KEY` = your OpenAI API key (optional fallback)
-- `OPENAI_MODEL` = OpenAI model name (optional, default: `gpt-5.1`)
-- `OPENAI_REASONING_EFFORT` = OpenAI reasoning effort (optional, default: `medium`)
-- `GEMINI_MODEL_PRO` = Gemini pro model name (optional, default: `gemini-3-pro-preview`)
-- `GEMINI_MODEL_FLASH` = Gemini flash model name (optional, default: `gemini-3-flash-preview`)
+Required AI keys:
+
+- `GEMINI_API_KEY` (primary)
+- `OPENAI_API_KEY` (fallback recommended)
+
+Recommended model defaults (cost-optimized):
+
+- `AI_DEFAULT_PROVIDER=gemini`
+- `AI_DEFAULT_MODEL=gemini-2.5-flash`
+- `AI_FALLBACK_PROVIDER=openai`
+- `AI_FALLBACK_MODEL=gpt-4.1-mini`
+- `GEMINI_MODEL_PRO=gemini-2.5-pro`
+- `GEMINI_MODEL_FLASH=gemini-2.5-flash`
+- `GEMINI_MODEL_FLASH_LITE=gemini-2.5-flash-lite`
+
+Per-action routing (optional but recommended):
+
+- `AI_MODEL_PROCESS_INPUT=gemini:gemini-2.5-flash-lite`
+- `AI_MODEL_ASK_AURA=gemini:gemini-2.5-flash`
+- `AI_MODEL_GENERATE_DEEP_TASKS=gemini:gemini-2.5-pro`
+
+Telegram + sync (required for live Telegram journaling):
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_BOT_SECRET`
 
 **Do not** add secrets to git or `.env.example`.
 
@@ -48,7 +71,7 @@ npm run preview
 
 Ensure the app behaves the same as production.
 
-## How to verify
+## How to verify (production)
 
 - A PR creates a Preview URL in Vercel
 - Merging PR into `main` creates/updates the Production URL
@@ -56,3 +79,4 @@ Ensure the app behaves the same as production.
 - `GET /api/health` returns `200` with service status JSON
 - In app, `Settings -> System Health` shows expected readiness states for AI, Telegram, Cloud Sync, and Blob Storage
 - Run `./scripts/run-prod-smoke.sh` to validate live AI endpoints (`health`, `askAura`, `processInput`)
+- Confirm `services.telegram.configured` is `true` in `/api/health` before testing Telegram bot flows

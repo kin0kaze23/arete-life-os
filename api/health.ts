@@ -4,7 +4,7 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
-  const defaultProvider = (process.env.AI_DEFAULT_PROVIDER || 'openai').toLowerCase();
+  const defaultProvider = (process.env.AI_DEFAULT_PROVIDER || 'gemini').toLowerCase();
   const hasOpenAIKey = Boolean(process.env.OPENAI_API_KEY);
   const hasGeminiKey = Boolean(process.env.GEMINI_API_KEY);
   const hasXAIKey = Boolean(process.env.XAI_API_KEY);
@@ -19,7 +19,10 @@ export default async function handler(req: any, res: any) {
     Boolean(providerKeyMap[defaultProvider]) || hasOpenAIKey || hasGeminiKey || hasXAIKey;
 
   const hasTelegramBotToken = Boolean(process.env.TELEGRAM_BOT_TOKEN);
-  const hasTelegramWebhookSecret = Boolean(process.env.TELEGRAM_WEBHOOK_SECRET);
+  const hasTelegramBotSecret = Boolean(process.env.TELEGRAM_BOT_SECRET);
+  const hasTelegramWebhookSecret = Boolean(
+    process.env.TELEGRAM_WEBHOOK_SECRET || process.env.TELEGRAM_BOT_SECRET
+  );
 
   res.status(200).json({
     ok: true,
@@ -35,6 +38,7 @@ export default async function handler(req: any, res: any) {
       telegram: {
         configured: hasTelegramBotToken && hasTelegramWebhookSecret,
         hasBotToken: hasTelegramBotToken,
+        hasBotSecret: hasTelegramBotSecret,
         hasWebhookSecret: hasTelegramWebhookSecret,
       },
       storage: {
