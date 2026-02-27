@@ -1,6 +1,6 @@
 import { del, list, put } from '@vercel/blob';
 import { z } from 'zod';
-import { sanitizePayload, validatePayloadSize } from '../_sanitize';
+import { sanitizePayload, validatePayloadSize } from '../_sanitize.js';
 import {
   applyCors,
   ensureMethod,
@@ -9,7 +9,7 @@ import {
   logApiError,
   putJsonBlob,
   redact,
-} from './_utils';
+} from './_utils.js';
 
 const MAX_BACKUP_BYTES = 10 * 1024 * 1024;
 const MAX_VERSIONS = 10;

@@ -1,7 +1,7 @@
 import { list } from '@vercel/blob';
 import { z } from 'zod';
-import { sanitizePayload, validatePayloadSize } from '../_sanitize';
-import { applyCors, ensureMethod, fetchBlobJson, getBlobToken, logApiError, redact } from './_utils';
+import { sanitizePayload, validatePayloadSize } from '../_sanitize.js';
+import { applyCors, ensureMethod, fetchBlobJson, getBlobToken, logApiError, redact } from './_utils.js';
 
 const identitySchema = z.string().regex(/^[a-f0-9]{64}$/i, 'Invalid identity');
 

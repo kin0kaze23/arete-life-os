@@ -4,8 +4,8 @@ import {
   FINANCIAL_REPORT_PROMPT,
   FAITH_REPORT_PROMPT,
   HABITS_REPORT_PROMPT,
-} from '../../ai/prompts';
-import { runReport } from './_shared';
+} from '../../ai/prompts.js';
+import { runReport } from './_shared.js';
 
 const REPORT_CONFIG: Record<string, { action: string; prompt: string }> = {
   health: { action: 'reportHealth', prompt: HEALTH_REPORT_PROMPT },

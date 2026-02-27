@@ -14,7 +14,7 @@ import {
   buildMemoryContext,
   buildProfileForDimension,
   normalizePreComputedMetrics,
-} from '../ai/prompts';
+} from '../ai/prompts.js';
 import {
   BaselineSwotSchema,
   CriticalPrioritySchema,
@@ -24,7 +24,7 @@ import {
   RecommendationSchema,
   TaskSchema,
   validateAIOutput,
-} from '../ai/validators';
+} from '../ai/validators.js';
 import type {
   BaselineSwotEntry,
   BlindSpot,
@@ -43,12 +43,12 @@ import type {
   TimelineEvent,
   UserProfile,
   FinanceMetrics,
-} from '../data/types';
-import { Category, LIFE_DIMENSIONS, createEmptySnapshot } from '../data/types';
-import { processInput as processInputAction } from './_aiActions/processInput';
-import { modelRouter } from './_modelRouter';
-import { sanitizePayload, validatePayloadSize } from './_sanitize';
-import { fillTemplate } from './_aiConfig';
+} from '../data/types.js';
+import { Category, LIFE_DIMENSIONS, createEmptySnapshot } from '../data/types.js';
+import { processInput as processInputAction } from './_aiActions/processInput.js';
+import { modelRouter } from './_modelRouter.js';
+import { sanitizePayload, validatePayloadSize } from './_sanitize.js';
+import { fillTemplate } from './_aiConfig.js';
 import { z } from 'zod';
 
 const domainContext = Object.entries(DOMAIN_PROMPTS)

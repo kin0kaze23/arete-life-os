@@ -1,5 +1,5 @@
 import { head, put } from '@vercel/blob';
-import { redactSensitive, serializeError } from '../_aiConfig';
+import { redactSensitive, serializeError } from '../_aiConfig.js';
 
 const MAX_BODY_BYTES = 11 * 1024 * 1024;
 

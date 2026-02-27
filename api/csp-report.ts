@@ -1,4 +1,4 @@
-import { redactSensitive, serializeError } from './_aiConfig';
+import { redactSensitive, serializeError } from './_aiConfig.js';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {

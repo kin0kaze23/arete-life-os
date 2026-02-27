@@ -1,6 +1,6 @@
 import { head } from '@vercel/blob';
 import { z } from 'zod';
-import { sanitizePayload, validatePayloadSize } from '../_sanitize';
+import { sanitizePayload, validatePayloadSize } from '../_sanitize.js';
 import {
   applyCors,
   ensureMethod,
@@ -9,7 +9,7 @@ import {
   logApiError,
   putJsonBlob,
   redact,
-} from './_utils';
+} from './_utils.js';
 
 const MAX_DAILY_RESTORE = 10;
 

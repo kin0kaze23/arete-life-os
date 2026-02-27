@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { modelRouter } from '../_modelRouter';
+import { modelRouter } from '../_modelRouter.js';
 
 export const runReport = async (
   req: VercelRequest,
