@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, Suspense } from 'react';
-import { useAura, useLifeContext } from '@/core';
+import { useAura } from '@/core';
 import { Sidebar, Header } from '@/layout';
 import { LogBar, CommandPalette } from '@/command';
 import { askAura } from '@/ai';
@@ -85,24 +85,6 @@ const App: React.FC = () => {
       setIsSendingMagicLink(false);
     }
   };
-  const lifeContext = useLifeContext({
-    isOnboarded: aura.isOnboarded,
-    profile: aura.profile,
-    memoryItems: aura.memoryItems,
-    goals: aura.goals,
-    timelineEvents: aura.timelineEvents,
-    dailyPlan: aura.dailyPlan,
-    prompts: aura.prompts,
-    lifeContextSnapshots: aura.lifeContextSnapshots,
-    latestDimensionSnapshots: aura.latestDimensionSnapshots,
-    lastSessionScores: aura.lastSessionScores,
-    dashboardPreferences: aura.dashboardPreferences,
-    setLifeContextSnapshots: aura.setLifeContextSnapshots,
-    setLatestDimensionSnapshots: aura.setLatestDimensionSnapshots,
-    setLastSessionScores: aura.setLastSessionScores,
-    setDashboardPreferences: aura.setDashboardPreferences,
-    setLifeContextSignalHandler: aura.setLifeContextSignalHandler,
-  });
   const [activeTab, setActiveTab] = useState<
     'dashboard' | 'stream' | 'chat' | 'vault' | 'settings'
   >('dashboard');
@@ -340,7 +322,6 @@ const App: React.FC = () => {
                     alwaysWatchChips={aura.alwaysWatch}
                     updateTimelineEvent={aura.updateTimelineEvent}
                     deleteTimelineEvent={aura.deleteTimelineEvent}
-                    lifeContext={lifeContext}
                     inboxEntries={aura.inboxEntries}
                     inboxReviewConfidence={aura.inboxReviewConfidence}
                     onMergeInbox={aura.mergeInboxEntries}

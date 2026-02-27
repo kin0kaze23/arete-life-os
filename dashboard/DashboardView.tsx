@@ -1,12 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, BookOpen, CalendarPlus, Target, Inbox, ShieldAlert } from 'lucide-react';
+import { BookOpen, CalendarPlus, Target, Inbox, ShieldAlert } from 'lucide-react';
 import {
   AlwaysChip,
-  BaselineSwotEntry,
-  ContributionFeedback,
   DailyTask,
   UserProfile,
-  ProactiveInsight,
   Category,
   MemoryEntry,
   TimelineEvent,
@@ -16,15 +13,12 @@ import {
   Goal,
   InboxEntry,
 } from '@/data';
-import type { LifeContextController } from '@/core/useLifeContext';
 import { FocusList } from './FocusList';
 import { EventPrepPopup } from './EventPrepPopup';
 import { EventEditSheet } from './EventEditSheet';
 import { UpcomingCalendar } from './UpcomingCalendar';
-import { SignalGrid } from './SignalGrid';
 import { DashboardHeader } from './DashboardHeader';
 import { computeScoreInternal } from './ScoreStrip';
-import { LifeContextPanel } from './LifeContextPanel';
 import { StatusSidebar } from './StatusSidebar';
 import { getProfileCompletion } from '@/shared';
 
@@ -33,14 +27,12 @@ interface DashboardViewProps {
   tasks: DailyTask[];
   dailyPlan: DailyTask[];
   timelineEvents: TimelineEvent[];
-  insights: ProactiveInsight[];
   blindSpots?: BlindSpot[];
   profile: UserProfile;
   ruleOfLife: any;
   sources: Source[];
   recommendations: Recommendation[];
   goals: Goal[];
-  baselineSwot?: BaselineSwotEntry[];
   toggleTask: (id: string) => void;
   deleteTask: (id: string) => void;
   refreshAll: () => void;
@@ -61,7 +53,6 @@ interface DashboardViewProps {
   updateTimelineEvent?: (id: string, updates: Partial<TimelineEvent>) => void;
   deleteTimelineEvent?: (id: string) => void;
   personalizedGreeting?: string;
-  lifeContext?: LifeContextController;
   inboxEntries?: InboxEntry[];
   inboxReviewConfidence?: number;
   onMergeInbox?: (ids?: string[]) => Promise<void> | void;
@@ -75,12 +66,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   tasks,
   dailyPlan,
   timelineEvents,
-  insights,
   blindSpots = [],
   profile,
   recommendations,
   goals,
-  baselineSwot = [],
   toggleTask,
   deleteTask,
   planMyDay,
@@ -94,7 +83,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   updateTimelineEvent,
   deleteTimelineEvent,
   personalizedGreeting = 'Welcome',
-  lifeContext,
   inboxEntries = [],
   inboxReviewConfidence = 0.65,
   onMergeInbox,
@@ -106,19 +94,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const [activePrepEvent, setActivePrepEvent] = useState<TimelineEvent | null>(null);
   const [editingEvent, setEditingEvent] = useState<TimelineEvent | null>(null);
-  const [contribution, setContribution] = useState<ContributionFeedback | null>(null);
-  const [showContribution, setShowContribution] = useState(false);
-  const [isDeepAnalysisExpanded, setIsDeepAnalysisExpanded] = useState(() => {
-    try {
-      return localStorage.getItem('arete:deepAnalysisExpanded') === 'true';
-    } catch {
-      return false;
-    }
-  });
   const prevScoresRef = useRef<Record<string, number> | null>(null);
   const prevMemoryCountRef = useRef<number>(memory.length);
-  const contributionMemoryCountRef = useRef<number>(memory.length);
-  const contributionTimeoutRef = useRef<number | null>(null);
 
   // Derived Habits
   const habitItems = useMemo(() => {
@@ -274,45 +251,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     prevMemoryCountRef.current = memory.length;
   }, [memory, goals, onToast]);
 
-  useEffect(() => {
-    if (!lifeContext) return;
-    if (memory.length <= contributionMemoryCountRef.current) {
-      contributionMemoryCountRef.current = memory.length;
-      return;
-    }
-    const deltas = lifeContext.sessionDeltas
-      .filter((delta) => Math.abs(delta.delta) >= 1)
-      .slice(0, 3);
-    contributionMemoryCountRef.current = memory.length;
-    if (deltas.length === 0) return;
-
-    const payload: ContributionFeedback = {
-      logSummary: memory[0]?.content || 'Signal logged',
-      affectedDimensions: deltas.map((delta) => ({
-        dimension: delta.dimension,
-        scoreBefore: delta.previousScore,
-        scoreAfter: delta.currentScore,
-        delta: delta.delta,
-      })),
-    };
-    setContribution(payload);
-    setShowContribution(true);
-    if (contributionTimeoutRef.current) {
-      window.clearTimeout(contributionTimeoutRef.current);
-    }
-    contributionTimeoutRef.current = window.setTimeout(() => {
-      setShowContribution(false);
-    }, 5000);
-  }, [lifeContext, memory]);
-
-  useEffect(() => {
-    return () => {
-      if (contributionTimeoutRef.current) {
-        window.clearTimeout(contributionTimeoutRef.current);
-      }
-    };
-  }, []);
-
   return (
     <div className="mx-auto w-full max-w-[1560px] pb-32 space-y-8">
       <DashboardHeader greeting={greeting} summary={headerSummary} stats={headerStats} />
@@ -408,18 +346,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           )}
 
           <section className="rounded-[24px] border border-white/10 bg-white/[0.02] p-5">
-            <SignalGrid
-              memoryItems={memory}
-              goals={goals}
-              baseline={baselineSwot}
-              insights={insights}
-              blindSpots={blindSpots}
-              recommendations={recommendations}
-              onInsertTemplate={handleInsertTemplate}
-            />
-          </section>
-
-          <section className="rounded-[24px] border border-white/10 bg-white/[0.02] p-5">
             <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
               Execution Board
             </p>
@@ -447,10 +373,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="grid grid-cols-2 gap-3">
               <OverviewMetric label="Profile Complete" value={`${profileCompletion}%`} />
               <OverviewMetric
-                label="Pending Tasks"
-                value={String(focusTasks.filter((task) => !task.completed).length)}
-              />
-              <OverviewMetric
                 label="Inbox Pending"
                 value={String(inboxEntries.length)}
                 icon={<Inbox size={12} className="text-emerald-300" />}
@@ -460,6 +382,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 value={String(highRiskCount)}
                 icon={<ShieldAlert size={12} className="text-rose-300" />}
               />
+              <OverviewMetric label="Active Recs" value={String(recommendations.length)} />
             </div>
             <div className="mt-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
               <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Next Event</p>
@@ -580,67 +503,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </section>
         </aside>
       </div>
-
-      {/* Deep Analysis — collapsible, defaults to collapsed */}
-      {lifeContext && (
-        <section className="rounded-2xl border border-white/8 bg-white/[0.02] p-5">
-          <button
-            type="button"
-            onClick={() => {
-              const next = !isDeepAnalysisExpanded;
-              setIsDeepAnalysisExpanded(next);
-              try {
-                localStorage.setItem('arete:deepAnalysisExpanded', String(next));
-              } catch {}
-            }}
-            className="w-full flex flex-wrap items-center justify-between gap-2 text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 rounded-xl"
-          >
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-                Deep Analysis
-              </p>
-              <p className="text-sm text-slate-300">
-                Narrative, diagnostics, and profile gap intelligence.
-              </p>
-            </div>
-            <ChevronDown
-              size={16}
-              className={`text-slate-400 transition-transform duration-300 ${isDeepAnalysisExpanded ? 'rotate-180' : ''}`}
-            />
-          </button>
-
-          {isDeepAnalysisExpanded && (
-            <div className="mt-5 animate-in fade-in slide-in-from-top-2 duration-300">
-              <LifeContextPanel
-                snapshots={lifeContext.currentSnapshots}
-                narrative={lifeContext.currentNarrative}
-                priorities={lifeContext.criticalPriorities}
-                profileGaps={lifeContext.profileGaps}
-                dismissedProfileGaps={lifeContext.dismissedProfileGaps}
-                selectedDimension={lifeContext.selectedDimension}
-                isSnapshotExpanded={lifeContext.isSnapshotExpanded}
-                isRefreshingNarrative={lifeContext.isRefreshingNarrative}
-                refreshingDimensions={lifeContext.refreshingDimensions}
-                error={lifeContext.error}
-                contribution={contribution}
-                showContribution={showContribution}
-                onCloseContribution={() => setShowContribution(false)}
-                onRefreshAll={lifeContext.refreshAllDimensions}
-                onRefreshDimension={lifeContext.refreshDimension}
-                onSelectDimension={(dimension) => {
-                  lifeContext.selectDimension(dimension);
-                  onToast?.(`${dimension} selected.`, 'info');
-                }}
-                onToggleExpanded={lifeContext.toggleSnapshotExpanded}
-                onDismissGap={lifeContext.dismissProfileGap}
-                onOpenProfile={() => onNavigate('vault')}
-                onViewHistory={() => onToast?.('History viewer coming soon.', 'info')}
-                onInsertTemplate={handleInsertTemplate}
-              />
-            </div>
-          )}
-        </section>
-      )}
 
       <EventPrepPopup
         event={activePrepEvent}
