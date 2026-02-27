@@ -55,3 +55,4 @@ Ensure the app behaves the same as production.
 - Production site loads and functions normally
 - `GET /api/health` returns `200` with service status JSON
 - In app, `Settings -> System Health` shows expected readiness states for AI, Telegram, Cloud Sync, and Blob Storage
+- Run `./scripts/run-prod-smoke.sh` to validate live AI endpoints (`health`, `askAura`, `processInput`)
