@@ -1305,13 +1305,26 @@ export const handleAIAction = async (action: string, payload: any) => {
 
 export default async function handler(req: any, res: any) {
   const origin = req.headers?.origin;
+  const requestHost = String(
+    req.headers?.['x-forwarded-host'] || req.headers?.host || ''
+  ).trim();
   const allowedOrigins = getAllowedOrigins();
-  if (origin && allowedOrigins.has(origin)) {
+  if (origin) {
+    let isAllowed = allowedOrigins.has(origin);
+    if (!isAllowed && requestHost) {
+      try {
+        const originHost = new URL(origin).host;
+        isAllowed = originHost === requestHost;
+      } catch {
+        isAllowed = false;
+      }
+    }
+    if (!isAllowed) {
+      res.status(403).json({ error: 'Origin not allowed' });
+      return;
+    }
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
-  } else if (origin) {
-    res.status(403).json({ error: 'Origin not allowed' });
-    return;
   }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
