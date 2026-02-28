@@ -71,6 +71,11 @@ npm run preview
 
 Ensure the app behaves the same as production.
 
+Frontend build notes:
+
+- Tailwind is bundled through Vite, not loaded from the CDN.
+- If Playwright browsers go missing after dependency updates, run `npx playwright install chromium`.
+
 ## How to verify (production)
 
 - A PR creates a Preview URL in Vercel

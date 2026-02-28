@@ -57,6 +57,7 @@ On first launch, set a passphrase to encrypt local data. This passphrase is not 
 ## E2E tests (Playwright)
 
 - Install dependencies: `npm install`
+- If Playwright was updated or browsers are missing: `npx playwright install chromium`
 - Run E2E suite: `npm run test:e2e`
 - Optional: run with live AI instead of stubs:
   `E2E_LIVE_AI=1 GEMINI_API_KEY=... npm run test:e2e`
@@ -121,3 +122,4 @@ What gets merged:
 - Daily: check `Settings -> System Health`; verify AI + Telegram are green.
 - Before each release: run `npm run lint`, `npm run typecheck`, `npm run build`, and `./scripts/run-prod-smoke.sh`.
 - Weekly: rotate/validate external secrets (Telegram, Supabase, AI providers) and review Vercel deployment logs for failing API routes.
+- After dependency updates: run `npx playwright install chromium` if the browser binary was refreshed.

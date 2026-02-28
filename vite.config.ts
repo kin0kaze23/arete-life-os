@@ -1,17 +1,20 @@
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 import { handleAIAction } from './api/ai';
 import { sanitizePayload, validatePayloadSize } from './api/_sanitize';
 
 const devAIProxy = () => ({
   name: 'dev-ai-proxy',
   configureServer(server: any) {
-    server.middlewares.use('/api/ai', (req: any, res: any) => {
+    const handler = (req: any, res: any) => {
       const origin = req.headers?.origin;
       const allowedOrigins = new Set([
         'http://localhost:3000',
         'http://127.0.0.1:3000',
+        'http://localhost:4173',
+        'http://127.0.0.1:4173',
         'http://localhost:5173',
         'http://127.0.0.1:5173',
       ]);
@@ -62,7 +65,10 @@ const devAIProxy = () => ({
           res.end(JSON.stringify({ error: 'AI request failed', details: err?.message }));
         }
       });
-    });
+    };
+
+    server.middlewares.use('/api/ai', handler);
+    server.middlewares.use('/api/gemini', handler);
   },
 });
 
@@ -75,10 +81,37 @@ export default defineConfig(({ command, mode }) => {
       strictPort: true,
       host: true,
     },
-    plugins: [react(), ...(isDev ? [devAIProxy()] : [])],
+    plugins: [react(), tailwindcss(), ...(isDev ? [devAIProxy()] : [])],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
+      },
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return undefined;
+            if (
+              id.includes('/react/') ||
+              id.includes('/react-dom/') ||
+              id.includes('scheduler') ||
+              id.includes('use-sync-external-store')
+            ) {
+              return 'vendor-react';
+            }
+            if (id.includes('framer-motion')) return 'vendor-motion';
+            if (id.includes('lucide-react')) return 'vendor-icons';
+            if (id.includes('@supabase') || id.includes('@vercel/blob')) return 'vendor-data';
+            if (id.includes('@google/genai') || id.includes('openai') || id.includes('zod')) {
+              return 'vendor-ai';
+            }
+            if (id.includes('react-markdown') || id.includes('remark') || id.includes('unified')) {
+              return 'vendor-markdown';
+            }
+            return undefined;
+          },
+        },
       },
     },
   };
