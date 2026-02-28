@@ -6,6 +6,7 @@ import { askAura } from '@/ai';
 import { ErrorBoundary } from '@/app/ErrorBoundary';
 import { AuthScreen } from '@/app/AuthScreen';
 import { isSupabaseConfigured, supabase } from '@/data';
+import { GUIDED_VAULT_FIELDS, getGuidedVaultFields, normalizeGuidedVaultValue } from '@/chat/guidedVaultFields';
 import { X, CheckCircle2, User, Database, Settings } from 'lucide-react';
 import { useOnlineStatus, NetworkBanner, Toast } from '@/shared';
 
@@ -115,6 +116,11 @@ const App: React.FC = () => {
     if (typeof document === 'undefined') return;
     document.documentElement.classList.toggle('dark', isDarkMode);
   }, [isDarkMode]);
+
+  const guidedVaultFields = React.useMemo(
+    () => getGuidedVaultFields((aura as any).missingProfileFields || []),
+    [(aura as any).missingProfileFields]
+  );
 
   useEffect(() => {
     const handleKeydown = (e: KeyboardEvent) => {
@@ -324,6 +330,7 @@ const App: React.FC = () => {
                     deleteTimelineEvent={aura.deleteTimelineEvent}
                     inboxEntries={aura.inboxEntries}
                     inboxReviewConfidence={aura.inboxReviewConfidence}
+                    missingProfileFields={(aura as any).missingProfileFields}
                     onMergeInbox={aura.mergeInboxEntries}
                     onRefreshInbox={aura.refreshInbox}
                     isInboxAvailable={aura.isCloudConnected || import.meta.env.VITE_E2E === '1'}
@@ -380,6 +387,21 @@ const App: React.FC = () => {
                     isProcessing={aura.isProcessing}
                     scrollRef={scrollRef}
                     onSendMessage={handleSendMessage}
+                    guidedFields={guidedVaultFields}
+                    onOpenVault={() => setActiveTab('vault')}
+                    onSaveGuidedField={(fieldId, value) => {
+                      const config = GUIDED_VAULT_FIELDS[fieldId as keyof typeof GUIDED_VAULT_FIELDS];
+                      if (!config) return;
+                      aura.setProfile((prev) => ({
+                        ...prev,
+                        [config.section]: {
+                          ...(prev as any)[config.section],
+                          [config.field]: normalizeGuidedVaultValue(config, value),
+                          lastUpdated: Date.now(),
+                        },
+                      }));
+                      showToast(`${config.label} saved`, 'success');
+                    }}
                   />
                 )}
                 {activeTab === 'settings' && (

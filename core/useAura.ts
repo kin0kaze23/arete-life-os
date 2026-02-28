@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   ActionType,
   AlwaysChip,
@@ -576,6 +576,7 @@ export const useAura = () => {
   const [lastSessionScores, setLastSessionScores] = useState<Record<string, number>>({});
   const [dashboardPreferences, setDashboardPreferences] = useState<Record<string, any>>({});
   const [lifeContextSignalHandler, setLifeContextSignalHandler] = useState<any>(null);
+  const missingProfileFields = useMemo(() => buildMissingData(profile), [profile]);
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPlanningDay, setIsPlanningDay] = useState(false);
@@ -2342,7 +2343,7 @@ export const useAura = () => {
         DEFAULT_PROMPTS.find((p) => p.id === 'dailyBatch')!;
       const deepPrompt = prompts.find((p) => p.id === 'deepPlanning')!;
       const financeMetrics = computeFinanceMetrics(profile);
-      const missingData = buildMissingData(profile);
+      const missingData = missingProfileFields;
       const context = {
         familyMembers: familySpace.members,
         financeMetrics,
@@ -2568,6 +2569,7 @@ export const useAura = () => {
     inboxEntries,
     inboxAutoMerge,
     inboxReviewConfidence,
+    missingProfileFields,
     telegram,
     lifeContextSnapshots,
     latestDimensionSnapshots,

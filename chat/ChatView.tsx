@@ -7,9 +7,13 @@ import {
   Heart,
   TrendingUp,
   Sparkles,
+  Database,
+  ArrowRight,
+  CheckCircle2,
 } from 'lucide-react';
 import { EmptyState, NeuralProcessor } from '@/shared';
 import ReactMarkdown from 'react-markdown';
+import { GuidedVaultField } from './guidedVaultFields';
 
 interface ChatViewProps {
   chatHistory: {
@@ -21,6 +25,9 @@ interface ChatViewProps {
   isProcessing: boolean;
   scrollRef: React.RefObject<HTMLDivElement>;
   onSendMessage: (text: string) => void;
+  guidedFields?: GuidedVaultField[];
+  onSaveGuidedField?: (fieldId: string, value: string) => void;
+  onOpenVault?: () => void;
 }
 
 const SUGGESTIONS = [
@@ -47,12 +54,28 @@ export const ChatView: React.FC<ChatViewProps> = ({
   isProcessing,
   scrollRef,
   onSendMessage,
+  guidedFields = [],
+  onSaveGuidedField,
+  onOpenVault,
 }) => {
+  const [guidedValues, setGuidedValues] = React.useState<Record<string, string>>({});
+  const [savedFieldIds, setSavedFieldIds] = React.useState<Record<string, boolean>>({});
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
     }
   }, [chatHistory, isProcessing, scrollRef]);
+
+  useEffect(() => {
+    setGuidedValues((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((key) => {
+        if (!guidedFields.some((field) => field.id === key)) delete next[key];
+      });
+      return next;
+    });
+  }, [guidedFields]);
 
   const hasMessages = chatHistory.length > 0;
 
@@ -187,6 +210,67 @@ export const ChatView: React.FC<ChatViewProps> = ({
       </div>
 
       <aside className="space-y-4 rounded-[28px] border border-white/8 bg-white/[0.025] p-5">
+        {guidedFields.length > 0 && (
+          <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-4">
+            <div className="flex items-center gap-2">
+              <Database size={14} className="text-emerald-200" />
+              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-emerald-100">
+                Guided interview
+              </p>
+            </div>
+            <p className="mt-2 text-sm leading-6 text-slate-200">
+              Fill the missing context that makes Aura more relevant.
+            </p>
+
+            <div className="mt-4 space-y-3">
+              {guidedFields.slice(0, 3).map((field) => (
+                <div key={field.id} className="rounded-xl border border-white/10 bg-black/20 p-3">
+                  <p className="text-xs font-semibold text-slate-100">{field.label}</p>
+                  <p className="mt-1 text-[11px] leading-5 text-slate-400">{field.question}</p>
+                  <input
+                    type="text"
+                    value={guidedValues[field.id] || ''}
+                    onChange={(event) =>
+                      setGuidedValues((prev) => ({ ...prev, [field.id]: event.target.value }))
+                    }
+                    placeholder={field.placeholder}
+                    className="mt-3 w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-emerald-300/35"
+                  />
+                  <div className="mt-3 flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const value = (guidedValues[field.id] || '').trim();
+                        if (!value || !onSaveGuidedField) return;
+                        onSaveGuidedField(field.id, value);
+                        setSavedFieldIds((prev) => ({ ...prev, [field.id]: true }));
+                        setGuidedValues((prev) => ({ ...prev, [field.id]: '' }));
+                      }}
+                      disabled={!guidedValues[field.id]?.trim() || !onSaveGuidedField}
+                      className="inline-flex items-center gap-2 rounded-full bg-emerald-400 px-3 py-1.5 text-xs font-semibold text-slate-950 transition hover:bg-emerald-300 disabled:opacity-40"
+                    >
+                      Save to vault <ArrowRight size={12} />
+                    </button>
+                    {savedFieldIds[field.id] && (
+                      <span className="inline-flex items-center gap-1 text-[11px] text-emerald-200">
+                        <CheckCircle2 size={12} /> Saved
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={onOpenVault}
+              className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-white/20 hover:bg-white/[0.04]"
+            >
+              Open My Life <ArrowRight size={12} />
+            </button>
+          </div>
+        )}
+
         <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
           <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Mode</p>
           <p className="mt-2 text-sm leading-6 text-slate-300">
