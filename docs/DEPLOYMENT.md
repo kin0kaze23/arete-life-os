@@ -35,6 +35,7 @@ Per-action routing (optional but recommended):
 
 - `AI_MODEL_PROCESS_INPUT=gemini:gemini-2.5-flash-lite`
 - `AI_MODEL_ASK_AURA=gemini:gemini-2.5-flash`
+- `AI_MODEL_GENERATE_STRATEGIC_BRIEFING=gemini:gemini-2.5-flash`
 - `AI_MODEL_GENERATE_DEEP_TASKS=gemini:gemini-2.5-pro`
 
 Telegram + sync (required for live Telegram journaling):

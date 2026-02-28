@@ -7,6 +7,7 @@ import {
   PromptConfig,
   ProactiveInsight,
   Recommendation,
+  StrategicBriefing,
   TimelineEvent,
   UserProfile,
   FinanceMetrics,
@@ -212,6 +213,24 @@ export const dailyIntelligenceBatch = async (
       claims: context?.claims,
     },
     { tasks: [], insights: [], blindSpots: [] }
+  );
+
+export const generateStrategicBriefing = async (
+  history: MemoryEntry[],
+  profile: UserProfile,
+  context?: PromptContext
+): Promise<StrategicBriefing | null> =>
+  callGemini(
+    'generateStrategicBriefing',
+    {
+      history,
+      profile,
+      familyMembers: context?.familyMembers,
+      financeMetrics: context?.financeMetrics,
+      missingData: context?.missingData,
+      claims: context?.claims,
+    },
+    null
   );
 
 export const generateDailyPlan = async (

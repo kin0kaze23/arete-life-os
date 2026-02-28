@@ -21,10 +21,10 @@ interface SidebarProps {
 }
 
 const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'vault', label: 'My Life', icon: Database },
+  { id: 'dashboard', label: 'Today', icon: LayoutDashboard },
+  { id: 'vault', label: 'Life', icon: Database },
   { id: 'stream', label: 'Journal', icon: BookOpen },
-  { id: 'chat', label: 'Assistant', icon: MessageSquare },
+  { id: 'chat', label: 'Aura', icon: MessageSquare },
 ] as const;
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -40,11 +40,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const canShowMembers = familySpace.members.length > 1 || Boolean(onAddMember);
 
   return (
-    <nav className="hidden h-full w-[248px] shrink-0 border-r border-white/8 bg-[#0d141d] px-4 py-4 xl:flex xl:flex-col">
+    <nav className="hidden h-full w-[232px] shrink-0 border-r border-white/8 bg-[#0c131c] px-4 py-4 xl:flex xl:flex-col">
       <button
         type="button"
         onClick={() => setActiveTab('dashboard')}
-        className="rounded-[22px] border border-white/8 bg-white/[0.025] px-4 py-4 text-left transition hover:border-white/16 hover:bg-white/[0.05]"
+        className="rounded-[20px] border border-white/8 bg-white/[0.02] px-4 py-4 text-left transition hover:border-white/16 hover:bg-white/[0.04]"
       >
         <div className="flex items-center gap-3">
           <AreteLogo size={34} />
@@ -58,7 +58,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <button
         type="button"
         onClick={onCapture}
-        className="mt-4 inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[#7ea3ff] px-4 text-sm font-semibold text-slate-950 transition hover:bg-[#92b2ff]"
+        className="mt-4 inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[#86a8ff] px-4 text-sm font-semibold text-slate-950 transition hover:bg-[#99b6ff]"
       >
         <Plus size={16} /> Capture
       </button>
@@ -146,11 +146,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </section>
       )}
 
-      <div className="mt-auto space-y-3 pt-4">
-        <div className="rounded-[22px] border border-white/8 bg-white/[0.025] px-4 py-3 text-sm text-slate-300">
-          Capture, review, decide.
-        </div>
-
+      <div className="mt-auto pt-4">
         <button
           type="button"
           onClick={() => setActiveTab('settings')}

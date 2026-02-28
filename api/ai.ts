@@ -40,6 +40,7 @@ import type {
   PromptConfig,
   ProactiveInsight,
   Recommendation,
+  StrategicBriefing,
   TimelineEvent,
   UserProfile,
   FinanceMetrics,
@@ -58,6 +59,38 @@ const domainContext = Object.entries(DOMAIN_PROMPTS)
 const LIFE_DIMENSION_SET = new Set<LifeDimension>(LIFE_DIMENSIONS);
 
 const BASELINE_DIMENSIONS: LifeDimension[] = [...LIFE_DIMENSIONS];
+
+const StrategicBriefingItemSchema = z.object({
+  title: z.string().min(1),
+  detail: z.string().min(1),
+  action: z.string().min(1),
+});
+
+const StrategicBriefingSchema = z.object({
+  profileSummary: z.string().min(1),
+  focusQuestion: z.string().min(1),
+  summary: z.string().min(1),
+  opportunities: z.array(StrategicBriefingItemSchema).max(3).default([]),
+  risks: z.array(StrategicBriefingItemSchema).max(3).default([]),
+  actions: z.array(z.string().min(1)).max(5).default([]),
+});
+
+const parseJSONObject = (raw: string) => {
+  const text = raw.trim();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    const fenced = text.match(/```json\s*([\s\S]*?)```/i)?.[1] || text.match(/```([\s\S]*?)```/i)?.[1];
+    if (fenced) return JSON.parse(fenced.trim());
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    if (start >= 0 && end > start) {
+      return JSON.parse(text.slice(start, end + 1));
+    }
+    throw new Error('Unable to parse JSON payload');
+  }
+};
 
 const normalizeBaselineDimension = (value: unknown): Category => {
   if (typeof value !== 'string') return Category.GENERAL;
@@ -621,6 +654,118 @@ const generateInsights = async (
   }
 };
 
+const generateStrategicBriefing = async (
+  history: MemoryEntry[],
+  profile: UserProfile,
+  familyMembers: UserProfile[] = [],
+  financeMetrics?: FinanceMetrics | null,
+  missingData?: string[],
+  claims?: any[]
+): Promise<StrategicBriefing> => {
+  const memberContext = familyMembers.map((m) => ({
+    id: m.id,
+    name: m.identify.name,
+    role: m.role,
+  }));
+
+  const committedClaims = (claims || [])
+    .filter((c: any) => c.status === 'COMMITTED')
+    .slice(0, 20)
+    .map((c: any) => ({ fact: c.fact, category: c.category, confidence: c.confidence }));
+
+  const finalPrompt = `You are Areté's strategic briefing engine.
+
+Create one concise, high-signal briefing for a desktop life operating system.
+
+Goals:
+1. Detect the user's current context from their profile and recent private history.
+2. Identify external developments, trends, or news that may create opportunities or risks for this user.
+3. Ask one deep, meaningful question that would improve the user's decisions this week.
+4. Turn the briefing into clear actions.
+
+Rules:
+- Use the profile and history as the primary source of truth.
+- Use search grounding to find only external developments likely relevant to the user's location, work, finances, health, interests, or life stage.
+- If profile data is missing, state the limitation plainly and keep the external guidance conservative.
+- Do not invent facts about the user.
+- Keep the tone direct, calm, and operational.
+- Prefer 2 opportunities and 2 risks. Maximum 3 each.
+- Actions must be concrete and executable this week.
+- Return strict JSON only with this shape:
+{
+  "profileSummary": "short synthesis",
+  "focusQuestion": "one deep question",
+  "summary": "short strategic summary",
+  "opportunities": [{"title":"", "detail":"", "action":""}],
+  "risks": [{"title":"", "detail":"", "action":""}],
+  "actions": ["", ""]
+}
+
+PROFILE:
+${JSON.stringify(buildCompactProfile(profile))}
+
+RECENT_DIGEST:
+${JSON.stringify(buildDailyDigest(history, 14))}
+
+FAMILY_CONTEXT:
+${JSON.stringify(memberContext)}
+
+FINANCE_METRICS:
+${JSON.stringify(financeMetrics || null)}
+
+MISSING_DATA:
+${JSON.stringify(missingData || [])}
+
+VERIFIED_FACTS:
+${JSON.stringify(committedClaims)}
+
+CURRENT_DATE:
+${new Date().toISOString()}`;
+
+  const normalizeResult = (
+    value: unknown,
+    sources: { title: string; uri: string }[] = []
+  ): StrategicBriefing => {
+    const parsed = validateAIOutput(StrategicBriefingSchema, value) as
+      | z.infer<typeof StrategicBriefingSchema>
+      | null;
+
+    return {
+      generatedAt: Date.now(),
+      profileSummary:
+        parsed?.profileSummary || 'Build a little more profile context to sharpen the briefing.',
+      focusQuestion:
+        parsed?.focusQuestion || 'What is the most important life domain that needs protection this week?',
+      summary:
+        parsed?.summary || 'Briefing unavailable. Capture more recent signals and refresh again.',
+      opportunities: Array.isArray(parsed?.opportunities)
+        ? parsed.opportunities.slice(0, 3).map((item) => ({
+            title: item.title,
+            detail: item.detail,
+            action: item.action,
+          }))
+        : [],
+      risks: Array.isArray(parsed?.risks)
+        ? parsed.risks.slice(0, 3).map((item) => ({
+            title: item.title,
+            detail: item.detail,
+            action: item.action,
+          }))
+        : [],
+      actions: Array.isArray(parsed?.actions) ? parsed.actions.slice(0, 5) : [],
+      sources,
+    };
+  };
+
+  try {
+    const result = await modelRouter.generateWithSearch('generateStrategicBriefing', finalPrompt);
+    return normalizeResult(parseJSONObject(result.text || '{}'), result.sources || []);
+  } catch (err) {
+    const parsed = await modelRouter.generateJSON('generateStrategicBriefing', finalPrompt);
+    return normalizeResult(parsed);
+  }
+};
+
 const generateBlindSpots = async (
   history: MemoryEntry[],
   profile: UserProfile,
@@ -1135,6 +1280,16 @@ const actionSchemas: Record<string, z.ZodTypeAny> = {
       claims: z.any().optional(),
     })
     .passthrough(),
+  generateStrategicBriefing: z
+    .object({
+      history: z.any().optional(),
+      profile: z.any().optional(),
+      familyMembers: z.any().optional(),
+      financeMetrics: z.any().optional(),
+      missingData: z.any().optional(),
+      claims: z.any().optional(),
+    })
+    .passthrough(),
   generateBlindSpots: z
     .object({
       history: z.any().optional(),
@@ -1278,6 +1433,15 @@ export const handleAIAction = async (action: string, payload: any) => {
         payload.history,
         payload.profile,
         payload.promptConfig,
+        payload.familyMembers,
+        payload.financeMetrics,
+        payload.missingData,
+        payload.claims
+      );
+    case 'generateStrategicBriefing':
+      return await generateStrategicBriefing(
+        payload.history,
+        payload.profile,
         payload.familyMembers,
         payload.financeMetrics,
         payload.missingData,

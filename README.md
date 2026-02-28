@@ -114,6 +114,7 @@ What gets merged:
 - Default: `AI_DEFAULT_PROVIDER=gemini`, `AI_DEFAULT_MODEL=gemini-2.5-flash`
 - Fast ingestion: `AI_MODEL_PROCESS_INPUT=gemini:gemini-2.5-flash-lite`
 - Assistant: `AI_MODEL_ASK_AURA=gemini:gemini-2.5-flash`
+- Strategic briefing: `AI_MODEL_GENERATE_STRATEGIC_BRIEFING=gemini:gemini-2.5-flash`
 - Deep planning: `AI_MODEL_GENERATE_DEEP_TASKS=gemini:gemini-2.5-pro`
 - Fallback: `AI_FALLBACK_PROVIDER=openai`, `AI_FALLBACK_MODEL=gpt-4.1-mini`
 

@@ -24,6 +24,7 @@ import {
   PromptConfig,
   Recommendation,
   RuleOfLife,
+  StrategicBriefing,
   Source,
   TimelineEvent,
   UserProfile,
@@ -50,6 +51,7 @@ import {
   generateDailyPlan,
   generateDeepTasks,
   generateDeepInitialization,
+  generateStrategicBriefing,
   DEFAULT_PROMPTS,
   dailyIntelligenceBatch,
 } from '@/ai/geminiService';
@@ -319,6 +321,7 @@ type VaultData = {
   timelineEvents: TimelineEvent[];
   insights: ProactiveInsight[];
   blindSpots: BlindSpot[];
+  strategicBriefing?: StrategicBriefing | null;
   dailyPlan: DailyTask[];
   ruleOfLife: RuleOfLife;
   prompts: PromptConfig[];
@@ -364,6 +367,7 @@ const buildDefaultVault = (): VaultData => ({
   timelineEvents: [],
   insights: [],
   blindSpots: [],
+  strategicBriefing: null,
   dailyPlan: [],
   ruleOfLife: INITIAL_RULE_OF_LIFE,
   prompts: DEFAULT_PROMPTS,
@@ -449,6 +453,7 @@ export const useAura = () => {
   const memoryHashIndexRef = useRef<Set<string>>(new Set());
   const lastDailyBatchRef = useRef<number | null>(null);
   const lastDeepTasksRef = useRef<number | null>(null);
+  const lastStrategicBriefingRef = useRef<number | null>(null);
   const [hasVault, setHasVault] = useState<boolean>(() =>
     typeof window !== 'undefined' ? hasEncryptedVault() : false
   );
@@ -563,6 +568,7 @@ export const useAura = () => {
   const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
   const [insights, setInsights] = useState<ProactiveInsight[]>([]);
   const [blindSpots, setBlindSpots] = useState<BlindSpot[]>([]);
+  const [strategicBriefing, setStrategicBriefing] = useState<StrategicBriefing | null>(null);
   const [dailyPlan, setDailyPlan] = useState<DailyTask[]>([]);
   const [ruleOfLife, setRuleOfLife] = useState<RuleOfLife>(INITIAL_RULE_OF_LIFE);
   const [layouts, setLayouts] = useState<Record<string, DashboardLayout>>({
@@ -581,6 +587,7 @@ export const useAura = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPlanningDay, setIsPlanningDay] = useState(false);
   const [isGeneratingTasks, setIsGeneratingTasks] = useState(false);
+  const [isRefreshingBriefing, setIsRefreshingBriefing] = useState(false);
   const [lastAction, setLastAction] = useState<{
     type: 'complete' | 'delete';
     task: DailyTask;
@@ -623,6 +630,8 @@ export const useAura = () => {
       setTimelineEvents(ensureArray<TimelineEvent>(data.timelineEvents));
       setInsights(ensureArray<ProactiveInsight>(data.insights));
       setBlindSpots(ensureArray<BlindSpot>(data.blindSpots));
+      setStrategicBriefing(data.strategicBriefing || null);
+      lastStrategicBriefingRef.current = data.strategicBriefing?.generatedAt || null;
       setDailyPlan(ensureArray<DailyTask>(data.dailyPlan));
       setRuleOfLife(data.ruleOfLife || INITIAL_RULE_OF_LIFE);
       setPrompts(mergePrompts(data.prompts));
@@ -717,6 +726,7 @@ export const useAura = () => {
       timelineEvents,
       insights,
       blindSpots,
+      strategicBriefing,
       dailyPlan,
       ruleOfLife,
       prompts,
@@ -742,6 +752,7 @@ export const useAura = () => {
       timelineEvents,
       insights,
       blindSpots,
+      strategicBriefing,
       dailyPlan,
       ruleOfLife,
       prompts,
@@ -2312,6 +2323,13 @@ export const useAura = () => {
     return Date.now() - lastRun > weekMs;
   };
 
+  const shouldRunStrategicBriefing = (force?: boolean) => {
+    if (force) return true;
+    const lastRun = lastStrategicBriefingRef.current;
+    if (!lastRun) return true;
+    return !isSameLocalDay(Date.now(), lastRun);
+  };
+
   const planMyDay = async () => {
     setIsPlanningDay(true);
     try {
@@ -2420,10 +2438,53 @@ export const useAura = () => {
           console.error('[refreshAura] deep tasks failed', err);
         }
       }
+
+      if (shouldRunStrategicBriefing(force)) {
+        setIsRefreshingBriefing(true);
+        try {
+          const briefing = await generateStrategicBriefing(memoryItems, profile, context);
+          if (briefing) {
+            setStrategicBriefing(briefing);
+            lastStrategicBriefingRef.current = briefing.generatedAt || Date.now();
+          }
+        } catch (err) {
+          console.error('[refreshAura] strategic briefing failed', err);
+        } finally {
+          setIsRefreshingBriefing(false);
+        }
+      }
     } finally {
       setIsGeneratingTasks(false);
     }
   };
+
+  const refreshStrategicBriefingNow = useCallback(
+    async (options?: { force?: boolean }) => {
+      const force = Boolean(options?.force);
+      const lastRun = lastStrategicBriefingRef.current;
+      if (!force && lastRun && isSameLocalDay(Date.now(), lastRun)) {
+        return strategicBriefing;
+      }
+
+      setIsRefreshingBriefing(true);
+      try {
+        const briefing = await generateStrategicBriefing(memoryItems, profile, {
+          familyMembers: familySpace.members,
+          financeMetrics: computeFinanceMetrics(profile),
+          missingData: missingProfileFields,
+          claims,
+        });
+        if (briefing) {
+          setStrategicBriefing(briefing);
+          lastStrategicBriefingRef.current = briefing.generatedAt || Date.now();
+        }
+        return briefing;
+      } finally {
+        setIsRefreshingBriefing(false);
+      }
+    },
+    [claims, familySpace.members, memoryItems, missingProfileFields, profile, strategicBriefing]
+  );
 
   const runDeepInitialization = useCallback(async () => {
     const result = await generateDeepInitialization(profile, ruleOfLife, memoryItems, claims);
@@ -2578,9 +2639,11 @@ export const useAura = () => {
     timelineEvents,
     insights,
     blindSpots,
+    strategicBriefing,
     dailyPlan,
     ruleOfLife,
     isGeneratingTasks,
+    isRefreshingBriefing,
     prompts,
     layout,
     alwaysDo,
@@ -2596,6 +2659,7 @@ export const useAura = () => {
     setInboxAutoMerge,
     setInboxReviewConfidence,
     planMyDay,
+    refreshStrategicBriefing: refreshStrategicBriefingNow,
     resolveConflict,
     clearAllData: () => {
       clearVault();

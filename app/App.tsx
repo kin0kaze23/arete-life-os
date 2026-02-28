@@ -7,7 +7,6 @@ import { ErrorBoundary } from '@/app/ErrorBoundary';
 import { AuthScreen } from '@/app/AuthScreen';
 import { isSupabaseConfigured, supabase } from '@/data';
 import { GUIDED_VAULT_FIELDS, getGuidedVaultFields, normalizeGuidedVaultValue } from '@/chat/guidedVaultFields';
-import { X, CheckCircle2, User, Database, Settings } from 'lucide-react';
 import { useOnlineStatus, NetworkBanner, Toast } from '@/shared';
 
 const loadVault = () => import('@/vault');
@@ -333,6 +332,9 @@ const App: React.FC = () => {
                     missingProfileFields={(aura as any).missingProfileFields}
                     onMergeInbox={aura.mergeInboxEntries}
                     onRefreshInbox={aura.refreshInbox}
+                    strategicBriefing={(aura as any).strategicBriefing}
+                    isRefreshingBriefing={(aura as any).isRefreshingBriefing}
+                    onRefreshStrategicBriefing={(aura as any).refreshStrategicBriefing}
                     isInboxAvailable={aura.isCloudConnected || import.meta.env.VITE_E2E === '1'}
                     inboxUnavailableReason={
                       !aura.isCloudSyncAvailable

@@ -411,6 +411,26 @@ export interface ProactiveInsight {
   feedback?: 'like' | 'dislike';
 }
 
+export interface StrategicBriefingItem {
+  title: string;
+  detail: string;
+  action: string;
+}
+
+export interface StrategicBriefing {
+  generatedAt: number;
+  profileSummary: string;
+  focusQuestion: string;
+  summary: string;
+  opportunities: StrategicBriefingItem[];
+  risks: StrategicBriefingItem[];
+  actions: string[];
+  sources: {
+    title: string;
+    uri: string;
+  }[];
+}
+
 export interface TimelineEvent {
   id: string;
   ownerId: string;

@@ -1,10 +1,10 @@
 @import "tailwindcss";
 
 :root {
-  --bg-app: #0b1017;
-  --bg-shell: #0f1722;
-  --bg-elevated: #141d29;
-  --bg-card: #182232;
+  --bg-app: #0a1016;
+  --bg-shell: #0e151d;
+  --bg-elevated: #131c27;
+  --bg-card: #16212e;
   --border-subtle: rgba(148, 163, 184, 0.16);
   --text-primary: #edf2f9;
   --text-secondary: #9aa8bc;
@@ -23,9 +23,9 @@ body {
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   background:
-    radial-gradient(circle at 14% 4%, rgba(134, 168, 255, 0.1), transparent 34%),
-    radial-gradient(circle at 90% 0%, rgba(87, 153, 255, 0.05), transparent 28%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.01), transparent 28%),
+    radial-gradient(circle at 12% 0%, rgba(134, 168, 255, 0.08), transparent 30%),
+    radial-gradient(circle at 88% 0%, rgba(87, 153, 255, 0.04), transparent 24%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.01), transparent 24%),
     var(--bg-app);
 }
 
@@ -39,10 +39,10 @@ body::before {
   inset: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(to right, rgba(148, 163, 184, 0.045) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(148, 163, 184, 0.045) 1px, transparent 1px);
-  background-size: 32px 32px;
-  mask-image: linear-gradient(180deg, rgba(255, 255, 255, 0.32), transparent 78%);
+    linear-gradient(to right, rgba(148, 163, 184, 0.028) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.028) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: linear-gradient(180deg, rgba(255, 255, 255, 0.22), transparent 76%);
 }
 
 .glass-panel {

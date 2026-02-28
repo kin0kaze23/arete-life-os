@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
 
 test('settings shows clear capability states and diagnostics', async ({ page }) => {
   await page.getByRole('button', { name: /settings/i }).click();
-  await expect(page.getByText(/workspace controls/i)).toBeVisible();
+  await expect(page.getByText(/health and controls|workspace controls/i)).toBeVisible();
   await expect(page.getByText(/system health/i)).toBeVisible();
 
   await expect(page.getByText(/cloud sync is not configured|sign in and complete cloud migration/i).first()).toBeVisible();
@@ -23,16 +23,18 @@ test('settings shows clear capability states and diagnostics', async ({ page }) 
 });
 
 test('dashboard quick actions navigate and prefill log input', async ({ page }) => {
-  await page.getByRole('button', { name: /dashboard/i }).click();
+  const main = page.getByRole('main');
 
-  await page.getByRole('button', { name: /open journal/i }).click();
+  await page.getByRole('navigation').getByRole('button', { name: 'Today', exact: true }).click();
+
+  await main.getByRole('button', { name: 'Journal', exact: true }).click();
   await expect(page.getByText(/neural mind map/i)).toBeVisible();
 
-  await page.getByRole('button', { name: /dashboard/i }).click();
-  await page.getByRole('button', { name: /ask assistant/i }).click();
+  await page.getByRole('navigation').getByRole('button', { name: 'Today', exact: true }).click();
+  await main.getByRole('button', { name: 'Aura', exact: true }).click();
   await expect(page.getByText(/conversation/i)).toBeVisible();
 
-  await page.getByRole('button', { name: /dashboard/i }).click();
-  await page.getByRole('button', { name: /log check-in/i }).click();
+  await page.getByRole('navigation').getByRole('button', { name: 'Today', exact: true }).click();
+  await main.getByRole('button', { name: 'Capture', exact: true }).click();
   await expect(page.getByTestId('log-input')).toContainText('DAILY CHECK-IN');
 });

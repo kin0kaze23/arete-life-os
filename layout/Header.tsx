@@ -21,24 +21,24 @@ const TAB_META: Record<
   }
 > = {
   dashboard: {
-    title: 'Daily command center',
-    subtitle: 'See what matters now.',
+    title: 'Today',
+    subtitle: 'What matters now.',
   },
   vault: {
-    title: 'Identity, memory, and knowledge graph',
-    subtitle: 'Maintain the facts Aura should trust.',
+    title: 'Life',
+    subtitle: 'Facts, profile, and memory.',
   },
   stream: {
-    title: 'Categorized life timeline and logs',
-    subtitle: 'Scan your journal without losing the thread.',
+    title: 'Journal',
+    subtitle: 'Signals and timeline.',
   },
   chat: {
-    title: 'Ask Aura from your private context',
-    subtitle: 'Use your vault as context for decisions and reflection.',
+    title: 'Aura',
+    subtitle: 'Ask from your private context.',
   },
   settings: {
-    title: 'Workspace controls',
-    subtitle: 'Health, Telegram, backups, and behavior.',
+    title: 'Settings',
+    subtitle: 'Health and controls.',
   },
 };
 
@@ -54,10 +54,10 @@ export const Header: React.FC<HeaderProps> = ({
   const completion = getProfileCompletion(profile);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/8 bg-[#0e151f]/88 px-6 py-3 backdrop-blur-xl xl:px-8">
+    <header className="sticky top-0 z-40 border-b border-white/8 bg-[#0d141d]/90 px-6 py-3 backdrop-blur-xl xl:px-8">
       <div className="flex items-center justify-between gap-5">
         <div className="min-w-0">
-          <h1 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-slate-100 xl:text-[1.8rem]">
+          <h1 className="text-[1.45rem] font-semibold tracking-[-0.03em] text-slate-100 xl:text-[1.65rem]">
             {meta.title}
           </h1>
           <p className="mt-1 text-sm text-slate-400">{meta.subtitle}</p>
@@ -71,7 +71,7 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             />
             <span className="text-xs font-medium text-slate-300">
-              {isGeneratingTasks ? 'Refreshing' : 'Ready'}
+              {isGeneratingTasks ? 'Thinking' : 'Ready'}
             </span>
           </div>
 

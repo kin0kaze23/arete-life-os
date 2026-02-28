@@ -68,13 +68,13 @@ test('auto-merge holds low confidence inbox entries and allows manual merge', as
     await e2e.mergeInboxAuto();
   });
 
-  await expect(page.getByText(/1 new entry from Telegram/i)).toBeVisible();
+  await expect(page.getByText(/1 pending Telegram entr(y|ies)/i)).toBeVisible();
   await expect(page.getByText(/E2E low confidence entry/i)).toBeVisible();
-  await expect(page.getByText(/needs review/i)).toBeVisible();
+  await expect(page.getByText(/review/i).first()).toBeVisible();
   await expect(page.getByText(/E2E high confidence entry/i)).toBeHidden();
 
+  await page.getByRole('button', { name: /^Open$/ }).click();
   await page.getByRole('button', { name: /^Merge$/ }).click();
 
-  await expect(page.getByText(/new entr(y|ies) from Telegram/i)).toBeHidden();
+  await expect(page.getByText(/pending Telegram entr(y|ies)/i)).toBeHidden();
 });
-

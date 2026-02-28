@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { BookOpen, CalendarPlus, Inbox, ShieldAlert, Sparkles, Target } from 'lucide-react';
+import { BookOpen, Inbox, ShieldAlert, Sparkles, Target } from 'lucide-react';
 import {
   AlwaysChip,
   BlindSpot,
@@ -10,17 +10,15 @@ import {
   MemoryEntry,
   Recommendation,
   Source,
+  StrategicBriefing,
   TimelineEvent,
   UserProfile,
 } from '@/data';
 import { FocusList } from './FocusList';
 import { EventPrepPopup } from './EventPrepPopup';
-import { EventEditSheet } from './EventEditSheet';
-import { UpcomingCalendar } from './UpcomingCalendar';
 import { DashboardHeader } from './DashboardHeader';
+import { StrategicBriefingCard } from './StrategicBriefingCard';
 import { computeScoreInternal } from './ScoreStrip';
-import { StatusSidebar } from './StatusSidebar';
-import { getProfileCompletion } from '@/shared';
 
 interface DashboardViewProps {
   memory: MemoryEntry[];
@@ -31,27 +29,20 @@ interface DashboardViewProps {
   profile: UserProfile;
   ruleOfLife: any;
   sources: Source[];
-  recommendations: Recommendation[];
+  recommendations?: Recommendation[];
   goals: Goal[];
   toggleTask: (id: string) => void;
   deleteTask: (id: string) => void;
-  refreshAll: () => void;
   planMyDay: () => void;
   onNavigate: (tab: any) => void;
   updateMemoryItem?: (id: string, updates: Partial<MemoryEntry>) => void;
-  deleteMemoryItem?: (id: string) => void;
+  activatePrepPlan?: (plan: any, eventId?: string) => void;
   keepRecommendation?: (id: string) => void;
   removeRecommendation?: (id: string) => void;
-  activatePrepPlan?: (plan: Recommendation, eventId?: string) => void;
   onToast?: (message: string, type?: 'success' | 'info' | 'error') => void;
-  logMemory?: (input: string) => Promise<void>;
   alwaysDoChips?: AlwaysChip[];
   alwaysWatchChips?: AlwaysChip[];
   isPlanningDay: boolean;
-  isGeneratingTasks: boolean;
-  undoTaskAction?: () => void;
-  updateTimelineEvent?: (id: string, updates: Partial<TimelineEvent>) => void;
-  deleteTimelineEvent?: (id: string) => void;
   personalizedGreeting?: string;
   inboxEntries?: InboxEntry[];
   inboxReviewConfidence?: number;
@@ -60,6 +51,9 @@ interface DashboardViewProps {
   onRefreshInbox?: () => Promise<void> | void;
   isInboxAvailable?: boolean;
   inboxUnavailableReason?: string;
+  strategicBriefing?: StrategicBriefing | null;
+  isRefreshingBriefing?: boolean;
+  onRefreshStrategicBriefing?: (options?: { force?: boolean }) => Promise<void> | void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -69,20 +63,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   timelineEvents,
   blindSpots = [],
   profile,
-  recommendations,
+  recommendations = [],
   goals,
   toggleTask,
   deleteTask,
   planMyDay,
   onNavigate,
   updateMemoryItem,
+  activatePrepPlan,
   keepRecommendation,
   removeRecommendation,
-  activatePrepPlan,
   onToast,
   isPlanningDay,
-  updateTimelineEvent,
-  deleteTimelineEvent,
   personalizedGreeting = 'Welcome',
   inboxEntries = [],
   inboxReviewConfidence = 0.65,
@@ -91,11 +83,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onRefreshInbox,
   isInboxAvailable = false,
   inboxUnavailableReason,
-  alwaysDoChips = [],
-  alwaysWatchChips = [],
+  strategicBriefing = null,
+  isRefreshingBriefing = false,
+  onRefreshStrategicBriefing,
 }) => {
   const [activePrepEvent, setActivePrepEvent] = useState<TimelineEvent | null>(null);
-  const [editingEvent, setEditingEvent] = useState<TimelineEvent | null>(null);
   const [isFocusMode, setIsFocusMode] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     return window.localStorage.getItem('arete:dashboardFocusMode') === 'true';
@@ -134,66 +126,39 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return `${timeLabel}, ${name}`;
   }, [profile.identify?.name, personalizedGreeting]);
 
-  const headerSummary = useMemo(() => {
-    const upcoming = [...timelineEvents]
-      .filter((event) => new Date(event.date).getTime() > Date.now())
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    if (upcoming.length > 0) {
-      const next = upcoming[0];
-      const hours = Math.max(
-        1,
-        Math.round((new Date(next.date).getTime() - Date.now()) / (60 * 60 * 1000))
-      );
-      const prepStatus = next.metadata?.prepStatus === 'ready' ? 'prep ready' : 'prep pending';
-      return `Next: ${next.title} in ${hours}h. ${prepStatus}.`;
-    }
-    if (focusTasks.length > 0) {
-      const remaining = Math.max(0, focusTasks.filter((task) => !task.completed).length - 1);
-      return remaining > 0
-        ? `Top focus: ${focusTasks[0].title} plus ${remaining} more open items.`
-        : `Top focus: ${focusTasks[0].title}.`;
-    }
-    return 'Log a short check-in and this dashboard will become more specific to your life.';
-  }, [focusTasks, timelineEvents]);
+  const upcomingEvents = useMemo(
+    () =>
+      [...timelineEvents]
+        .filter((event) => new Date(event.date).getTime() > Date.now())
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        .slice(0, 4),
+    [timelineEvents]
+  );
 
-  const profileCompletion = useMemo(() => getProfileCompletion(profile).overall, [profile]);
+  const nextEvent = upcomingEvents[0];
   const openTasks = useMemo(
     () => focusTasks.filter((task) => !task.completed).length,
     [focusTasks]
   );
-  const nextEvent = useMemo(() => {
-    return [...timelineEvents]
-      .filter((event) => new Date(event.date).getTime() > Date.now())
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
-  }, [timelineEvents]);
-  const highRiskCount = useMemo(
-    () => blindSpots.filter((spot) => spot.severity === 'high').length,
-    [blindSpots]
-  );
-  const headerStats = useMemo(
-    () => [
-      { label: 'Signals Logged', value: String(memory.length) },
-      { label: 'Open Focus', value: String(openTasks) },
-      {
-        label: 'Next Event',
-        value: nextEvent ? nextEvent.title.slice(0, 20) : 'None',
-      },
-    ],
-    [memory.length, nextEvent, openTasks]
-  );
+
+  const headerSummary = useMemo(() => {
+    if (nextEvent) {
+      const hours = Math.max(
+        1,
+        Math.round((new Date(nextEvent.date).getTime() - Date.now()) / (60 * 60 * 1000))
+      );
+      return `You have ${openTasks} open item${openTasks === 1 ? '' : 's'} and ${nextEvent.title} is in ${hours}h.`;
+    }
+    if (openTasks > 0) {
+      return `${openTasks} open item${openTasks === 1 ? '' : 's'} are shaping today. Keep the board tight and the next move obvious.`;
+    }
+    return 'Capture a few real signals and the system will turn them into a clearer plan.';
+  }, [nextEvent, openTasks]);
+
   const isEveningWindow = useMemo(() => {
     const hour = new Date().getHours();
     return hour >= 20 || hour < 5;
   }, []);
-
-  const recommendedMoves = useMemo(
-    () =>
-      recommendations
-        .filter((rec) => rec.status === 'ACTIVE')
-        .sort((a, b) => b.impactScore - a.impactScore)
-        .slice(0, 3),
-    [recommendations]
-  );
 
   const canMergeInbox = isInboxAvailable && Boolean(onMergeInbox);
   const canRefreshInbox = isInboxAvailable && Boolean(onRefreshInbox);
@@ -254,11 +219,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     window.dispatchEvent(new CustomEvent('logbar:insert', { detail: { template } }));
   };
 
-  const scrollToSection = (id: string) => {
-    if (typeof document === 'undefined') return;
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
   useEffect(() => {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem('arete:dashboardFocusMode', isFocusMode ? 'true' : 'false');
@@ -303,125 +263,76 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }, [memory, goals, onToast]);
 
   return (
-    <div className="mx-auto w-full max-w-[1460px] space-y-6 pb-32">
-      <DashboardHeader greeting={greeting} summary={headerSummary} stats={headerStats} />
-
-      {memory.length === 0 && (
-        <section className="rounded-[24px] border border-[#7ea3ff]/20 bg-[#7ea3ff]/[0.07] px-6 py-5">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-blue-200">
-                Start here
-              </p>
-              <h2 className="mt-1 text-xl font-semibold text-white">
-                Add a few real signals so this page can become specific.
-              </h2>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <ActionPill
-                label="Log Check-In"
-                icon={<BookOpen size={14} />}
-                onClick={() => handleInsertTemplate('DAILY_CHECKIN')}
-              />
-              <ActionPill
-                label="Schedule Event"
-                icon={<CalendarPlus size={14} />}
-                onClick={() => handleInsertTemplate('SCHEDULE_EVENT')}
-              />
-              <ActionPill
-                label="Log Work"
-                icon={<Target size={14} />}
-                onClick={() => handleInsertTemplate('WORK_PROGRESS')}
-              />
-            </div>
-          </div>
-        </section>
-      )}
-
-      {isEveningWindow && (
-        <section className="rounded-[24px] border border-amber-300/20 bg-amber-500/[0.08] px-6 py-5">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-amber-200">
-                Daily shutdown
-              </p>
-              <h2 className="mt-1 text-xl font-semibold text-white">
-                Close the day before the context gets noisy.
-              </h2>
-              <p className="mt-2 text-sm text-amber-50/85">
-                Review inbox, clear the last open loop, capture reflection, then preview tomorrow.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowShutdownFlow(true)}
-              className="inline-flex items-center gap-2 rounded-full bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
-            >
-              Start shutdown
-            </button>
-          </div>
-        </section>
-      )}
+    <div className="mx-auto w-full max-w-[1420px] space-y-6 pb-32">
+      <DashboardHeader greeting={greeting} summary={headerSummary} />
 
       <section
         className={`grid grid-cols-1 gap-6 ${
-          isFocusMode ? '' : 'xl:grid-cols-[minmax(0,1.2fr)_360px]'
+          isFocusMode ? '' : 'xl:grid-cols-[minmax(0,1.1fr)_minmax(340px,380px)]'
         }`}
       >
         <div className="space-y-6">
-          <section className="rounded-[26px] border border-white/8 bg-white/[0.025] p-5 xl:p-6">
-            <div className="flex items-center justify-between gap-3 border-b border-white/8 pb-5">
+          <section className="rounded-[26px] border border-white/8 bg-white/[0.03] p-5 xl:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/8 pb-5">
               <div>
                 <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
-                  Execution board
+                  Focus
                 </p>
                 <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-100">
-                  Focus for today
+                  Today&apos;s board
                 </h2>
-                <p className="mt-2 text-sm text-slate-400">One main queue. One clear next step.</p>
+                <p className="mt-2 text-sm text-slate-400">
+                  Keep the next move obvious. Hide the rest.
+                </p>
               </div>
               <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-slate-300">
-                {openTasks} open item{openTasks === 1 ? '' : 's'}
+                {openTasks} open
               </div>
             </div>
 
             <div className="mt-4 flex flex-wrap gap-2">
               <ActionPill
-                label="Log Check-In"
+                label="Capture"
                 icon={<BookOpen size={14} />}
                 onClick={() => handleInsertTemplate('DAILY_CHECKIN')}
               />
               <ActionPill
-                label="Open Journal"
+                label="Journal"
                 icon={<BookOpen size={14} />}
                 onClick={() => onNavigate('stream')}
               />
               <ActionPill
-                label="Ask Assistant"
+                label="Aura"
                 icon={<Sparkles size={14} />}
                 onClick={() => onNavigate('chat')}
               />
               <ActionPill
-                label={isFocusMode ? 'Show Overview' : 'Focus Mode'}
+                label={isFocusMode ? 'Overview' : 'Focus mode'}
                 icon={<Target size={14} />}
                 onClick={() => setIsFocusMode((prev) => !prev)}
               />
-              <ActionPill
-                label="Shutdown"
-                icon={<ShieldAlert size={14} />}
-                onClick={() => setShowShutdownFlow(true)}
-              />
+              {isEveningWindow && (
+                <ActionPill
+                  label="Shutdown"
+                  icon={<ShieldAlert size={14} />}
+                  onClick={() => setShowShutdownFlow(true)}
+                />
+              )}
             </div>
 
-            <div className="mt-5 xl:max-h-[900px] xl:overflow-y-auto xl:pr-1">
+            {memory.length === 0 && (
+              <div className="mt-4 rounded-[20px] border border-dashed border-white/10 bg-black/20 px-4 py-4 text-sm leading-6 text-slate-300">
+                Start with a short check-in, a recent expense, or an upcoming event. The board becomes useful after a few real signals.
+              </div>
+            )}
+
+            <div className="mt-5 xl:max-h-[920px] xl:overflow-y-auto xl:pr-1 premium-scrollbar">
               <FocusList
                 tasks={focusTasks}
                 habitItems={habitItems}
-                onToggleTask={(id) => toggleTask(id)}
+                onToggleTask={toggleTask}
                 onToggleHabit={handleToggleHabit}
-                onDeleteTask={(id) => deleteTask(id)}
+                onDeleteTask={deleteTask}
                 onRefreshPlan={planMyDay}
                 onRefreshQueue={planMyDay}
                 isPlanning={isPlanningDay}
@@ -433,176 +344,173 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {!isFocusMode && (
           <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
-          <section className="rounded-[26px] border border-white/8 bg-[linear-gradient(180deg,rgba(24,34,50,0.9),rgba(16,22,32,0.84))] p-5">
-            <div className="flex items-center gap-2">
-              <ShieldAlert size={14} className="text-blue-200" />
-              <p className="text-sm font-semibold text-slate-100">Life pulse</p>
-            </div>
-            <div className="mt-4 space-y-3">
-              <PulseRow
-                label="Profile"
-                value={`${profileCompletion}% complete`}
-                onClick={() => onNavigate('vault')}
-              />
-              <PulseRow
-                label="Inbox"
-                value={inboxEntries.length > 0 ? `${inboxEntries.length} pending` : 'Clear'}
-                onClick={() => scrollToSection('dashboard-inbox')}
-              />
-              <PulseRow
-                label="Next event"
-                value={nextEvent ? nextEvent.title : 'None scheduled'}
-                onClick={() => scrollToSection('dashboard-upcoming')}
-              />
-              <PulseRow
-                label="Top recommendation"
-                value={recommendedMoves[0]?.title || 'No recommendation yet'}
-                onClick={() => scrollToSection('dashboard-recommendations')}
-              />
-              <PulseRow
-                label="Risks"
-                value={highRiskCount > 0 ? `${highRiskCount} high` : 'Stable'}
-                onClick={() => scrollToSection('dashboard-recommendations')}
-              />
-            </div>
-          </section>
+            <StrategicBriefingCard
+              briefing={strategicBriefing}
+              missingProfileFields={missingProfileFields}
+              isRefreshing={isRefreshingBriefing}
+              onRefresh={() => {
+                void onRefreshStrategicBriefing?.({ force: true });
+              }}
+              onOpenAssistant={() => onNavigate('chat')}
+              onOpenLife={() => onNavigate('vault')}
+              onCapture={() => handleInsertTemplate('DAILY_CHECKIN')}
+            />
 
-          <section
-            id="dashboard-inbox"
-            className="rounded-[26px] border border-white/8 bg-white/[0.025] p-5"
-          >
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-emerald-300">
-                  Inbox
-                </p>
-                <p className="mt-1 text-sm text-slate-200">
-                  {inboxEntries.length > 0
-                    ? `${inboxEntries.length} new entr${inboxEntries.length === 1 ? 'y' : 'ies'} from Telegram`
-                    : 'No pending entries'}
-                </p>
+            <RecommendationsPanel
+              recommendations={recommendations}
+              onKeepRecommendation={keepRecommendation}
+              onRemoveRecommendation={removeRecommendation}
+            />
+
+            <section className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5" id="dashboard-inbox">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Inbox size={14} className="text-emerald-200" />
+                  <div>
+                    <p className="text-sm font-semibold text-slate-100">Inbox</p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      {inboxEntries.length > 0
+                        ? `${inboxEntries.length} pending Telegram entr${inboxEntries.length === 1 ? 'y' : 'ies'}`
+                        : 'No pending entries'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setReviewEntryId(inboxEntries[0]?.id || null)}
+                    disabled={inboxEntries.length === 0}
+                    className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:border-white/20 hover:bg-white/[0.05] disabled:opacity-40"
+                  >
+                    Review
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onMergeInbox?.()}
+                    disabled={inboxEntries.length === 0 || !canMergeInbox}
+                    className="rounded-full bg-emerald-400 px-3 py-1.5 text-xs font-semibold text-slate-950 transition hover:bg-emerald-300 disabled:opacity-40"
+                  >
+                    Merge all
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setReviewEntryId(inboxEntries[0]?.id || null)}
-                  disabled={inboxEntries.length === 0}
-                  className="rounded-lg border border-white/15 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-200 disabled:opacity-40"
-                >
-                  Review mode
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onMergeInbox?.()}
-                  disabled={inboxEntries.length === 0 || !canMergeInbox}
-                  className="rounded-lg bg-emerald-500 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-black disabled:opacity-40"
-                >
-                  Merge all
-                </button>
+
+              {!isInboxAvailable && (
+                <div className="mt-3 rounded-xl border border-amber-300/20 bg-amber-500/[0.06] px-3 py-2 text-xs text-amber-100">
+                  {inboxUnavailableReason || 'Inbox actions are unavailable in this environment.'}
+                </div>
+              )}
+
+              <div className="mt-4 space-y-2.5">
+                {inboxEntries.length === 0 && (
+                  <div className="rounded-[18px] border border-dashed border-white/10 bg-black/20 px-3 py-4 text-center text-xs text-slate-500">
+                    Inbox is clear.
+                  </div>
+                )}
+
+                {inboxEntries.slice(0, 3).map((entry) => {
+                  const confidence = estimateInboxConfidence(entry);
+                  const needsReview = confidence < inboxReviewConfidence;
+                  const preview = getInboxPreview(entry);
+                  return (
+                    <div
+                      key={entry.id}
+                      className="rounded-[18px] border border-white/8 bg-black/20 px-3 py-3 text-xs text-slate-200"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-400">
+                              {entry.content_type}
+                            </span>
+                            {needsReview && (
+                              <span className="rounded-full border border-amber-300/25 bg-amber-500/[0.08] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-200">
+                                Review
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-2 line-clamp-2 leading-5 text-slate-200">
+                            {(entry.raw_content || '').slice(0, 140) || 'Inbox entry'}
+                          </p>
+                          {preview && (
+                            <p className="mt-1 line-clamp-2 text-[11px] leading-5 text-slate-400">
+                              AI: {preview}
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setReviewEntryId(entry.id)}
+                          className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-slate-200 transition hover:border-white/20 hover:bg-white/[0.05]"
+                        >
+                          Open
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 flex justify-end">
                 <button
                   type="button"
                   onClick={() => onRefreshInbox?.()}
                   disabled={!canRefreshInbox}
-                  className="rounded-lg border border-emerald-400/40 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-200 disabled:opacity-40"
+                  className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:border-white/20 hover:bg-white/[0.05] disabled:opacity-40"
                 >
-                  Refresh
+                  Refresh inbox
                 </button>
               </div>
-            </div>
+            </section>
 
-            {!isInboxAvailable && (
-              <div className="mt-3 rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-100">
-                {inboxUnavailableReason || 'Inbox actions are unavailable in this environment.'}
-              </div>
-            )}
-
-            <div className="mt-4 space-y-2.5">
-              {inboxEntries.length === 0 && (
-                <div className="rounded-xl border border-dashed border-white/10 bg-black/20 px-3 py-5 text-center text-xs text-slate-500">
-                  Inbox is clear. New Telegram logs will appear here.
+            <section className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
+              <div className="flex items-center gap-2">
+                <Sparkles size={14} className="text-blue-200" />
+                <div>
+                  <p className="text-sm font-semibold text-slate-100">Upcoming</p>
+                  <p className="mt-1 text-xs text-slate-400">What needs prep next.</p>
                 </div>
-              )}
-              {inboxEntries.slice(0, 5).map((entry) => {
-                const confidence = estimateInboxConfidence(entry);
-                const needsReview = confidence < inboxReviewConfidence;
-                const preview = getInboxPreview(entry);
-                return (
-                  <div key={entry.id} className="rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-xs text-slate-200">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 space-y-1.5">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="rounded-md border border-white/20 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-300">
-                            {entry.content_type}
-                          </span>
-                          <span className="rounded-md border border-indigo-400/30 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.12em] text-indigo-200">
-                            {Math.round(confidence * 100)}% confidence
-                          </span>
-                          {needsReview && (
-                            <span className="rounded-md border border-amber-400/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-200">
-                              Needs review
-                            </span>
-                          )}
-                        </div>
-                        <p className="line-clamp-2 text-slate-200">
-                          {(entry.raw_content || '').slice(0, 140) || 'Inbox entry'}
-                        </p>
-                        {preview && <p className="text-[11px] text-slate-400 line-clamp-2">AI: {preview}</p>}
-                      </div>
-                      <div className="flex shrink-0 flex-col gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setReviewEntryId(entry.id)}
-                          className="rounded-md border border-white/15 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-200 hover:bg-white/[0.04]"
-                        >
-                          Review
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void onMergeInbox?.([entry.id])}
-                          disabled={!canMergeInbox}
-                          className="rounded-md border border-emerald-400/40 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-200 hover:bg-emerald-500/10 disabled:opacity-40"
-                        >
-                          Merge
-                        </button>
-                      </div>
-                    </div>
+              </div>
+
+              <div className="mt-4 space-y-2.5">
+                {upcomingEvents.length === 0 && (
+                  <div className="rounded-[18px] border border-dashed border-white/10 bg-black/20 px-3 py-4 text-center text-xs text-slate-500">
+                    Nothing scheduled yet.
                   </div>
-                );
-              })}
-            </div>
-          </section>
+                )}
 
-          <section
-            id="dashboard-upcoming"
-            className="rounded-[26px] border border-white/8 bg-white/[0.025] p-5"
-          >
-            <div className="mb-3 flex items-center gap-2">
-              <Sparkles size={14} className="text-blue-200" />
-              <p className="text-sm font-semibold text-slate-100">Upcoming</p>
-            </div>
-            <UpcomingCalendar
-              events={timelineEvents}
-              onSelectEvent={setActivePrepEvent}
-              onEditEvent={setEditingEvent}
-              onDeleteEvent={deleteTimelineEvent}
-              maxEvents={4}
-            />
-          </section>
-
-          <div id="dashboard-recommendations">
-            <StatusSidebar
-              profile={profile}
-              completion={profileCompletion}
-              blindSpots={blindSpots}
-              recommendations={recommendations}
-              onNavigate={onNavigate}
-              onActivate={(rec) => activatePrepPlan?.(rec, (rec as any).metadata?.eventId)}
-              onKeepRecommendation={keepRecommendation}
-              onRemoveRecommendation={removeRecommendation}
-              alwaysDoChips={alwaysDoChips}
-              alwaysWatchChips={alwaysWatchChips}
-            />
-          </div>
+                {upcomingEvents.map((event) => {
+                  const date = new Date(event.date);
+                  const prepStatus = event.metadata?.prepStatus === 'ready' ? 'Ready' : 'Prep';
+                  return (
+                    <button
+                      key={event.id}
+                      type="button"
+                      data-testid="event-card"
+                      data-event-id={event.id}
+                      onClick={() => setActivePrepEvent(event)}
+                      className="flex w-full items-center justify-between gap-3 rounded-[18px] border border-white/8 bg-black/20 px-3 py-3 text-left transition hover:border-white/20 hover:bg-white/[0.04]"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-100">{event.title}</p>
+                        <p className="mt-1 text-xs text-slate-400">
+                          {date.toLocaleDateString(undefined, {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                          })}{' '}
+                          {date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                        </p>
+                      </div>
+                      <span className="rounded-full border border-blue-300/20 bg-blue-500/[0.08] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-blue-200">
+                        {prepStatus}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
           </aside>
         )}
       </section>
@@ -614,18 +522,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         onClose={() => setActivePrepEvent(null)}
         onActivate={(plan, id) => {
           activatePrepPlan?.(plan, id);
-          onToast?.(`Armed: ${plan.title}. Tasks added to Today's Focus.`, 'success');
+          onToast?.(`Armed: ${plan.title}. Tasks added to today.`, 'success');
           setActivePrepEvent(null);
         }}
       />
-
-      {editingEvent && updateTimelineEvent && (
-        <EventEditSheet
-          event={editingEvent}
-          onSave={updateTimelineEvent}
-          onClose={() => setEditingEvent(null)}
-        />
-      )}
 
       {reviewEntry && (
         <InboxReviewModal
@@ -680,37 +580,12 @@ const ActionPill: React.FC<{
   <button
     type="button"
     onClick={onClick}
-    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3.5 py-2 text-sm font-medium text-slate-200 transition hover:border-blue-300/35 hover:bg-blue-500/[0.08]"
+    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3.5 py-2 text-sm font-medium text-slate-200 transition hover:border-white/20 hover:bg-white/[0.05]"
   >
     {icon}
     {label}
   </button>
 );
-
-const PulseRow: React.FC<{ label: string; value: string; onClick?: () => void }> = ({
-  label,
-  value,
-  onClick,
-}) => {
-  const classes =
-    'w-full rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-left transition hover:border-white/20 hover:bg-white/[0.04]';
-
-  if (onClick) {
-    return (
-      <button type="button" onClick={onClick} className={classes}>
-        <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500">{label}</p>
-        <p className="mt-1 text-sm font-semibold text-slate-100">{value}</p>
-      </button>
-    );
-  }
-
-  return (
-    <div className={classes}>
-      <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-slate-100">{value}</p>
-    </div>
-  );
-};
 
 const InboxReviewModal: React.FC<{
   entry: InboxEntry;
@@ -726,11 +601,11 @@ const InboxReviewModal: React.FC<{
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
-            Review mode
+            Review
           </p>
-          <h3 className="mt-1 text-2xl font-semibold text-slate-100">Telegram intake review</h3>
+          <h3 className="mt-1 text-2xl font-semibold text-slate-100">Inbox entry</h3>
           <p className="mt-2 text-sm text-slate-400">
-            Compare the raw message with the AI interpretation before merging it into your vault.
+            Compare the raw message with the AI interpretation before it enters the vault.
           </p>
         </div>
         <div className="flex gap-2">
@@ -759,58 +634,48 @@ const InboxReviewModal: React.FC<{
               {entry.content_type}
             </span>
           </div>
-          <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-200">{entry.raw_content}</p>
+          <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-300">
+            {entry.raw_content || 'No raw content available.'}
+          </p>
         </section>
 
         <section className="rounded-2xl border border-white/10 bg-black/20 p-5">
           <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-slate-100">AI interpretation</p>
-              <p className="mt-1 text-xs text-slate-400">
-                {preview || 'No direct preview available'}
-              </p>
-            </div>
-            <span className="rounded-full border border-indigo-400/30 bg-indigo-500/12 px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-indigo-200">
+            <p className="text-sm font-semibold text-slate-100">AI interpretation</p>
+            <span className="rounded-full border border-indigo-400/25 bg-indigo-500/[0.08] px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] text-indigo-200">
               {Math.round(confidence * 100)}% confidence
             </span>
           </div>
 
-          <div className="mt-4 space-y-3">
-            {items.length === 0 && (
-              <div className="rounded-xl border border-dashed border-white/10 bg-slate-950/35 px-4 py-4 text-sm text-slate-500">
-                No structured items were extracted.
-              </div>
-            )}
-            {items.map((item, index) => (
-              <div key={`${entry.id}-item-${index}`} className="rounded-xl border border-white/10 bg-slate-950/35 p-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-400">
-                    {item?.type || 'memory'}
-                  </span>
-                  <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-400">
-                    {item?.domain || 'General'}
-                  </span>
-                  <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-400">
-                    {Math.round(((item?.confidence as number) || confidence) * 100)}%
-                  </span>
+          {preview && <p className="mt-4 text-sm leading-7 text-slate-300">{preview}</p>}
+
+          {items.length > 0 && (
+            <div className="mt-4 space-y-3">
+              {items.slice(0, 4).map((item, index) => (
+                <div key={`${item?.title || 'item'}-${index}`} className="rounded-xl border border-white/8 bg-white/[0.03] p-3">
+                  <p className="text-sm font-semibold text-slate-100">
+                    {item?.title || item?.content || `Item ${index + 1}`}
+                  </p>
+                  {item?.content && item?.content !== item?.title && (
+                    <p className="mt-1 text-xs leading-5 text-slate-400">{item.content}</p>
+                  )}
                 </div>
-                <p className="mt-3 text-sm leading-6 text-slate-200">{item?.content || 'No content'}</p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
           {questions.length > 0 && (
-            <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-500/[0.08] p-4">
-              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-amber-200">
-                Needs review
+            <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-500/[0.06] p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-200">
+                Needs clarification
               </p>
-              <div className="mt-2 space-y-1.5">
-                {questions.map((question, index) => (
-                  <p key={`${entry.id}-question-${index}`} className="text-sm text-amber-100">
-                    {index + 1}. {question}
-                  </p>
+              <ul className="mt-2 space-y-1.5">
+                {questions.map((question) => (
+                  <li key={question} className="text-xs leading-5 text-amber-50/90">
+                    {question}
+                  </li>
                 ))}
-              </div>
+              </ul>
             </div>
           )}
         </section>
@@ -840,17 +705,14 @@ const DailyShutdownModal: React.FC<{
   onGuidedInterview,
   onEveningAudit,
 }) => (
-  <div className="fixed inset-0 z-[85] flex items-center justify-center bg-[#05070d]/72 p-6 backdrop-blur-sm">
-    <div className="w-full max-w-4xl rounded-[28px] border border-white/10 bg-[#0f1722] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
+  <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[#05070d]/72 p-6 backdrop-blur-sm">
+    <div className="w-full max-w-3xl rounded-[28px] border border-white/10 bg-[#0f1722] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-amber-200">
-            Daily shutdown
+          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
+            Shutdown
           </p>
-          <h3 className="mt-1 text-2xl font-semibold text-slate-100">Finish today cleanly</h3>
-          <p className="mt-2 text-sm text-slate-400">
-            Use this to close loops, preserve context, and make tomorrow easier to start.
-          </p>
+          <h3 className="mt-1 text-2xl font-semibold text-slate-100">Close the day cleanly</h3>
         </div>
         <button
           type="button"
@@ -861,89 +723,233 @@ const DailyShutdownModal: React.FC<{
         </button>
       </div>
 
-      <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-2">
+      <div className="mt-5 grid gap-3">
         <ShutdownStep
-          step="1"
-          title="Clear the inbox"
+          title="Review intake"
           detail={
             inboxCount > 0
-              ? `${inboxCount} Telegram entr${inboxCount === 1 ? 'y' : 'ies'} still need attention.`
+              ? `${inboxCount} inbox entr${inboxCount === 1 ? 'y is' : 'ies are'} waiting for review.`
               : 'Inbox is already clear.'
           }
-          ctaLabel={inboxCount > 0 ? 'Review inbox' : 'Done'}
-          disabled={inboxCount === 0}
-          onClick={onReviewInbox}
+          actionLabel={inboxCount > 0 ? 'Open inbox' : undefined}
+          onAction={inboxCount > 0 ? onReviewInbox : undefined}
         />
         <ShutdownStep
-          step="2"
           title="Reduce open loops"
           detail={
             openTasks > 0
-              ? `${openTasks} focus item${openTasks === 1 ? '' : 's'} still open.`
-              : 'Your focus list is already clean.'
+              ? `${openTasks} task${openTasks === 1 ? '' : 's'} remain open. Switch to focus mode and close one more loop.`
+              : 'Task board is clear enough for the day.'
           }
-          ctaLabel={openTasks > 0 ? 'Enter focus mode' : 'Done'}
-          disabled={openTasks === 0}
-          onClick={onFocus}
+          actionLabel={openTasks > 0 ? 'Enter focus mode' : undefined}
+          onAction={openTasks > 0 ? onFocus : undefined}
         />
         <ShutdownStep
-          step="3"
-          title="Fill one missing context field"
+          title="Fill one gap"
           detail={
             missingFieldCount > 0
-              ? `${missingFieldCount} profile field${missingFieldCount === 1 ? '' : 's'} still missing.`
-              : 'Your key profile context is already grounded.'
+              ? `${missingFieldCount} profile field${missingFieldCount === 1 ? '' : 's'} are still missing.`
+              : 'Profile context is already in good shape.'
           }
-          ctaLabel={missingFieldCount > 0 ? 'Open assistant' : 'Done'}
-          disabled={missingFieldCount === 0}
-          onClick={onGuidedInterview}
+          actionLabel={missingFieldCount > 0 ? 'Open Aura' : undefined}
+          onAction={missingFieldCount > 0 ? onGuidedInterview : undefined}
         />
         <ShutdownStep
-          step="4"
-          title="Capture reflection"
-          detail="Run the Evening Audit so the day becomes usable context tomorrow."
-          ctaLabel="Open evening audit"
-          onClick={onEveningAudit}
+          title="Write the audit"
+          detail={
+            nextEventTitle
+              ? `Capture the day and glance at ${nextEventTitle} before you stop.`
+              : 'Capture the day and leave a clean handoff for tomorrow.'
+          }
+          actionLabel="Evening audit"
+          onAction={onEveningAudit}
         />
-      </div>
-
-      <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
-        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
-          Tomorrow preview
-        </p>
-        <p className="mt-2 text-sm text-slate-200">
-          {nextEventTitle ? `Next scheduled event: ${nextEventTitle}.` : 'No upcoming event is scheduled yet.'}
-        </p>
       </div>
     </div>
   </div>
 );
 
 const ShutdownStep: React.FC<{
-  step: string;
   title: string;
   detail: string;
-  ctaLabel: string;
-  onClick: () => void;
-  disabled?: boolean;
-}> = ({ step, title, detail, ctaLabel, onClick, disabled = false }) => (
-  <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-    <div className="flex items-start gap-3">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/[0.08] text-xs font-semibold text-slate-100">
-        {step}
-      </div>
-      <div className="min-w-0">
+  actionLabel?: string;
+  onAction?: () => void;
+}> = ({ title, detail, actionLabel, onAction }) => (
+  <div className="rounded-[20px] border border-white/8 bg-black/20 p-4">
+    <div className="flex items-start justify-between gap-4">
+      <div>
         <p className="text-sm font-semibold text-slate-100">{title}</p>
         <p className="mt-2 text-sm leading-6 text-slate-400">{detail}</p>
+      </div>
+      {actionLabel && onAction && (
         <button
           type="button"
-          onClick={onClick}
-          disabled={disabled}
-          className="mt-4 rounded-full border border-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-200 transition hover:border-white/20 hover:bg-white/[0.04] disabled:opacity-40"
+          onClick={onAction}
+          className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-xs font-medium text-slate-200 transition hover:border-white/20 hover:bg-white/[0.05]"
         >
-          {ctaLabel}
+          {actionLabel}
         </button>
-      </div>
+      )}
     </div>
   </div>
 );
+
+const demoRecommendations: Recommendation[] = [
+  {
+    id: 'demo-priority-block',
+    title: 'Protect one 90-minute block',
+    description: 'Reserve one uninterrupted block for the most important open work.',
+    rationale: 'One protected block usually changes the quality of the day more than several shallow wins.',
+    category: Category.WORK,
+    impactScore: 8,
+    status: 'ACTIVE',
+    steps: ['Pick the key task', 'Block 90 minutes', 'Silence distractions'],
+    ownerId: 'system',
+    estimatedTime: '90m',
+    inputs: [],
+    definitionOfDone: 'The most important block is complete.',
+    risks: ['Context switching'],
+    needsReview: false,
+    missingFields: [],
+    createdAt: Date.now(),
+    evidenceLinks: { claims: [], sources: [] },
+  },
+  {
+    id: 'demo-open-loop',
+    title: 'Close one open loop',
+    description: 'Pick the unresolved item causing the most drag and define the next step.',
+    rationale: 'Mental clarity improves when the largest unresolved loop becomes explicit and scheduled.',
+    category: Category.PERSONAL,
+    impactScore: 7,
+    status: 'ACTIVE',
+    steps: ['Name the loop', 'Write the next step', 'Schedule it'],
+    ownerId: 'system',
+    estimatedTime: '10m',
+    inputs: [],
+    definitionOfDone: 'The next step is explicit and scheduled.',
+    risks: ['Keeping it vague'],
+    needsReview: false,
+    missingFields: [],
+    createdAt: Date.now(),
+    evidenceLinks: { claims: [], sources: [] },
+  },
+];
+
+const RecommendationsPanel: React.FC<{
+  recommendations: Recommendation[];
+  onKeepRecommendation?: (id: string) => void;
+  onRemoveRecommendation?: (id: string) => void;
+}> = ({ recommendations, onKeepRecommendation, onRemoveRecommendation }) => {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [dismissedIds, setDismissedIds] = useState<Record<string, boolean>>({});
+  const [keptIds, setKeptIds] = useState<Record<string, boolean>>({});
+
+  const liveRecommendations = recommendations
+    .filter((item) => item.status === 'ACTIVE')
+    .sort((a, b) => b.impactScore - a.impactScore)
+    .slice(0, 2);
+
+  const items = (liveRecommendations.length > 0 ? liveRecommendations : demoRecommendations).filter(
+    (item) => !dismissedIds[item.id]
+  );
+
+  return (
+    <section className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
+      <div>
+        <p className="text-sm font-semibold text-slate-100">Suggestions</p>
+        <p className="mt-1 text-xs text-slate-400">A small set of moves worth considering.</p>
+      </div>
+
+      <div className="mt-4 space-y-2.5">
+        {items.map((rec) => {
+          const expanded = expandedId === rec.id;
+          const isDemo = rec.ownerId === 'system' || rec.id.startsWith('demo-');
+
+          return (
+            <article
+              key={rec.id}
+              data-testid="rec-card"
+              data-rec-id={rec.id}
+              onClick={() => setExpandedId(expanded ? null : rec.id)}
+              className={`cursor-pointer rounded-[18px] border p-3 transition ${
+                expanded
+                  ? 'border-[#86a8ff]/22 bg-[#86a8ff]/[0.06]'
+                  : 'border-white/8 bg-black/20 hover:border-white/20'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-100">{rec.title}</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-400">{rec.description}</p>
+                </div>
+                <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-semibold text-slate-300">
+                  {Math.max(0, Math.round(rec.impactScore || 0))}
+                </span>
+              </div>
+
+              {expanded && (
+                <div className="mt-3 space-y-3 border-t border-white/8 pt-3">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                      Rationale
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-slate-300">{rec.rationale}</p>
+                  </div>
+
+                  {Array.isArray(rec.steps) && rec.steps.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                        Steps
+                      </p>
+                      <ul className="mt-1 space-y-1">
+                        {rec.steps.slice(0, 3).map((step, index) => (
+                          <li key={`${rec.id}-step-${index}`} className="text-xs text-slate-300">
+                            {index + 1}. {step}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {onKeepRecommendation && !keptIds[rec.id] && (
+                      <button
+                        type="button"
+                        data-testid="rec-keep"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setKeptIds((prev) => ({ ...prev, [rec.id]: true }));
+                          if (!isDemo) onKeepRecommendation(rec.id);
+                        }}
+                        className="rounded-full border border-emerald-300/25 bg-emerald-500/[0.08] px-3 py-1 text-[11px] font-medium text-emerald-200"
+                      >
+                        Keep
+                      </button>
+                    )}
+                    {onRemoveRecommendation && !dismissedIds[rec.id] && (
+                      <button
+                        type="button"
+                        data-testid="rec-remove"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setDismissedIds((prev) => ({ ...prev, [rec.id]: true }));
+                          if (!isDemo) onRemoveRecommendation(rec.id);
+                        }}
+                        className="rounded-full border border-rose-300/25 bg-rose-500/[0.08] px-3 py-1 text-[11px] font-medium text-rose-200"
+                      >
+                        Remove
+                      </button>
+                    )}
+                    {keptIds[rec.id] && (
+                      <span className="text-[11px] font-medium text-emerald-300">Kept</span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+};
