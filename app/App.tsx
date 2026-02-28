@@ -257,7 +257,7 @@ const App: React.FC = () => {
 
   return (
     <div
-      className={`flex h-screen overflow-hidden ${isDarkMode ? 'bg-[#070b14] text-slate-100' : 'bg-slate-100 text-slate-900'}`}
+      className={`flex h-screen overflow-hidden ${isDarkMode ? 'bg-[var(--bg-app)] text-slate-100' : 'bg-slate-100 text-slate-900'}`}
     >
       <Sidebar
         activeTab={activeTab}
@@ -270,7 +270,7 @@ const App: React.FC = () => {
       />
 
       <main className="relative flex flex-1 flex-col overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(91,140,255,0.08),transparent_34%),radial-gradient(circle_at_86%_0%,rgba(59,130,246,0.05),transparent_28%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(126,163,255,0.08),transparent_30%),radial-gradient(circle_at_86%_0%,rgba(96,165,250,0.04),transparent_26%)]" />
         {!isOnline && <NetworkBanner />}
         <Header
           activeTab={activeTab}
@@ -292,7 +292,7 @@ const App: React.FC = () => {
           actionLabel={toast?.actionLabel}
         />
 
-        <div className="relative flex-1 overflow-y-auto p-6 xl:p-10 no-scrollbar">
+        <div className="relative flex-1 overflow-y-auto p-5 xl:p-8 no-scrollbar">
           <ErrorBoundary>
             <Suspense fallback={LoadingFallback}>
               <div

@@ -15,41 +15,27 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   stats = [],
 }) => {
   return (
-    <section className="rounded-[28px] border border-white/10 bg-[linear-gradient(165deg,rgba(17,24,39,0.88),rgba(6,10,18,0.96))] p-6 shadow-[0_18px_48px_rgba(0,0,0,0.22)] xl:p-7">
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-            Today
-          </p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-100 xl:text-[2.1rem]">
+    <section className="rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(24,34,50,0.92),rgba(16,22,32,0.88))] px-6 py-6 shadow-[0_18px_48px_rgba(0,0,0,0.22)] xl:px-7 xl:py-7">
+      <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+        <div className="max-w-3xl">
+          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Today</p>
+          <h2 className="mt-2 text-[2rem] font-semibold tracking-[-0.04em] text-slate-100 xl:text-[2.35rem]">
             {greeting}
-          </h1>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">{summary}</p>
+          </h2>
+          <p className="mt-3 text-[15px] leading-7 text-slate-300">{summary}</p>
         </div>
 
-        <div className="rounded-[24px] border border-white/10 bg-black/20 p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-            What this page is for
-          </p>
-          <p className="mt-2 text-sm leading-6 text-slate-300">
-            Start from the next meaningful action, review what needs attention, then capture new
-            signals when reality changes.
-          </p>
-        </div>
+        {stats.length > 0 && (
+          <div className="grid grid-cols-3 gap-3 xl:min-w-[360px]">
+            {stats.map((stat) => (
+              <div key={stat.label} className="rounded-2xl border border-white/8 bg-black/20 px-4 py-3">
+                <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500">{stat.label}</p>
+                <p className="mt-1 text-base font-semibold text-slate-100">{stat.value}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-
-      {stats.length > 0 && (
-        <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-3">
-          {stats.map((stat) => (
-            <div key={stat.label} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                {stat.label}
-              </p>
-              <p className="mt-1 text-xl font-semibold text-slate-100">{stat.value}</p>
-            </div>
-          ))}
-        </div>
-      )}
     </section>
   );
 };

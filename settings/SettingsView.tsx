@@ -237,10 +237,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6 px-4 pb-32 pt-6">
-      <section className="rounded-[26px] border border-white/10 bg-[linear-gradient(160deg,rgba(17,24,39,0.82),rgba(7,12,22,0.92))] p-6">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-200">Settings</p>
-        <h3 className="mt-1 text-3xl font-semibold tracking-tight text-slate-100">Workspace Controls</h3>
-        <p className="mt-2 text-sm text-slate-300">Keep setup clean, reliable, and easy to manage.</p>
+      <section className="rounded-[26px] border border-white/8 bg-[linear-gradient(180deg,rgba(24,34,50,0.92),rgba(16,22,32,0.88))] p-6">
+        <h3 className="text-3xl font-semibold tracking-tight text-slate-100">Workspace Controls</h3>
+        <p className="mt-2 text-sm text-slate-400">Health, sync, backups, and Telegram.</p>
 
         {statusMessage && (
           <div
@@ -258,11 +257,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         )}
       </section>
 
-      <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+      <section className="rounded-2xl border border-white/8 bg-white/[0.025] p-5">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Server size={16} className="text-cyan-300" />
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">System Health</p>
+            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">System Health</p>
           </div>
           <button
             type="button"
@@ -327,10 +326,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       </section>
 
       <section className="grid gap-4 xl:grid-cols-2">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+        <div className="rounded-2xl border border-white/8 bg-white/[0.025] p-5">
           <div className="mb-3 flex items-center gap-2">
             <Monitor size={16} className="text-blue-200" />
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Appearance</p>
+            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Appearance</p>
           </div>
           <div className="flex items-center justify-between rounded-xl border border-white/10 bg-black/20 px-4 py-3">
             <div className="flex items-center gap-3">
@@ -358,10 +357,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+        <div className="rounded-2xl border border-white/8 bg-white/[0.025] p-5">
           <div className="mb-3 flex items-center gap-2">
             <HardDrive size={16} className="text-blue-200" />
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Local Storage</p>
+            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Local Storage</p>
           </div>
           <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
             <div className="flex items-center justify-between">
@@ -379,10 +378,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       </section>
 
-      <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+      <section className="rounded-2xl border border-white/8 bg-white/[0.025] p-5">
         <div className="mb-4 flex items-center gap-2">
           <SparklesIcon />
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Daily Rules</p>
+          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Daily Rules</p>
         </div>
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <VaultInput
@@ -413,10 +412,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       </section>
 
-      <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+      <section className="rounded-2xl border border-white/8 bg-white/[0.025] p-5">
         <div className="mb-4 flex items-center gap-2">
           <Database size={16} className="text-emerald-300" />
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Backups</p>
+          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Backups</p>
         </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <button
@@ -453,10 +452,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       </section>
 
       <section className="grid gap-4 xl:grid-cols-2">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+        <div className="rounded-2xl border border-white/8 bg-white/[0.025] p-5">
           <div className="mb-4 flex items-center gap-2">
             <MessageCircle size={16} className="text-sky-300" />
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Telegram</p>
+            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Telegram</p>
           </div>
           {!supabaseReady ? (
             <p className="mb-3 rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">

@@ -16,35 +16,29 @@ interface HeaderProps {
 const TAB_META: Record<
   string,
   {
-    eyebrow: string;
     title: string;
-    description: string;
+    subtitle: string;
   }
 > = {
   dashboard: {
-    eyebrow: 'Dashboard',
     title: 'Daily command center',
-    description: 'See what matters now, what is pending, and what deserves your next action.',
+    subtitle: 'See what matters now.',
   },
   vault: {
-    eyebrow: 'My Life',
     title: 'Identity, memory, and knowledge graph',
-    description: 'Review what Areté knows about you and keep your profile grounded in reality.',
+    subtitle: 'Maintain the facts Aura should trust.',
   },
   stream: {
-    eyebrow: 'Journal',
     title: 'Categorized life timeline and logs',
-    description: 'Search and inspect your journal history without losing the thread.',
+    subtitle: 'Scan your journal without losing the thread.',
   },
   chat: {
-    eyebrow: 'Assistant',
     title: 'Ask Aura from your private context',
-    description: 'Use your private vault as context and ask for guidance, summaries, or next moves.',
+    subtitle: 'Use your vault as context for decisions and reflection.',
   },
   settings: {
-    eyebrow: 'Settings',
     title: 'Workspace controls',
-    description: 'Check system health, Telegram, sync, backups, and workspace behavior.',
+    subtitle: 'Health, Telegram, backups, and behavior.',
   },
 };
 
@@ -60,20 +54,17 @@ export const Header: React.FC<HeaderProps> = ({
   const completion = getProfileCompletion(profile);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0b1220]/88 px-6 py-4 backdrop-blur-xl xl:px-8">
-      <div className="flex items-center justify-between gap-6">
+    <header className="sticky top-0 z-40 border-b border-white/8 bg-[#0e151f]/88 px-6 py-3 backdrop-blur-xl xl:px-8">
+      <div className="flex items-center justify-between gap-5">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-            {meta.eyebrow}
-          </p>
-          <h1 className="mt-1 text-xl font-semibold tracking-tight text-slate-100 xl:text-2xl">
+          <h1 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-slate-100 xl:text-[1.8rem]">
             {meta.title}
           </h1>
-          <p className="mt-1 max-w-3xl text-sm text-slate-400">{meta.description}</p>
+          <p className="mt-1 text-sm text-slate-400">{meta.subtitle}</p>
         </div>
 
         <div className="flex shrink-0 items-center gap-3">
-          <div className="hidden items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 xl:flex">
+          <div className="hidden items-center gap-2 rounded-full border border-white/8 bg-white/[0.03] px-3 py-2 xl:flex">
             <span
               className={`h-2 w-2 rounded-full ${
                 isGeneratingTasks ? 'animate-pulse bg-amber-400' : 'bg-emerald-400'
@@ -87,10 +78,10 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={onOpenCommandPalette}
-            className="hidden items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-slate-300 transition hover:border-white/20 hover:bg-white/[0.05] xl:flex"
+            className="hidden items-center gap-3 rounded-full border border-white/8 bg-white/[0.03] px-4 py-2 text-slate-300 transition hover:border-white/18 hover:bg-white/[0.05] xl:flex"
           >
             <Search size={14} className="text-slate-400" />
-            <span className="text-xs font-medium">Search or run command</span>
+            <span className="text-xs font-medium">Search</span>
             <span className="ml-1 flex items-center gap-1 rounded-md border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
               <Command size={10} /> K
             </span>
@@ -100,16 +91,16 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={onOpenProfile}
-              className="group flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-1.5 pl-3 transition hover:border-white/20 hover:bg-white/[0.05]"
+              className="group flex items-center gap-3 rounded-full border border-white/8 bg-white/[0.03] p-1.5 pl-3 transition hover:border-white/18 hover:bg-white/[0.05]"
             >
               <div className="hidden text-right sm:block">
                 <p className="text-xs font-semibold text-slate-100">{userName}</p>
-                <p className="text-[11px] text-slate-400">{completion.overall}% complete</p>
+                <p className="text-[11px] text-slate-500">{completion.overall}% complete</p>
               </div>
               <div className="relative">
-                <ProfileCompletionRing profile={profile} size={38} strokeWidth={4} showText={false} />
+                <ProfileCompletionRing profile={profile} size={36} strokeWidth={4} showText={false} />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-md border border-blue-300/30 bg-blue-500/20 text-[10px] font-bold text-blue-100">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#7ea3ff] text-[10px] font-bold text-slate-950">
                     {userName.charAt(0).toUpperCase()}
                   </div>
                 </div>

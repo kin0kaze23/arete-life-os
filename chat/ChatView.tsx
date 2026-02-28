@@ -26,19 +26,19 @@ interface ChatViewProps {
 const SUGGESTIONS = [
   {
     text: 'Analyze my recent financial pulse',
-    icon: <Wallet size={16} className="text-emerald-400" />,
+    icon: <Wallet size={15} className="text-emerald-400" />,
   },
   {
     text: 'Summarize my biometric patterns',
-    icon: <Heart size={16} className="text-rose-400" />,
+    icon: <Heart size={15} className="text-rose-400" />,
   },
   {
     text: 'What is my primary mission today?',
-    icon: <BrainCircuit size={16} className="text-indigo-400" />,
+    icon: <BrainCircuit size={15} className="text-indigo-400" />,
   },
   {
     text: 'Detect inconsistencies in my goals',
-    icon: <TrendingUp size={16} className="text-cyan-400" />,
+    icon: <TrendingUp size={15} className="text-cyan-400" />,
   },
 ];
 
@@ -57,21 +57,21 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const hasMessages = chatHistory.length > 0;
 
   return (
-    <section className="mx-auto grid h-[calc(100vh-236px)] w-full max-w-[1360px] grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
-      <div className="flex min-w-0 flex-col rounded-[28px] border border-white/10 bg-white/[0.03] p-5 xl:p-6">
-        <div className="border-b border-white/10 pb-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-            Assistant
-          </p>
-          <h3 className="mt-1 text-2xl font-semibold tracking-tight text-slate-100">
-            Ask Aura from your private context
-          </h3>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-            Ask questions about your journal, routines, priorities, and patterns. Add{' '}
-            <span className="rounded bg-white/[0.05] px-1.5 py-0.5 text-blue-200">#research</span>{' '}
-            when you explicitly want grounded current information.
-          </p>
-          <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-1.5">
+    <section className="mx-auto grid h-[calc(100vh-224px)] w-full max-w-[1400px] grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
+      <div className="flex min-w-0 flex-col rounded-[28px] border border-white/8 bg-white/[0.025] p-5 xl:p-6">
+        <div className="flex flex-col gap-4 border-b border-white/8 pb-4 xl:flex-row xl:items-center xl:justify-between">
+          <div>
+            <h3 className="text-2xl font-semibold tracking-tight text-slate-100">
+              Ask Aura from your private context
+            </h3>
+            <p className="mt-2 text-sm text-slate-400">
+              Ask one direct question at a time. Add{' '}
+              <span className="rounded bg-white/[0.05] px-1.5 py-0.5 text-blue-200">#research</span>{' '}
+              only when you need current external information.
+            </p>
+          </div>
+
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-1.5">
             <MessageSquare size={14} className="text-blue-200" />
             <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-300">
               Conversation
@@ -79,24 +79,24 @@ export const ChatView: React.FC<ChatViewProps> = ({
           </div>
         </div>
 
-        <div ref={scrollRef} className="premium-scrollbar flex-1 overflow-y-auto pb-4 pt-5 pr-2">
+        <div ref={scrollRef} className="premium-scrollbar flex-1 overflow-y-auto pb-4 pt-5 pr-1">
           {!hasMessages ? (
-            <div className="flex h-full flex-col items-center justify-center px-4 text-center">
+            <div className="flex h-full flex-col justify-center">
               <EmptyState
                 icon={<MessageSquare />}
                 title="Ask Aura"
                 description="Start with one concrete question. The clearer the question, the more useful the answer."
               />
-              <div className="mt-8 grid w-full max-w-3xl grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="mt-7 grid w-full max-w-3xl grid-cols-1 gap-3 md:grid-cols-2">
                 {SUGGESTIONS.map((suggestion) => (
                   <button
                     key={suggestion.text}
                     type="button"
                     onClick={() => onSendMessage(suggestion.text)}
-                    className="rounded-2xl border border-white/10 bg-black/20 p-4 text-left transition hover:border-blue-300/35 hover:bg-blue-500/[0.08]"
+                    className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4 text-left transition hover:border-blue-300/35 hover:bg-blue-500/[0.08]"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/[0.05]">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.05]">
                         {suggestion.icon}
                       </span>
                       <span className="text-sm font-medium text-slate-200">{suggestion.text}</span>
@@ -115,22 +115,16 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   <div
                     className={`max-w-[86%] rounded-2xl border p-4 md:p-5 ${
                       chat.role === 'user'
-                        ? 'border-blue-300/40 bg-blue-500/20 text-slate-100'
+                        ? 'border-blue-300/35 bg-blue-500/18 text-slate-100'
                         : 'border-white/10 bg-black/20 text-slate-200'
                     }`}
                   >
                     <div className="prose prose-sm prose-invert max-w-none">
                       <ReactMarkdown
                         components={{
-                          p: ({ children }) => (
-                            <p className="mb-3 last:mb-0 leading-relaxed">{children}</p>
-                          ),
-                          ul: ({ children }) => (
-                            <ul className="mb-3 ml-5 list-disc space-y-1.5">{children}</ul>
-                          ),
-                          ol: ({ children }) => (
-                            <ol className="mb-3 ml-5 list-decimal space-y-1.5">{children}</ol>
-                          ),
+                          p: ({ children }) => <p className="mb-3 last:mb-0 leading-relaxed">{children}</p>,
+                          ul: ({ children }) => <ul className="mb-3 ml-5 list-disc space-y-1.5">{children}</ul>,
+                          ol: ({ children }) => <ol className="mb-3 ml-5 list-decimal space-y-1.5">{children}</ol>,
                           code: ({ inline, children }: any) =>
                             inline ? (
                               <code className="rounded bg-slate-900 px-1.5 py-0.5 font-mono text-xs text-blue-200">
@@ -192,21 +186,19 @@ export const ChatView: React.FC<ChatViewProps> = ({
         </div>
       </div>
 
-      <aside className="space-y-4 rounded-[28px] border border-white/10 bg-white/[0.03] p-5 xl:p-6">
-        <div className="rounded-2xl border border-blue-300/25 bg-blue-500/10 p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-200">
-            Context mode
-          </p>
-          <p className="mt-2 text-sm leading-6 text-slate-200">
-            Aura answers from your vault first. Ask one direct question at a time for the clearest result.
+      <aside className="space-y-4 rounded-[28px] border border-white/8 bg-white/[0.025] p-5">
+        <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Mode</p>
+          <p className="mt-2 text-sm leading-6 text-slate-300">
+            Aura answers from your vault first, then cites external sources only when asked.
           </p>
         </div>
 
         <div>
           <div className="flex items-center gap-2">
             <Sparkles size={14} className="text-slate-300" />
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-              Quick prompts
+            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
+              Starters
             </p>
           </div>
           <div className="mt-3 space-y-2">
@@ -224,13 +216,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
               </button>
             ))}
           </div>
-        </div>
-
-        <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Useful pattern</p>
-          <p className="mt-2 text-xs leading-6 text-slate-300">
-            Best prompt shape: context + timeframe + question. Example: “Review my last 7 days of finance signals and tell me what changed.”
-          </p>
         </div>
       </aside>
     </section>

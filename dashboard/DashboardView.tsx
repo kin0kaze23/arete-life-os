@@ -225,6 +225,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     window.dispatchEvent(new CustomEvent('logbar:insert', { detail: { template } }));
   };
 
+  const scrollToSection = (id: string) => {
+    if (typeof document === 'undefined') return;
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   useEffect(() => {
     const now = Date.now();
     const categories = [
@@ -264,115 +269,79 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }, [memory, goals, onToast]);
 
   return (
-    <div className="mx-auto w-full max-w-[1480px] space-y-6 pb-32">
+    <div className="mx-auto w-full max-w-[1460px] space-y-6 pb-32">
       <DashboardHeader greeting={greeting} summary={headerSummary} stats={headerStats} />
 
       {memory.length === 0 && (
-        <section className="rounded-[24px] border border-blue-400/20 bg-blue-500/[0.06] p-6">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-200">
-            Start here
-          </p>
-          <h2 className="mt-2 text-xl font-semibold text-white">
-            The dashboard gets better after your first few real signals.
-          </h2>
-          <div className="mt-5 grid grid-cols-1 gap-3 xl:grid-cols-3">
-            <button
-              type="button"
-              onClick={() => handleInsertTemplate('DAILY_CHECKIN')}
-              className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/20 p-4 text-left transition hover:border-blue-300/35"
-            >
-              <BookOpen size={16} className="mt-0.5 shrink-0 text-blue-200" />
-              <div>
-                <p className="text-sm font-semibold text-white">Daily check-in</p>
-                <p className="mt-1 text-xs text-slate-400">
-                  Log energy, focus, mood, and what feels most important today.
-                </p>
-              </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleInsertTemplate('SCHEDULE_EVENT')}
-              className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/20 p-4 text-left transition hover:border-blue-300/35"
-            >
-              <CalendarPlus size={16} className="mt-0.5 shrink-0 text-emerald-300" />
-              <div>
-                <p className="text-sm font-semibold text-white">Schedule an event</p>
-                <p className="mt-1 text-xs text-slate-400">
-                  Add a real upcoming event so Areté can prepare you for it.
-                </p>
-              </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleInsertTemplate('WORK_PROGRESS')}
-              className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/20 p-4 text-left transition hover:border-blue-300/35"
-            >
-              <Target size={16} className="mt-0.5 shrink-0 text-amber-300" />
-              <div>
-                <p className="text-sm font-semibold text-white">Log work progress</p>
-                <p className="mt-1 text-xs text-slate-400">
-                  Capture what moved and what the next step should be.
-                </p>
-              </div>
-            </button>
+        <section className="rounded-[24px] border border-[#7ea3ff]/20 bg-[#7ea3ff]/[0.07] px-6 py-5">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-blue-200">
+                Start here
+              </p>
+              <h2 className="mt-1 text-xl font-semibold text-white">
+                Add a few real signals so this page can become specific.
+              </h2>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <ActionPill
+                label="Log Check-In"
+                icon={<BookOpen size={14} />}
+                onClick={() => handleInsertTemplate('DAILY_CHECKIN')}
+              />
+              <ActionPill
+                label="Schedule Event"
+                icon={<CalendarPlus size={14} />}
+                onClick={() => handleInsertTemplate('SCHEDULE_EVENT')}
+              />
+              <ActionPill
+                label="Log Work"
+                icon={<Target size={14} />}
+                onClick={() => handleInsertTemplate('WORK_PROGRESS')}
+              />
+            </div>
           </div>
         </section>
       )}
 
-      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.12fr)_380px]">
+      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.2fr)_360px]">
         <div className="space-y-6">
-          <section className="rounded-[24px] border border-white/10 bg-white/[0.02] p-5 xl:p-6">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <section className="rounded-[26px] border border-white/8 bg-white/[0.025] p-5 xl:p-6">
+            <div className="flex items-center justify-between gap-3 border-b border-white/8 pb-5">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                  Today at a glance
-                </p>
-                <h2 className="mt-1 text-2xl font-semibold text-slate-100">Start with the next best move</h2>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
-                  Use one of these direct actions, then work from the execution board below.
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-3 xl:w-[300px]">
-                <SummaryMetric label="Open focus" value={String(openTasks)} />
-                <SummaryMetric label="Inbox pending" value={String(inboxEntries.length)} />
-                <SummaryMetric label="High risks" value={String(highRiskCount)} />
-                <SummaryMetric label="Active recs" value={String(recommendations.length)} />
-              </div>
-            </div>
-
-            <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
-              <QuickActionCard
-                title="Log Check-In"
-                description="Capture mood, focus, and energy."
-                onClick={() => handleInsertTemplate('DAILY_CHECKIN')}
-              />
-              <QuickActionCard
-                title="Open Journal"
-                description="Review your categorized timeline."
-                onClick={() => onNavigate('stream')}
-              />
-              <QuickActionCard
-                title="Ask Assistant"
-                description="Get advice from your private context."
-                onClick={() => onNavigate('chat')}
-              />
-            </div>
-          </section>
-
-          <section className="rounded-[24px] border border-white/10 bg-white/[0.02] p-5 xl:p-6">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
                   Execution board
                 </p>
-                <h2 className="mt-1 text-2xl font-semibold text-slate-100">Focus for today</h2>
+                <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-100">
+                  Focus for today
+                </h2>
+                <p className="mt-2 text-sm text-slate-400">One main queue. One clear next step.</p>
               </div>
               <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-slate-300">
                 {openTasks} open item{openTasks === 1 ? '' : 's'}
               </div>
             </div>
 
-            <div className="mt-5 xl:max-h-[860px] xl:overflow-y-auto xl:pr-1">
+            <div className="mt-4 flex flex-wrap gap-2">
+              <ActionPill
+                label="Log Check-In"
+                icon={<BookOpen size={14} />}
+                onClick={() => handleInsertTemplate('DAILY_CHECKIN')}
+              />
+              <ActionPill
+                label="Open Journal"
+                icon={<BookOpen size={14} />}
+                onClick={() => onNavigate('stream')}
+              />
+              <ActionPill
+                label="Ask Assistant"
+                icon={<Sparkles size={14} />}
+                onClick={() => onNavigate('chat')}
+              />
+            </div>
+
+            <div className="mt-5 xl:max-h-[900px] xl:overflow-y-auto xl:pr-1">
               <FocusList
                 tasks={focusTasks}
                 habitItems={habitItems}
@@ -389,28 +358,47 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
-          <section className="rounded-[24px] border border-white/10 bg-white/[0.02] p-5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-              Worth attention
-            </p>
+          <section className="rounded-[26px] border border-white/8 bg-[linear-gradient(180deg,rgba(24,34,50,0.9),rgba(16,22,32,0.84))] p-5">
+            <div className="flex items-center gap-2">
+              <ShieldAlert size={14} className="text-blue-200" />
+              <p className="text-sm font-semibold text-slate-100">Life pulse</p>
+            </div>
             <div className="mt-4 space-y-3">
-              <AttentionRow label="Profile completion" value={`${profileCompletion}%`} />
-              <AttentionRow label="Next event" value={nextEvent ? nextEvent.title : 'No upcoming events'} />
-              <AttentionRow
-                label="Best recommendation"
-                value={recommendedMoves[0]?.title || 'Ask Aura for a recommendation'}
+              <PulseRow
+                label="Profile"
+                value={`${profileCompletion}% complete`}
+                onClick={() => onNavigate('vault')}
               />
-              <AttentionRow
-                label="Inbox state"
+              <PulseRow
+                label="Inbox"
                 value={inboxEntries.length > 0 ? `${inboxEntries.length} pending` : 'Clear'}
+                onClick={() => scrollToSection('dashboard-inbox')}
+              />
+              <PulseRow
+                label="Next event"
+                value={nextEvent ? nextEvent.title : 'None scheduled'}
+                onClick={() => scrollToSection('dashboard-upcoming')}
+              />
+              <PulseRow
+                label="Top recommendation"
+                value={recommendedMoves[0]?.title || 'No recommendation yet'}
+                onClick={() => scrollToSection('dashboard-recommendations')}
+              />
+              <PulseRow
+                label="Risks"
+                value={highRiskCount > 0 ? `${highRiskCount} high` : 'Stable'}
+                onClick={() => scrollToSection('dashboard-recommendations')}
               />
             </div>
           </section>
 
-          <section className="rounded-[24px] border border-white/10 bg-white/[0.02] p-5">
+          <section
+            id="dashboard-inbox"
+            className="rounded-[26px] border border-white/8 bg-white/[0.025] p-5"
+          >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
+                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-emerald-300">
                   Inbox
                 </p>
                 <p className="mt-1 text-sm text-slate-200">
@@ -492,7 +480,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </section>
 
-          <section className="rounded-[24px] border border-white/10 bg-white/[0.02] p-5">
+          <section
+            id="dashboard-upcoming"
+            className="rounded-[26px] border border-white/8 bg-white/[0.025] p-5"
+          >
             <div className="mb-3 flex items-center gap-2">
               <Sparkles size={14} className="text-blue-200" />
               <p className="text-sm font-semibold text-slate-100">Upcoming</p>
@@ -506,18 +497,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             />
           </section>
 
-          <StatusSidebar
-            profile={profile}
-            completion={profileCompletion}
-            blindSpots={blindSpots}
-            recommendations={recommendations}
-            onNavigate={onNavigate}
-            onActivate={(rec) => activatePrepPlan?.(rec, (rec as any).metadata?.eventId)}
-            onKeepRecommendation={keepRecommendation}
-            onRemoveRecommendation={removeRecommendation}
-            alwaysDoChips={alwaysDoChips}
-            alwaysWatchChips={alwaysWatchChips}
-          />
+          <div id="dashboard-recommendations">
+            <StatusSidebar
+              profile={profile}
+              completion={profileCompletion}
+              blindSpots={blindSpots}
+              recommendations={recommendations}
+              onNavigate={onNavigate}
+              onActivate={(rec) => activatePrepPlan?.(rec, (rec as any).metadata?.eventId)}
+              onKeepRecommendation={keepRecommendation}
+              onRemoveRecommendation={removeRecommendation}
+              alwaysDoChips={alwaysDoChips}
+              alwaysWatchChips={alwaysWatchChips}
+            />
+          </div>
         </aside>
       </section>
 
@@ -544,31 +537,42 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   );
 };
 
-const QuickActionCard: React.FC<{
-  title: string;
-  description: string;
+const ActionPill: React.FC<{
+  label: string;
+  icon: React.ReactNode;
   onClick: () => void;
-}> = ({ title, description, onClick }) => (
+}> = ({ label, icon, onClick }) => (
   <button
     type="button"
     onClick={onClick}
-    className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4 text-left transition hover:border-blue-300/35 hover:bg-blue-500/[0.08]"
+    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3.5 py-2 text-sm font-medium text-slate-200 transition hover:border-blue-300/35 hover:bg-blue-500/[0.08]"
   >
-    <p className="text-sm font-semibold text-slate-100">{title}</p>
-    <p className="mt-1 text-xs text-slate-400">{description}</p>
+    {icon}
+    {label}
   </button>
 );
 
-const SummaryMetric: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-3">
-    <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500">{label}</p>
-    <p className="mt-1 text-lg font-semibold text-slate-100">{value}</p>
-  </div>
-);
+const PulseRow: React.FC<{ label: string; value: string; onClick?: () => void }> = ({
+  label,
+  value,
+  onClick,
+}) => {
+  const classes =
+    'w-full rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-left transition hover:border-white/20 hover:bg-white/[0.04]';
 
-const AttentionRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-3">
-    <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500">{label}</p>
-    <p className="mt-1 text-sm font-semibold text-slate-100">{value}</p>
-  </div>
-);
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className={classes}>
+        <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500">{label}</p>
+        <p className="mt-1 text-sm font-semibold text-slate-100">{value}</p>
+      </button>
+    );
+  }
+
+  return (
+    <div className={classes}>
+      <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500">{label}</p>
+      <p className="mt-1 text-sm font-semibold text-slate-100">{value}</p>
+    </div>
+  );
+};

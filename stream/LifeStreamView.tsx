@@ -151,6 +151,7 @@ export const LifeStreamView: React.FC<LifeStreamViewProps> = ({ memory, profile,
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>(ALL_CATEGORY_FILTER);
   const [selectedSource, setSelectedSource] = useState<SourceFilter>('all');
   const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
+  const [showMindMap, setShowMindMap] = useState(false);
 
   const allLogs = useMemo<JournalLog[]>(() => {
     const logs: JournalLog[] = [];
@@ -260,137 +261,153 @@ export const LifeStreamView: React.FC<LifeStreamViewProps> = ({ memory, profile,
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1500px] space-y-6 pb-32">
-      <section className="rounded-[28px] border border-white/10 bg-[linear-gradient(165deg,rgba(17,24,39,0.9),rgba(8,12,24,0.92))] p-6 xl:p-7">
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-blue-200">
-              Journal intelligence
+    <div className="mx-auto w-full max-w-[1480px] space-y-5 pb-32">
+      <section className="rounded-[26px] border border-white/8 bg-[linear-gradient(180deg,rgba(24,34,50,0.92),rgba(16,22,32,0.88))] p-5 xl:p-6">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="max-w-3xl">
+            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
+              Journal
             </p>
-            <h3 className="mt-1 text-3xl font-semibold tracking-tight text-slate-100 xl:text-[2.1rem]">
-              Neural Mind Map
+            <h3 className="mt-1 text-2xl font-semibold tracking-tight text-slate-100 xl:text-[2rem]">
+              Search, sort, and inspect your logs
             </h3>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-              Browse your life like a notebook: filter by category, scan the entries, and inspect one
-              log at a time without losing the overall pattern.
+            <p className="mt-2 text-sm text-slate-400">
+              Use categories as lenses, then open one entry at a time.
             </p>
-
-            <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
-              <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search logs, facts, events..."
-                  className="w-full rounded-xl border border-white/15 bg-black/25 py-3 pl-10 pr-4 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-300/40 focus:outline-none"
-                />
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {(['all', 'memory', 'telegram', 'event'] as SourceFilter[]).map((source) => (
-                  <button
-                    key={source}
-                    type="button"
-                    onClick={() => setSelectedSource(source)}
-                    className={`rounded-xl border px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] transition ${
-                      selectedSource === source
-                        ? 'border-blue-300/40 bg-blue-500/18 text-blue-100'
-                        : 'border-white/15 bg-black/20 text-slate-300 hover:border-white/30'
-                    }`}
-                  >
-                    {source}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-              <MetricCard label="Visible Logs" value={String(filteredLogs.length)} />
-              <MetricCard label="Categories" value={String(visibleCategories.length)} />
-              <MetricCard label="Telegram" value={String(telegramCount)} />
-              <MetricCard label="Avg Confidence" value={`${averageConfidence}%`} />
-            </div>
           </div>
 
-          <div className="rounded-[24px] border border-white/10 bg-black/20 p-4">
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                  Constellation
-                </p>
-                <p className="mt-1 text-sm font-semibold text-slate-100">Category pattern</p>
-              </div>
-              <Sparkles size={14} className="text-blue-200" />
-            </div>
-
-            <div className="relative mt-4 h-[240px] overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_50%_40%,rgba(15,23,42,0.9),rgba(2,6,23,0.95))]">
-              <div className="absolute inset-0 opacity-20 [background-size:24px_24px] [background-image:linear-gradient(to_right,rgba(148,163,184,0.14)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.14)_1px,transparent_1px)]" />
-              <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                {visibleCategories.map((category, index) => {
-                  const { x, y } = getOrbitPosition(index, visibleCategories.length);
-                  return (
-                    <line
-                      key={`line-${category}`}
-                      x1="50"
-                      y1="50"
-                      x2={x}
-                      y2={y}
-                      stroke={
-                        selectedCategory === category
-                          ? 'rgba(191,219,254,0.85)'
-                          : 'rgba(148,163,184,0.24)'
-                      }
-                      strokeWidth={selectedCategory === category ? 0.44 : 0.22}
-                    />
-                  );
-                })}
-              </svg>
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-blue-300/30 bg-blue-500/16 px-4 py-3 text-center text-blue-100">
-                <p className="text-[10px] uppercase tracking-[0.14em] text-blue-200">Core</p>
-                <p className="text-sm font-semibold">
-                  {profile.identify?.name ? `${profile.identify.name.split(' ')[0]}'s journal` : 'Your journal'}
-                </p>
-              </div>
-              {visibleCategories.map((category, index) => {
-                const count = categoryStats.get(category)?.count || 0;
-                const maxCount = Math.max(
-                  ...visibleCategories.map((cat) => categoryStats.get(cat)?.count || 0),
-                  1
-                );
-                const size = 54 + Math.round((count / maxCount) * 18);
-                const { x, y } = getOrbitPosition(index, visibleCategories.length);
-                const tone = categoryTone(category);
-                const isActive = selectedCategory === category;
-                return (
-                  <button
-                    key={category}
-                    type="button"
-                    onClick={() =>
-                      setSelectedCategory((prev) => (prev === category ? ALL_CATEGORY_FILTER : category))
-                    }
-                    className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-2xl border px-2 py-2 text-center transition ${tone.node} ${
-                      isActive ? 'ring-2 ring-white/50' : 'hover:scale-105'
-                    }`}
-                    style={{ left: `${x}%`, top: `${y}%`, width: `${size}px`, minHeight: '48px' }}
-                  >
-                    <div className="mx-auto mb-1 flex w-fit items-center justify-center">
-                      {getCategoryIcon(category, 12)}
-                    </div>
-                    <p className="text-[9px] font-semibold uppercase tracking-[0.11em]">{category}</p>
-                    <p className="text-[11px] font-semibold">{count}</p>
-                  </button>
-                );
-              })}
-            </div>
+          <div className="flex flex-wrap gap-2">
+            <MetricCard label="Visible" value={String(filteredLogs.length)} />
+            <MetricCard label="Telegram" value={String(telegramCount)} />
+            <MetricCard label="Confidence" value={`${averageConfidence}%`} />
           </div>
+        </div>
+
+        <div className="mt-5 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_auto_auto]">
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search logs, facts, events..."
+              className="w-full rounded-2xl border border-white/10 bg-black/20 py-3 pl-10 pr-4 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-300/35 focus:outline-none"
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {(['all', 'memory', 'telegram', 'event'] as SourceFilter[]).map((source) => (
+              <button
+                key={source}
+                type="button"
+                onClick={() => setSelectedSource(source)}
+                className={`rounded-full border px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] transition ${
+                  selectedSource === source
+                    ? 'border-blue-300/35 bg-blue-500/14 text-blue-100'
+                    : 'border-white/10 bg-black/20 text-slate-300 hover:border-white/20'
+                }`}
+              >
+                {source}
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowMindMap((prev) => !prev)}
+            className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-medium transition ${
+              showMindMap
+                ? 'border-blue-300/35 bg-blue-500/14 text-blue-100'
+                : 'border-white/10 bg-black/20 text-slate-300 hover:border-white/20'
+            }`}
+          >
+            <Sparkles size={14} />
+            Neural Mind Map
+          </button>
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[260px_minmax(0,1fr)_360px]">
+      {showMindMap && (
+        <section className="rounded-[26px] border border-white/8 bg-white/[0.025] p-5 xl:p-6">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
+                Visualize
+              </p>
+              <p className="mt-1 text-sm text-slate-300">Category pattern across the visible journal set.</p>
+            </div>
+            <p className="text-xs text-slate-500">
+              {profile.identify?.name ? `${profile.identify.name.split(' ')[0]}'s journal` : 'Your journal'}
+            </p>
+          </div>
+
+          <div className="relative mt-5 h-[240px] overflow-hidden rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_50%_40%,rgba(15,23,42,0.88),rgba(3,7,18,0.96))]">
+            <div className="absolute inset-0 opacity-15 [background-size:24px_24px] [background-image:linear-gradient(to_right,rgba(148,163,184,0.14)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.14)_1px,transparent_1px)]" />
+            <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+              {visibleCategories.map((category, index) => {
+                const { x, y } = getOrbitPosition(index, visibleCategories.length);
+                return (
+                  <line
+                    key={`line-${category}`}
+                    x1="50"
+                    y1="50"
+                    x2={x}
+                    y2={y}
+                    stroke={
+                      selectedCategory === category
+                        ? 'rgba(191,219,254,0.85)'
+                        : 'rgba(148,163,184,0.24)'
+                    }
+                    strokeWidth={selectedCategory === category ? 0.44 : 0.22}
+                  />
+                );
+              })}
+            </svg>
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-blue-300/30 bg-blue-500/16 px-4 py-3 text-center text-blue-100">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-blue-200">Core</p>
+              <p className="text-sm font-semibold">
+                {profile.identify?.name ? `${profile.identify.name.split(' ')[0]}'s journal` : 'Your journal'}
+              </p>
+            </div>
+            {visibleCategories.map((category, index) => {
+              const count = categoryStats.get(category)?.count || 0;
+              const maxCount = Math.max(
+                ...visibleCategories.map((cat) => categoryStats.get(cat)?.count || 0),
+                1
+              );
+              const size = 54 + Math.round((count / maxCount) * 18);
+              const { x, y } = getOrbitPosition(index, visibleCategories.length);
+              const tone = categoryTone(category);
+              const isActive = selectedCategory === category;
+              return (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() =>
+                    setSelectedCategory((prev) => (prev === category ? ALL_CATEGORY_FILTER : category))
+                  }
+                  className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-2xl border px-2 py-2 text-center transition ${tone.node} ${
+                    isActive ? 'ring-2 ring-white/50' : 'hover:scale-105'
+                  }`}
+                  style={{ left: `${x}%`, top: `${y}%`, width: `${size}px`, minHeight: '48px' }}
+                >
+                  <div className="mx-auto mb-1 flex w-fit items-center justify-center">
+                    {getCategoryIcon(category, 12)}
+                  </div>
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.11em]">{category}</p>
+                  <p className="text-[11px] font-semibold">{count}</p>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[240px_minmax(0,1fr)_340px]">
         <aside className="rounded-[24px] border border-white/10 bg-white/[0.02] p-4 xl:p-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
             Categories
           </p>
-          <p className="mt-1 text-sm text-slate-300">Choose one lens, then scan the matching entries.</p>
+          <p className="mt-1 text-sm text-slate-300">Choose one lens.</p>
 
           <div className="mt-4 space-y-2">
             <button
@@ -442,11 +459,11 @@ export const LifeStreamView: React.FC<LifeStreamViewProps> = ({ memory, profile,
         <section className="rounded-[24px] border border-white/10 bg-white/[0.02] p-4 xl:p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Entries</p>
+              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Entries</p>
               <p className="mt-1 text-sm text-slate-300">
                 {selectedCategory === ALL_CATEGORY_FILTER
-                  ? 'Everything that matches your current search and source filters.'
-                  : `Logs filtered to ${selectedCategory.toLowerCase()}.`}
+                  ? 'Everything matching your filters.'
+                  : `Filtered to ${selectedCategory.toLowerCase()}.`}
               </p>
             </div>
             <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-slate-300">
@@ -504,7 +521,7 @@ export const LifeStreamView: React.FC<LifeStreamViewProps> = ({ memory, profile,
         </section>
 
         <aside className="rounded-[24px] border border-white/10 bg-white/[0.02] p-4 xl:p-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Selected entry</p>
+          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Selected entry</p>
           {!selectedLog ? (
             <div className="mt-4 rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-10 text-center text-sm text-slate-500">
               Choose one entry from the middle column.
