@@ -1,7 +1,7 @@
 import React from 'react';
+import { Search } from 'lucide-react';
 import { UserProfile } from '@/data/types';
 import { VaultSidebar } from './VaultSidebar';
-import { Search, Bell, Settings } from 'lucide-react';
 
 interface VaultShellProps {
   children: React.ReactNode;
@@ -9,9 +9,46 @@ interface VaultShellProps {
   onNavigate: (path: string) => void;
   profile: UserProfile;
   onSearch?: (query: string) => void;
-  onSettings?: () => void;
-  onNotification?: () => void;
 }
+
+const PATH_META: Record<string, { label: string; description: string }> = {
+  '/': {
+    label: 'Overview',
+    description: 'Start here to understand what your vault already contains and what needs filling in.',
+  },
+  '/stream/logs': {
+    label: 'Journal Records',
+    description: 'Browse raw memory entries and edit what should stay in your vault.',
+  },
+  '/stream/knowledge': {
+    label: 'Knowledge Base',
+    description: 'Review structured claims and keep only what is accurate and useful.',
+  },
+  '/identity/core': {
+    label: 'Core Profile',
+    description: 'Your name, origin, location, and foundational identity details.',
+  },
+  '/identity/personal': {
+    label: 'Personal Profile',
+    description: 'Your role, interests, personality, and working style.',
+  },
+  '/identity/bio': {
+    label: 'Health & Body',
+    description: 'Biological and health details that help Areté personalize guidance.',
+  },
+  '/identity/finance': {
+    label: 'Financial Assets',
+    description: 'Financial reality, commitments, and resources.',
+  },
+  '/identity/social': {
+    label: 'Relationships',
+    description: 'Important people, family context, and social dynamics.',
+  },
+  '/identity/spiritual': {
+    label: 'Beliefs & Values',
+    description: 'Convictions, non-negotiables, and deeper guiding principles.',
+  },
+};
 
 export const VaultShell: React.FC<VaultShellProps> = ({
   children,
@@ -19,49 +56,33 @@ export const VaultShell: React.FC<VaultShellProps> = ({
   onNavigate,
   profile,
   onSearch,
-  onSettings,
-  onNotification,
 }) => {
+  const meta = PATH_META[activePath] || {
+    label: 'My Life',
+    description: 'Review and maintain the personal knowledge that powers Areté.',
+  };
+
   return (
     <div className="flex h-full overflow-hidden rounded-[28px] border border-white/10 bg-[#091122] text-slate-200">
       <VaultSidebar activePath={activePath} onNavigate={onNavigate} profile={profile} />
 
       <div className="relative flex h-full flex-1 flex-col overflow-hidden bg-[#0d162a] text-slate-300">
-        <div className="shrink-0 border-b border-white/10 bg-[#0b1426]/80 px-6 py-4 backdrop-blur-sm">
-          <div className="flex items-center gap-4 flex-1">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-              Path
-            </span>
-            <span className="rounded-lg border border-blue-300/25 bg-blue-500/10 px-2 py-1 font-mono text-xs text-blue-200">
-              {activePath}
-            </span>
-          </div>
+        <div className="shrink-0 border-b border-white/10 bg-[#0b1426]/88 px-6 py-5 backdrop-blur-sm xl:px-8">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">My Life</p>
+              <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-100">{meta.label}</h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">{meta.description}</p>
+            </div>
 
-          <div className="flex items-center gap-4">
-            <div className="relative flex w-64 items-center rounded-lg border border-white/10 bg-black/20 px-2.5 py-2 transition-colors focus-within:border-blue-300/35">
-              <Search size={14} className="mr-2 text-slate-500" />
+            <div className="relative w-full xl:w-[320px]">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 type="text"
-                placeholder="Search profile, memory, knowledge..."
-                onChange={(e) => onSearch && onSearch(e.target.value)}
-                className="w-full border-none bg-transparent text-xs text-slate-100 outline-none placeholder:text-slate-500"
+                placeholder="Search profile, memory, or knowledge..."
+                onChange={(e) => onSearch?.(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-black/20 py-3 pl-10 pr-4 text-sm text-slate-100 outline-none transition focus:border-blue-300/35"
               />
-            </div>
-            <div className="w-px h-4 bg-white/10" />
-            <div className="flex items-center gap-3">
-              <button
-                onClick={onNotification}
-                className="group relative rounded-lg border border-white/10 bg-black/20 p-2 transition hover:border-white/20 hover:bg-white/[0.04]"
-              >
-                <Bell size={14} className="text-slate-400 group-hover:text-slate-100" />
-                <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-rose-500" />
-              </button>
-              <button
-                onClick={onSettings}
-                className="rounded-lg border border-white/10 bg-black/20 p-2 transition hover:border-white/20 hover:bg-white/[0.04]"
-              >
-                <Settings size={14} className="cursor-pointer text-slate-400 hover:text-slate-100" />
-              </button>
             </div>
           </div>
         </div>

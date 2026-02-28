@@ -1,17 +1,16 @@
 import React from 'react';
 import {
-  Folder,
-  FileText,
-  Database,
   Activity,
-  Wallet,
-  Heart,
-  Zap,
-  Layout,
+  BookOpen,
+  Database,
+  Folder,
   HardDrive,
+  Heart,
+  Layout,
   User,
+  Wallet,
+  Zap,
 } from 'lucide-react';
-
 import { UserProfile } from '@/data/types';
 
 interface VaultSidebarProps {
@@ -20,96 +19,100 @@ interface VaultSidebarProps {
   profile?: UserProfile;
 }
 
-export const VaultSidebar: React.FC<VaultSidebarProps> = ({ activePath, onNavigate, profile }) => {
-  const menu = [
-    {
-      label: 'My Identity',
-      icon: Folder,
-      type: 'folder',
-      children: [
-        { id: '/identity/core', label: 'Core Profile', icon: FileText },
-        { id: '/identity/personal', label: 'Personal Profile', icon: User },
-        { id: '/identity/bio', label: 'Health & Body', icon: Activity },
-        { id: '/identity/finance', label: 'Financial Assets', icon: Wallet },
-        { id: '/identity/social', label: 'Relationships', icon: Heart },
-        { id: '/identity/spiritual', label: 'Beliefs & Values', icon: Zap },
-      ],
-    },
-    {
-      label: 'Data Stream',
-      icon: Database,
-      type: 'folder',
-      children: [
-        { id: '/stream/logs', label: 'Daily Logs', icon: Layout },
-        { id: '/stream/knowledge', label: 'Knowledge Base', icon: FileText },
-      ],
-    },
-  ];
+const MENU = [
+  {
+    label: 'Profile',
+    children: [
+      { id: '/identity/core', label: 'Core Profile', icon: Folder },
+      { id: '/identity/personal', label: 'Personal Profile', icon: User },
+      { id: '/identity/bio', label: 'Health & Body', icon: Activity },
+      { id: '/identity/finance', label: 'Financial Assets', icon: Wallet },
+      { id: '/identity/social', label: 'Relationships', icon: Heart },
+      { id: '/identity/spiritual', label: 'Beliefs & Values', icon: Zap },
+    ],
+  },
+  {
+    label: 'Records',
+    children: [
+      { id: '/stream/logs', label: 'Logs', icon: Layout },
+      { id: '/stream/knowledge', label: 'Knowledge Base', icon: Database },
+    ],
+  },
+] as const;
 
+export const VaultSidebar: React.FC<VaultSidebarProps> = ({ activePath, onNavigate, profile }) => {
   return (
-    <aside className="flex h-full w-72 flex-col border-r border-white/10 bg-[#0a1426]">
+    <aside className="flex h-full w-[280px] flex-col border-r border-white/10 bg-[#0a1426]">
       <div className="border-b border-white/10 p-4">
-        <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+        <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
-            Vault Active
+            Vault active
           </p>
           <p className="mt-1 text-sm font-semibold text-slate-100">
             {profile?.identify?.name || 'User'} Workspace
+          </p>
+          <p className="mt-2 text-xs leading-5 text-slate-400">
+            Encrypted profile, journal records, and structured knowledge.
           </p>
         </div>
       </div>
 
       <div className="premium-scrollbar flex-1 overflow-y-auto p-4 text-xs">
-        <div
-          className="mb-6 flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-slate-200 transition hover:border-white/20"
+        <button
+          type="button"
           onClick={() => onNavigate('/')}
+          className={`mb-6 flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition ${
+            activePath === '/'
+              ? 'border-blue-300/35 bg-blue-500/16 text-blue-100'
+              : 'border-white/10 bg-white/[0.03] text-slate-200 hover:border-white/20 hover:bg-white/[0.05]'
+          }`}
         >
-          <HardDrive size={14} />
+          <HardDrive size={15} />
           <span className="font-medium tracking-[0.02em]">Overview</span>
-        </div>
+        </button>
 
-        {menu.map((item) => (
-          <div key={item.label} className="mb-6">
-            <div className="mb-2 flex items-center gap-2 pl-2 text-slate-500">
-              <item.icon size={12} />
-              <span className="font-semibold uppercase tracking-[0.14em] text-[10px]">{item.label}</span>
-            </div>
-            <div className="space-y-0.5">
-              {item.children.map((child) => (
-                <div
-                  key={child.id}
-                  onClick={() => onNavigate(child.id)}
-                  className={`group flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 transition-colors ${
-                    activePath === child.id
-                      ? 'border-blue-300/35 bg-blue-500/16 text-blue-100'
-                      : 'border-transparent text-slate-400 hover:border-white/10 hover:bg-white/[0.04] hover:text-slate-200'
-                  }`}
-                >
-                  <child.icon
-                    size={14}
-                    className={
-                      activePath === child.id ? 'text-blue-200' : 'text-slate-500 group-hover:text-slate-300'
-                    }
-                  />
-                  <span className="text-[12px]">{child.label}</span>
-                </div>
-              ))}
+        {MENU.map((section) => (
+          <div key={section.label} className="mb-6">
+            <p className="mb-2 pl-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+              {section.label}
+            </p>
+            <div className="space-y-1">
+              {section.children.map((item) => {
+                const Icon = item.icon;
+                const active = activePath === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => onNavigate(item.id)}
+                    className={`group flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition ${
+                      active
+                        ? 'border-blue-300/35 bg-blue-500/16 text-blue-100'
+                        : 'border-transparent text-slate-400 hover:border-white/10 hover:bg-white/[0.04] hover:text-slate-200'
+                    }`}
+                  >
+                    <Icon
+                      size={14}
+                      className={active ? 'text-blue-200' : 'text-slate-500 group-hover:text-slate-300'}
+                    />
+                    <span className="text-[12px]">{item.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         ))}
       </div>
 
       <div className="border-t border-white/10 p-4">
-        <div className="flex justify-between text-[10px] text-slate-500">
-          <span>Storage Usage</span>
-          <span>2.4 GB</span>
-        </div>
-        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-slate-800">
-          <div className="h-full w-[24%] bg-blue-400" />
-        </div>
-        <div className="mt-1 flex justify-between text-[10px] text-slate-500">
-          <span>Used</span>
-          <span>Unlimited</span>
+        <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-xs text-slate-400">
+          <div className="flex items-center gap-2 text-slate-200">
+            <BookOpen size={14} />
+            <span className="font-semibold">Simple rule</span>
+          </div>
+          <p className="mt-2 leading-5">
+            Keep this page factual. The cleaner your profile and records are, the better Aura behaves.
+          </p>
         </div>
       </div>
     </aside>

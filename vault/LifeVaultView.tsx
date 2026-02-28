@@ -36,8 +36,6 @@ export const LifeVaultView: React.FC<LifeVaultViewProps> = (props) => {
     }
   }, [props.profile.identify?.name]);
 
-  const handleSettings = () => props.onToast('System Settings: Access Restricted [DEMO]', 'info');
-  const handleNotifications = () => props.onToast('Notifications: No New Alerts', 'info');
   const handleQuickAdd = async () => {
     const input = prompt('Quick Entry (Memory/Fact):');
     if (input) {
@@ -564,8 +562,8 @@ export const LifeVaultView: React.FC<LifeVaultViewProps> = (props) => {
       }
       default:
         return (
-          <div className="p-10 text-slate-500 font-mono text-center">
-            FILE NOT FOUND Or ACCESS DENIED
+          <div className="p-10 text-center text-slate-500">
+            This section is not available yet. Choose another section from the left sidebar.
           </div>
         );
     }
@@ -584,8 +582,6 @@ export const LifeVaultView: React.FC<LifeVaultViewProps> = (props) => {
         onNavigate={setPath}
         profile={props.profile}
         onSearch={setSearchQuery}
-        onSettings={handleSettings}
-        onNotification={handleNotifications}
       >
         {renderContent()}
       </VaultShell>

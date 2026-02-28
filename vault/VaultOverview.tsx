@@ -1,6 +1,6 @@
 import React from 'react';
+import { Activity, Database, FileText, Shield, Sparkles, User } from 'lucide-react';
 import { UserProfile } from '@/data/types';
-import { Activity, Database, Shield, HardDrive, Zap, FileText } from 'lucide-react';
 
 interface VaultOverviewProps {
   profile: UserProfile;
@@ -13,109 +13,86 @@ export const VaultOverview: React.FC<VaultOverviewProps> = ({
   profile,
   memoryCount,
   claimCount,
-  storageUsage,
 }) => {
+  const profileStarted = Boolean(profile.identify?.name || profile.identify?.location || profile.identify?.origin);
   const stats = [
     {
-      label: 'Identity Completion',
-      value: '98%',
-      icon: Shield,
-      color: 'text-emerald-300',
-      bg: 'bg-emerald-500/12',
+      label: 'Profile Status',
+      value: profileStarted ? 'Started' : 'Needs setup',
+      icon: User,
+      tone: 'text-blue-200 bg-blue-500/14',
     },
     {
       label: 'Journal Logs',
-      value: memoryCount.toString(),
+      value: String(memoryCount),
       icon: FileText,
-      color: 'text-blue-200',
-      bg: 'bg-blue-500/14',
+      tone: 'text-emerald-200 bg-emerald-500/14',
     },
     {
-      label: 'Knowledge Nodes',
-      value: claimCount.toString(),
+      label: 'Knowledge Claims',
+      value: String(claimCount),
       icon: Database,
-      color: 'text-amber-300',
-      bg: 'bg-amber-500/12',
+      tone: 'text-amber-200 bg-amber-500/14',
     },
     {
-      label: 'Storage Used',
-      value: `${storageUsage} GB`,
-      icon: HardDrive,
-      color: 'text-slate-300',
-      bg: 'bg-slate-500/12',
+      label: 'Vault Mode',
+      value: 'Encrypted',
+      icon: Shield,
+      tone: 'text-indigo-200 bg-indigo-500/14',
     },
-  ];
+  ] as const;
 
   return (
     <div className="mx-auto max-w-6xl p-8">
-      <div className="mb-8 rounded-3xl border border-white/10 bg-[linear-gradient(165deg,rgba(17,24,39,0.82),rgba(6,10,18,0.92))] p-6">
+      <section className="rounded-[28px] border border-white/10 bg-[linear-gradient(165deg,rgba(17,24,39,0.88),rgba(6,10,18,0.96))] p-6 xl:p-7">
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-200">My Life</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-100">Vault Overview</h1>
-        <p className="mt-2 text-sm text-slate-300">
-          Encrypted personal knowledge, organized by identity and timeline context.
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
+          This page is the stable reference layer behind your dashboard and assistant. Keep it factual,
+          current, and sparse enough that the important details stand out.
         </p>
-        <p className="mt-2 text-xs text-slate-400">
-          Active profile: {profile.identify?.name || 'User'}
-        </p>
-      </div>
+        <p className="mt-2 text-xs text-slate-400">Active profile: {profile.identify?.name || 'User'}</p>
+      </section>
 
-      <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {stats.map((stat, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-4 rounded-2xl border border-white/10 bg-black/20 p-4"
-          >
-            <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${stat.bg}`}>
-              <stat.icon size={18} className={stat.color} />
-            </div>
-            <div>
-              <div className="mb-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {stats.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <div key={stat.label} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${stat.tone}`}>
+                <Icon size={18} />
+              </div>
+              <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                 {stat.label}
-              </div>
-              <div className="text-2xl font-semibold text-slate-100">{stat.value}</div>
+              </p>
+              <p className="mt-1 text-xl font-semibold text-slate-100">{stat.value}</p>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
         <section className="rounded-2xl border border-white/10 bg-black/20 p-6">
-          <h3 className="mb-4 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-            <Activity size={14} /> System Activity
-          </h3>
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="flex items-start gap-3 rounded-xl border border-white/8 bg-white/[0.02] p-3"
-              >
-                <div className="mt-0.5 text-[10px] text-slate-500">Today 14:0{i}</div>
-                <div className="text-sm text-slate-300">Synchronized {i * 12} new life signals.</div>
-              </div>
-            ))}
+          <div className="flex items-center gap-2 text-slate-100">
+            <Sparkles size={14} className="text-blue-200" />
+            <h3 className="text-sm font-semibold">What to maintain here</h3>
+          </div>
+          <div className="mt-4 space-y-3 text-sm leading-6 text-slate-300">
+            <p>Use profile pages for facts that change slowly: identity, relationships, finances, values.</p>
+            <p>Use journal records for what happened, what it meant, and what the next action is.</p>
+            <p>Use the knowledge base to keep only the claims you want Aura to rely on confidently.</p>
           </div>
         </section>
 
         <section className="rounded-2xl border border-white/10 bg-black/20 p-6">
-          <h3 className="mb-4 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-            <Zap size={14} /> Recommended Action
-          </h3>
-          <div className="rounded-xl border border-blue-300/25 bg-blue-500/10 p-4">
-            <div className="mb-1 text-sm font-semibold text-blue-100">Backup Recommended</div>
-            <div className="mb-3 text-sm text-slate-300">
-              Last full encrypted backup is older than 7 days. Create one to keep your vault safe.
-            </div>
-            <button className="rounded-lg bg-blue-500 px-3 py-2 text-[11px] font-semibold text-white transition hover:bg-blue-400">
-              Create Backup
-            </button>
+          <div className="flex items-center gap-2 text-slate-100">
+            <Activity size={14} className="text-emerald-200" />
+            <h3 className="text-sm font-semibold">Best next steps</h3>
           </div>
-          <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.02] p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-              Insight
-            </p>
-            <p className="mt-1 text-sm text-slate-300">
-              Journal quality improves when each entry includes category + outcome + next action.
-            </p>
+          <div className="mt-4 space-y-3 text-sm leading-6 text-slate-300">
+            <p>If your profile is incomplete, start with Core Profile and Personal Profile first.</p>
+            <p>If the dashboard feels generic, add 3-5 recent journal entries before changing settings.</p>
+            <p>If Aura feels inaccurate, review Knowledge Base and remove stale or weak claims.</p>
           </div>
         </section>
       </div>

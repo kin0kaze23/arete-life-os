@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { CalendarClock, Search, Sparkles } from 'lucide-react';
 import {
   Category,
   MemoryEntry,
@@ -7,7 +8,6 @@ import {
   UserProfile,
 } from '@/data';
 import { EmptyState, getCategoryIcon } from '@/shared';
-import { CalendarClock, Search, Sparkles } from 'lucide-react';
 
 interface LifeStreamViewProps {
   memory: MemoryEntry[];
@@ -129,23 +129,28 @@ const formatLogTime = (timestamp: number) =>
     minute: '2-digit',
   });
 
+const formatRelativeDay = (timestamp: number) =>
+  new Date(timestamp).toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+
 const getOrbitPosition = (index: number, total: number) => {
   if (total <= 0) return { x: 50, y: 50 };
   const angle = (index / total) * Math.PI * 2 - Math.PI / 2;
-  const radius = total <= 4 ? 32 : 38;
+  const radius = total <= 4 ? 28 : 32;
   return {
     x: 50 + Math.cos(angle) * radius,
     y: 50 + Math.sin(angle) * radius,
   };
 };
 
-export const LifeStreamView: React.FC<LifeStreamViewProps> = (props) => {
-  const { memory, profile, timelineEvents } = props;
+export const LifeStreamView: React.FC<LifeStreamViewProps> = ({ memory, profile, timelineEvents }) => {
   const [query, setQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>(ALL_CATEGORY_FILTER);
   const [selectedSource, setSelectedSource] = useState<SourceFilter>('all');
   const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
-  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
 
   const allLogs = useMemo<JournalLog[]>(() => {
     const logs: JournalLog[] = [];
@@ -214,16 +219,10 @@ export const LifeStreamView: React.FC<LifeStreamViewProps> = (props) => {
     return stats;
   }, [querySourceLogs]);
 
-  const mapCategories = useMemo(() => {
-    return CATEGORY_ORDER.filter((category) => (categoryStats.get(category)?.count || 0) > 0);
-  }, [categoryStats]);
-
-  const groupedByCategory = useMemo(() => {
-    return CATEGORY_ORDER.map((category) => ({
-      category,
-      logs: filteredLogs.filter((log) => log.category === category),
-    })).filter((group) => group.logs.length > 0);
-  }, [filteredLogs]);
+  const visibleCategories = useMemo(
+    () => CATEGORY_ORDER.filter((category) => (categoryStats.get(category)?.count || 0) > 0),
+    [categoryStats]
+  );
 
   useEffect(() => {
     if (filteredLogs.length === 0) {
@@ -236,10 +235,10 @@ export const LifeStreamView: React.FC<LifeStreamViewProps> = (props) => {
   }, [filteredLogs, selectedLogId]);
 
   const selectedLog = filteredLogs.find((log) => log.id === selectedLogId) || null;
-  const selectedIndex = selectedLog
-    ? filteredLogs.findIndex((log) => log.id === selectedLog.id)
-    : -1;
-
+  const selectedLogCategoryCount = selectedLog
+    ? categoryStats.get(selectedLog.category)?.count || 0
+    : 0;
+  const telegramCount = filteredLogs.filter((log) => log.source === 'telegram').length;
   const totalConfidenceLogs = filteredLogs.filter((log) => log.confidence !== null);
   const averageConfidence = totalConfidenceLogs.length
     ? Math.round(
@@ -247,11 +246,10 @@ export const LifeStreamView: React.FC<LifeStreamViewProps> = (props) => {
           totalConfidenceLogs.length
       )
     : 0;
-  const telegramCount = filteredLogs.filter((log) => log.source === 'telegram').length;
 
   if (allLogs.length === 0) {
     return (
-      <div className="max-w-6xl mx-auto space-y-8 pb-32">
+      <div className="mx-auto max-w-6xl space-y-8 pb-32">
         <EmptyState
           icon={<CalendarClock />}
           title="Neural Journal Is Empty"
@@ -262,141 +260,154 @@ export const LifeStreamView: React.FC<LifeStreamViewProps> = (props) => {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1460px] space-y-6 pb-32">
-      <section className="rounded-[28px] border border-white/10 bg-[linear-gradient(165deg,rgba(17,24,39,0.9),rgba(8,12,24,0.9))] p-6 xl:p-7">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+    <div className="mx-auto w-full max-w-[1500px] space-y-6 pb-32">
+      <section className="rounded-[28px] border border-white/10 bg-[linear-gradient(165deg,rgba(17,24,39,0.9),rgba(8,12,24,0.92))] p-6 xl:p-7">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-blue-200">
-              Journal Intelligence
+              Journal intelligence
             </p>
             <h3 className="mt-1 text-3xl font-semibold tracking-tight text-slate-100 xl:text-[2.1rem]">
               Neural Mind Map
             </h3>
-            <p className="mt-2 text-sm text-slate-300">
-              Visualize all logs by category and inspect each entry with source confidence.
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+              Browse your life like a notebook: filter by category, scan the entries, and inspect one
+              log at a time without losing the overall pattern.
             </p>
-          </div>
-          <div className="grid grid-cols-2 gap-2 text-xs md:grid-cols-4">
-            <MetricCard label="Visible Logs" value={String(filteredLogs.length)} />
-            <MetricCard label="Categories" value={String(groupedByCategory.length)} />
-            <MetricCard label="Telegram" value={String(telegramCount)} />
-            <MetricCard label="Avg Confidence" value={`${averageConfidence}%`} />
-          </div>
-        </div>
 
-        <div className="mt-5 grid grid-cols-1 gap-3 xl:grid-cols-[1fr_auto]">
-          <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search logs, facts, events..."
-              className="w-full rounded-xl border border-white/15 bg-black/25 py-2.5 pl-10 pr-4 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-300/40 focus:outline-none"
-            />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {(['all', 'memory', 'telegram', 'event'] as SourceFilter[]).map((source) => (
-              <button
-                key={source}
-                type="button"
-                onClick={() => setSelectedSource(source)}
-                className={`rounded-xl border px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] transition ${
-                  selectedSource === source
-                    ? 'border-blue-300/40 bg-blue-500/18 text-blue-100'
-                    : 'border-white/15 bg-black/20 text-slate-300 hover:border-white/30'
-                }`}
-              >
-                {source}
-              </button>
-            ))}
-          </div>
-        </div>
+            <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search logs, facts, events..."
+                  className="w-full rounded-xl border border-white/15 bg-black/25 py-3 pl-10 pr-4 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-300/40 focus:outline-none"
+                />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(['all', 'memory', 'telegram', 'event'] as SourceFilter[]).map((source) => (
+                  <button
+                    key={source}
+                    type="button"
+                    onClick={() => setSelectedSource(source)}
+                    className={`rounded-xl border px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] transition ${
+                      selectedSource === source
+                        ? 'border-blue-300/40 bg-blue-500/18 text-blue-100'
+                        : 'border-white/15 bg-black/20 text-slate-300 hover:border-white/30'
+                    }`}
+                  >
+                    {source}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setSelectedCategory(ALL_CATEGORY_FILTER)}
-            className={`rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] transition ${
-              selectedCategory === ALL_CATEGORY_FILTER
-                ? 'border-white/50 bg-white/15 text-slate-100'
-                : 'border-white/20 bg-black/20 text-slate-300 hover:border-white/35'
-            }`}
-          >
-            All
-          </button>
-          {mapCategories.map((category) => (
-            <button
-              key={category}
-              type="button"
-              onClick={() =>
-                setSelectedCategory((prev) => (prev === category ? ALL_CATEGORY_FILTER : category))
-              }
-              className={`rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] transition ${
-                selectedCategory === category
-                  ? categoryTone(category).pill
-                  : 'border-white/20 bg-black/20 text-slate-300 hover:border-white/35'
-              }`}
-            >
-              {category}
-            </button>
-          ))}
+            <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+              <MetricCard label="Visible Logs" value={String(filteredLogs.length)} />
+              <MetricCard label="Categories" value={String(visibleCategories.length)} />
+              <MetricCard label="Telegram" value={String(telegramCount)} />
+              <MetricCard label="Avg Confidence" value={`${averageConfidence}%`} />
+            </div>
+          </div>
+
+          <div className="rounded-[24px] border border-white/10 bg-black/20 p-4">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  Constellation
+                </p>
+                <p className="mt-1 text-sm font-semibold text-slate-100">Category pattern</p>
+              </div>
+              <Sparkles size={14} className="text-blue-200" />
+            </div>
+
+            <div className="relative mt-4 h-[240px] overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_50%_40%,rgba(15,23,42,0.9),rgba(2,6,23,0.95))]">
+              <div className="absolute inset-0 opacity-20 [background-size:24px_24px] [background-image:linear-gradient(to_right,rgba(148,163,184,0.14)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.14)_1px,transparent_1px)]" />
+              <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                {visibleCategories.map((category, index) => {
+                  const { x, y } = getOrbitPosition(index, visibleCategories.length);
+                  return (
+                    <line
+                      key={`line-${category}`}
+                      x1="50"
+                      y1="50"
+                      x2={x}
+                      y2={y}
+                      stroke={
+                        selectedCategory === category
+                          ? 'rgba(191,219,254,0.85)'
+                          : 'rgba(148,163,184,0.24)'
+                      }
+                      strokeWidth={selectedCategory === category ? 0.44 : 0.22}
+                    />
+                  );
+                })}
+              </svg>
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-blue-300/30 bg-blue-500/16 px-4 py-3 text-center text-blue-100">
+                <p className="text-[10px] uppercase tracking-[0.14em] text-blue-200">Core</p>
+                <p className="text-sm font-semibold">
+                  {profile.identify?.name ? `${profile.identify.name.split(' ')[0]}'s journal` : 'Your journal'}
+                </p>
+              </div>
+              {visibleCategories.map((category, index) => {
+                const count = categoryStats.get(category)?.count || 0;
+                const maxCount = Math.max(
+                  ...visibleCategories.map((cat) => categoryStats.get(cat)?.count || 0),
+                  1
+                );
+                const size = 54 + Math.round((count / maxCount) * 18);
+                const { x, y } = getOrbitPosition(index, visibleCategories.length);
+                const tone = categoryTone(category);
+                const isActive = selectedCategory === category;
+                return (
+                  <button
+                    key={category}
+                    type="button"
+                    onClick={() =>
+                      setSelectedCategory((prev) => (prev === category ? ALL_CATEGORY_FILTER : category))
+                    }
+                    className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-2xl border px-2 py-2 text-center transition ${tone.node} ${
+                      isActive ? 'ring-2 ring-white/50' : 'hover:scale-105'
+                    }`}
+                    style={{ left: `${x}%`, top: `${y}%`, width: `${size}px`, minHeight: '48px' }}
+                  >
+                    <div className="mx-auto mb-1 flex w-fit items-center justify-center">
+                      {getCategoryIcon(category, 12)}
+                    </div>
+                    <p className="text-[9px] font-semibold uppercase tracking-[0.11em]">{category}</p>
+                    <p className="text-[11px] font-semibold">{count}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="rounded-[28px] border border-white/10 bg-white/[0.02] p-5 xl:p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Map</p>
-              <h4 className="text-xl font-semibold text-slate-100">Category Graph</h4>
-            </div>
-            <Sparkles size={16} className="text-blue-200" />
-          </div>
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[260px_minmax(0,1fr)_360px]">
+        <aside className="rounded-[24px] border border-white/10 bg-white/[0.02] p-4 xl:p-5">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+            Categories
+          </p>
+          <p className="mt-1 text-sm text-slate-300">Choose one lens, then scan the matching entries.</p>
 
-          <div className="relative mt-5 h-[460px] overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_50%_40%,rgba(15,23,42,0.9),rgba(2,6,23,0.95))]">
-            <div className="absolute inset-0 opacity-25 [background-size:24px_24px] [background-image:linear-gradient(to_right,rgba(148,163,184,0.14)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.14)_1px,transparent_1px)]" />
-
-            <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-              {mapCategories.map((category, index) => {
-                const { x, y } = getOrbitPosition(index, mapCategories.length);
-                return (
-                  <line
-                    key={`line-${category}`}
-                    x1="50"
-                    y1="50"
-                    x2={x}
-                    y2={y}
-                    stroke={
-                      selectedCategory === category
-                        ? 'rgba(191,219,254,0.85)'
-                        : 'rgba(148,163,184,0.26)'
-                    }
-                    strokeWidth={selectedCategory === category ? 0.44 : 0.22}
-                  />
-                );
-              })}
-            </svg>
-
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-blue-300/30 bg-blue-500/18 px-5 py-4 text-center text-blue-100">
-              <p className="text-[10px] uppercase tracking-[0.14em] text-blue-200">Core</p>
-              <p className="text-sm font-semibold">
-                {profile.identify?.name
-                  ? `${profile.identify.name.split(' ')[0]}'s Vault`
-                  : 'Your Vault'}
-              </p>
-            </div>
-
-            {mapCategories.map((category, index) => {
-              const stats = categoryStats.get(category);
-              const count = stats?.count || 0;
-              const maxCount = Math.max(
-                ...mapCategories.map((cat) => categoryStats.get(cat)?.count || 0),
-                1
-              );
-              const size = 72 + Math.round((count / maxCount) * 24);
-              const { x, y } = getOrbitPosition(index, mapCategories.length);
-              const tone = categoryTone(category);
-              const isActive = selectedCategory === category;
+          <div className="mt-4 space-y-2">
+            <button
+              type="button"
+              onClick={() => setSelectedCategory(ALL_CATEGORY_FILTER)}
+              className={`flex w-full items-center justify-between rounded-xl border px-3 py-3 text-left transition ${
+                selectedCategory === ALL_CATEGORY_FILTER
+                  ? 'border-white/40 bg-white/12 text-slate-100'
+                  : 'border-white/10 bg-black/20 text-slate-300 hover:border-white/25'
+              }`}
+            >
+              <span className="text-sm font-semibold">All logs</span>
+              <span className="text-xs text-slate-400">{querySourceLogs.length}</span>
+            </button>
+            {visibleCategories.map((category) => {
+              const count = categoryStats.get(category)?.count || 0;
+              const latest = categoryStats.get(category)?.latestTimestamp || 0;
               return (
                 <button
                   key={category}
@@ -404,29 +415,100 @@ export const LifeStreamView: React.FC<LifeStreamViewProps> = (props) => {
                   onClick={() =>
                     setSelectedCategory((prev) => (prev === category ? ALL_CATEGORY_FILTER : category))
                   }
-                  className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-2xl border px-2 py-2 text-center transition hover:scale-105 ${tone.node} ${
-                    isActive ? 'ring-2 ring-white/55' : ''
+                  className={`flex w-full items-start justify-between rounded-xl border px-3 py-3 text-left transition ${
+                    selectedCategory === category
+                      ? categoryTone(category).pill
+                      : 'border-white/10 bg-black/20 text-slate-300 hover:border-white/25'
                   }`}
-                  style={{ left: `${x}%`, top: `${y}%`, width: `${size}px`, minHeight: '56px' }}
                 >
-                  <div className="mx-auto mb-1 flex w-fit items-center justify-center">
-                    {getCategoryIcon(category, 14)}
-                  </div>
-                  <p className="text-[9px] font-semibold uppercase tracking-[0.11em]">{category}</p>
-                  <p className="text-[11px] font-semibold">{count}</p>
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-2 text-sm font-semibold">
+                      {getCategoryIcon(category, 14)}
+                      {category}
+                    </span>
+                    <span className="mt-1 block text-[11px] text-slate-400">
+                      {latest ? `Latest ${formatRelativeDay(latest)}` : 'No recent entry'}
+                    </span>
+                  </span>
+                  <span className="ml-3 rounded-md border border-white/10 px-2 py-0.5 text-[10px] font-semibold">
+                    {count}
+                  </span>
                 </button>
               );
             })}
           </div>
-        </div>
+        </aside>
 
-        <aside className="rounded-[28px] border border-white/10 bg-white/[0.02] p-5 xl:p-6">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Focus</p>
-          <h4 className="text-xl font-semibold text-slate-100">Selected Log</h4>
+        <section className="rounded-[24px] border border-white/10 bg-white/[0.02] p-4 xl:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Entries</p>
+              <p className="mt-1 text-sm text-slate-300">
+                {selectedCategory === ALL_CATEGORY_FILTER
+                  ? 'Everything that matches your current search and source filters.'
+                  : `Logs filtered to ${selectedCategory.toLowerCase()}.`}
+              </p>
+            </div>
+            <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-slate-300">
+              {filteredLogs.length} visible
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-2.5">
+            {filteredLogs.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-10 text-center text-sm text-slate-500">
+                No journal entry matches the current filters.
+              </div>
+            ) : (
+              filteredLogs.map((log) => (
+                <button
+                  key={log.id}
+                  type="button"
+                  onClick={() => setSelectedLogId(log.id)}
+                  className={`w-full rounded-2xl border p-4 text-left transition ${
+                    selectedLog?.id === log.id
+                      ? 'border-blue-300/35 bg-blue-500/12'
+                      : 'border-white/10 bg-slate-950/35 hover:border-white/20'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className={`rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] ${categoryTone(log.category).pill}`}
+                        >
+                          {log.category}
+                        </span>
+                        <span
+                          className={`rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] ${sourceTone(log.source)}`}
+                        >
+                          {log.source}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm font-semibold text-slate-100">{log.title}</p>
+                      <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-400">
+                        {log.body || 'No additional detail captured for this entry.'}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-[11px] text-slate-400">{formatLogTime(log.timestamp)}</p>
+                      {log.confidence !== null && (
+                        <p className="mt-1 text-[11px] text-slate-500">{log.confidence}% confidence</p>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </section>
+
+        <aside className="rounded-[24px] border border-white/10 bg-white/[0.02] p-4 xl:p-5">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Selected entry</p>
           {!selectedLog ? (
-            <p className="mt-4 text-sm text-slate-400">
-              No entry matches your current filters. Adjust search, source, or category.
-            </p>
+            <div className="mt-4 rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-10 text-center text-sm text-slate-500">
+              Choose one entry from the middle column.
+            </div>
           ) : (
             <div className="mt-4 space-y-4">
               <div className="flex flex-wrap gap-2">
@@ -444,10 +526,18 @@ export const LifeStreamView: React.FC<LifeStreamViewProps> = (props) => {
 
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <p className="text-[11px] text-slate-400">{formatLogTime(selectedLog.timestamp)}</p>
-                <h5 className="mt-1 text-base font-semibold text-slate-100">{selectedLog.title}</h5>
-                {selectedLog.body && (
-                  <p className="mt-2 text-sm leading-relaxed text-slate-300">{selectedLog.body}</p>
-                )}
+                <h4 className="mt-1 text-lg font-semibold text-slate-100">{selectedLog.title}</h4>
+                <p className="mt-3 text-sm leading-6 text-slate-300">
+                  {selectedLog.body || 'No additional detail captured for this entry.'}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <MetricCard label="Category logs" value={String(selectedLogCategoryCount)} />
+                <MetricCard
+                  label="Facts"
+                  value={String(selectedLog.facts.length)}
+                />
               </div>
 
               {selectedLog.confidence !== null && (
@@ -468,115 +558,21 @@ export const LifeStreamView: React.FC<LifeStreamViewProps> = (props) => {
               {selectedLog.facts.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                    Extracted Facts
+                    Extracted facts
                   </p>
-                  {selectedLog.facts.slice(0, 4).map((fact, index) => (
+                  {selectedLog.facts.slice(0, 5).map((fact, index) => (
                     <div
                       key={`${selectedLog.id}-fact-${index}`}
-                      className="rounded-xl border border-white/10 bg-black/20 p-2.5 text-xs text-slate-200"
+                      className="rounded-xl border border-white/10 bg-black/20 p-3 text-xs leading-5 text-slate-200"
                     >
                       {fact}
                     </div>
                   ))}
                 </div>
               )}
-
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  type="button"
-                  disabled={selectedIndex <= 0}
-                  onClick={() => selectedIndex > 0 && setSelectedLogId(filteredLogs[selectedIndex - 1].id)}
-                  className="rounded-lg border border-white/20 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-200 disabled:opacity-40"
-                >
-                  Prev
-                </button>
-                <button
-                  type="button"
-                  disabled={selectedIndex >= filteredLogs.length - 1}
-                  onClick={() =>
-                    selectedIndex >= 0 &&
-                    selectedIndex < filteredLogs.length - 1 &&
-                    setSelectedLogId(filteredLogs[selectedIndex + 1].id)
-                  }
-                  className="rounded-lg border border-white/20 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-200 disabled:opacity-40"
-                >
-                  Next
-                </button>
-              </div>
             </div>
           )}
         </aside>
-      </section>
-
-      <section className="rounded-[28px] border border-white/10 bg-white/[0.02] p-5 xl:p-6">
-        <div className="mb-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Ledger</p>
-          <h4 className="text-2xl font-semibold text-slate-100">Categorized Journal Logs</h4>
-          <p className="text-sm text-slate-400">
-            Review history grouped by category with quick detail selection.
-          </p>
-        </div>
-
-        <div className="space-y-4">
-          {groupedByCategory.map(({ category, logs }) => {
-            const expanded = Boolean(expandedCategories[category]);
-            const visibleLogs = expanded ? logs : logs.slice(0, 6);
-            return (
-              <article key={category} className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2.5">
-                    <span
-                      className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${categoryTone(category).pill}`}
-                    >
-                      {category}
-                    </span>
-                    <span className="text-xs text-slate-400">{logs.length} logs</span>
-                  </div>
-                  {logs.length > 6 && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedCategories((prev) => ({ ...prev, [category]: !expanded }))
-                      }
-                      className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-300 hover:text-white"
-                    >
-                      {expanded ? 'Show less' : `Show all ${logs.length}`}
-                    </button>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  {visibleLogs.map((log) => (
-                    <button
-                      key={log.id}
-                      type="button"
-                      onClick={() => setSelectedLogId(log.id)}
-                      className={`w-full rounded-xl border p-3 text-left transition ${
-                        selectedLog?.id === log.id
-                          ? 'border-blue-300/40 bg-blue-500/14'
-                          : 'border-white/10 bg-slate-950/35 hover:border-white/25'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-slate-100">{log.title}</p>
-                          <p className="mt-0.5 text-[11px] text-slate-400">
-                            {formatLogTime(log.timestamp)}
-                          </p>
-                        </div>
-                        <span
-                          className={`rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] ${sourceTone(log.source)}`}
-                        >
-                          {log.source}
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </article>
-            );
-          })}
-        </div>
       </section>
     </div>
   );

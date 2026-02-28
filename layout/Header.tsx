@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mic, Search, Command } from 'lucide-react';
+import { Search, Command } from 'lucide-react';
 import { UserProfile } from '@/data';
 import { getProfileCompletion, ProfileCompletionRing, ActionTooltip } from '@/shared';
 
@@ -13,105 +13,110 @@ interface HeaderProps {
   onOpenCommandPalette?: () => void;
 }
 
+const TAB_META: Record<
+  string,
+  {
+    eyebrow: string;
+    title: string;
+    description: string;
+  }
+> = {
+  dashboard: {
+    eyebrow: 'Dashboard',
+    title: 'Daily command center',
+    description: 'See what matters now, what is pending, and what deserves your next action.',
+  },
+  vault: {
+    eyebrow: 'My Life',
+    title: 'Identity, memory, and knowledge graph',
+    description: 'Review what Areté knows about you and keep your profile grounded in reality.',
+  },
+  stream: {
+    eyebrow: 'Journal',
+    title: 'Categorized life timeline and logs',
+    description: 'Search and inspect your journal history without losing the thread.',
+  },
+  chat: {
+    eyebrow: 'Assistant',
+    title: 'Ask Aura from your private context',
+    description: 'Use your private vault as context and ask for guidance, summaries, or next moves.',
+  },
+  settings: {
+    eyebrow: 'Settings',
+    title: 'Workspace controls',
+    description: 'Check system health, Telegram, sync, backups, and workspace behavior.',
+  },
+};
+
 export const Header: React.FC<HeaderProps> = ({
   activeTab,
   profile,
   isGeneratingTasks,
   onOpenProfile,
-  onStartVoice,
   onOpenCommandPalette,
 }) => {
+  const meta = TAB_META[activeTab] || TAB_META.dashboard;
   const userName = profile.identify.name || 'User';
   const completion = getProfileCompletion(profile);
-  const tabLabel =
-    activeTab === 'dashboard'
-      ? 'Dashboard'
-      : activeTab === 'vault'
-        ? 'My Life'
-        : activeTab === 'stream'
-          ? 'Journal'
-          : activeTab === 'chat'
-            ? 'Assistant'
-            : 'Settings';
-  const tabDescription =
-    activeTab === 'dashboard'
-      ? 'Daily command center'
-      : activeTab === 'vault'
-        ? 'Identity, memory, and knowledge graph'
-        : activeTab === 'stream'
-          ? 'Categorized life timeline and logs'
-          : activeTab === 'chat'
-            ? 'Ask Aura from your private context'
-            : 'Workspace controls';
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0b1220]/72 px-6 py-4 backdrop-blur-xl xl:px-10">
-      <div className="flex items-center justify-between gap-4">
+    <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0b1220]/88 px-6 py-4 backdrop-blur-xl xl:px-8">
+      <div className="flex items-center justify-between gap-6">
         <div className="min-w-0">
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-            {tabLabel}
+            {meta.eyebrow}
           </p>
-          <h2 className="truncate text-lg font-semibold tracking-tight text-slate-100 xl:text-xl">
-            {tabDescription}
-          </h2>
+          <h1 className="mt-1 text-xl font-semibold tracking-tight text-slate-100 xl:text-2xl">
+            {meta.title}
+          </h1>
+          <p className="mt-1 max-w-3xl text-sm text-slate-400">{meta.description}</p>
         </div>
 
-        <button
-          onClick={onOpenCommandPalette}
-          className="group hidden items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-slate-300 transition hover:border-white/20 hover:bg-white/[0.05] xl:flex"
-        >
-          <Search size={14} className="text-slate-400" />
-          <span className="text-xs font-medium text-slate-300">Search or run command</span>
-          <span className="ml-2 flex items-center gap-1 rounded-md border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
-            <Command size={10} />
-            K
-          </span>
-        </button>
-      </div>
+        <div className="flex shrink-0 items-center gap-3">
+          <div className="hidden items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 xl:flex">
+            <span
+              className={`h-2 w-2 rounded-full ${
+                isGeneratingTasks ? 'animate-pulse bg-amber-400' : 'bg-emerald-400'
+              }`}
+            />
+            <span className="text-xs font-medium text-slate-300">
+              {isGeneratingTasks ? 'Refreshing' : 'Ready'}
+            </span>
+          </div>
 
-      <div className="mt-3 flex items-center justify-end gap-3">
-        <div className="hidden items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 md:flex">
-          <span
-            className={`h-2 w-2 rounded-full ${
-              isGeneratingTasks ? 'animate-pulse bg-amber-400' : 'bg-emerald-400'
-            }`}
-          />
-          <span className="text-[11px] font-medium text-slate-300">
-            {isGeneratingTasks ? 'Refreshing plan' : 'Synced'}
-          </span>
-        </div>
-
-        {onStartVoice && (
-          <ActionTooltip label="Voice Input" side="bottom">
-            <button
-              onClick={onStartVoice}
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-slate-300 transition hover:border-blue-300/40 hover:bg-blue-500/15 hover:text-blue-100"
-            >
-              <Mic size={16} />
-            </button>
-          </ActionTooltip>
-        )}
-
-        <ActionTooltip label="Open My Life" side="bottom">
           <button
-            onClick={onOpenProfile}
-            className="group flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-1 pl-3 transition hover:border-white/20 hover:bg-white/[0.06]"
+            type="button"
+            onClick={onOpenCommandPalette}
+            className="hidden items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-slate-300 transition hover:border-white/20 hover:bg-white/[0.05] xl:flex"
           >
-            <div className="hidden flex-col items-end sm:flex">
-              <span className="text-[11px] font-semibold text-slate-100">{userName}</span>
-              <span className="text-[10px] text-slate-400">{completion.overall}% complete</span>
-            </div>
+            <Search size={14} className="text-slate-400" />
+            <span className="text-xs font-medium">Search or run command</span>
+            <span className="ml-1 flex items-center gap-1 rounded-md border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
+              <Command size={10} /> K
+            </span>
+          </button>
 
-            <div className="relative p-1">
-              <ProfileCompletionRing profile={profile} size={36} strokeWidth={4} showText={false} />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="flex h-6 w-6 items-center justify-center rounded-md border border-blue-300/30 bg-blue-500/20 text-[10px] font-bold text-blue-100">
-                  {userName.charAt(0).toUpperCase()}
+          <ActionTooltip label="Open My Life" side="bottom">
+            <button
+              type="button"
+              onClick={onOpenProfile}
+              className="group flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-1.5 pl-3 transition hover:border-white/20 hover:bg-white/[0.05]"
+            >
+              <div className="hidden text-right sm:block">
+                <p className="text-xs font-semibold text-slate-100">{userName}</p>
+                <p className="text-[11px] text-slate-400">{completion.overall}% complete</p>
+              </div>
+              <div className="relative">
+                <ProfileCompletionRing profile={profile} size={38} strokeWidth={4} showText={false} />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-md border border-blue-300/30 bg-blue-500/20 text-[10px] font-bold text-blue-100">
+                    {userName.charAt(0).toUpperCase()}
+                  </div>
                 </div>
               </div>
-            </div>
-          </button>
-        </ActionTooltip>
+            </button>
+          </ActionTooltip>
+        </div>
       </div>
     </header>
   );
