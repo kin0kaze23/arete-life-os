@@ -6,6 +6,8 @@ import {
   Category,
   DailyTask,
   Goal,
+  GuidanceDigest,
+  GuidanceQuestion,
   InboxEntry,
   MemoryEntry,
   Recommendation,
@@ -17,7 +19,7 @@ import {
 import { FocusList } from './FocusList';
 import { EventPrepPopup } from './EventPrepPopup';
 import { DashboardHeader } from './DashboardHeader';
-import { StrategicBriefingCard } from './StrategicBriefingCard';
+import { GuidanceConsoleCard } from './GuidanceConsoleCard';
 import { computeScoreInternal } from './ScoreStrip';
 
 interface DashboardViewProps {
@@ -52,8 +54,13 @@ interface DashboardViewProps {
   isInboxAvailable?: boolean;
   inboxUnavailableReason?: string;
   strategicBriefing?: StrategicBriefing | null;
+  guidanceDigest?: GuidanceDigest | null;
+  guidanceQuestions?: GuidanceQuestion[];
   isRefreshingBriefing?: boolean;
   onRefreshStrategicBriefing?: (options?: { force?: boolean }) => Promise<void> | void;
+  onAnswerGuidanceQuestion?: (id: string, answer: string) => void;
+  onDismissGuidanceQuestion?: (id: string) => void;
+  onSnoozeGuidanceQuestion?: (id: string, hours?: number) => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -84,8 +91,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   isInboxAvailable = false,
   inboxUnavailableReason,
   strategicBriefing = null,
+  guidanceDigest = null,
+  guidanceQuestions = [],
   isRefreshingBriefing = false,
   onRefreshStrategicBriefing,
+  onAnswerGuidanceQuestion,
+  onDismissGuidanceQuestion,
+  onSnoozeGuidanceQuestion,
 }) => {
   const [activePrepEvent, setActivePrepEvent] = useState<TimelineEvent | null>(null);
   const [isFocusMode, setIsFocusMode] = useState<boolean>(() => {
@@ -351,9 +363,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {!isFocusMode && (
           <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
-            <StrategicBriefingCard
-              briefing={strategicBriefing}
+            <GuidanceConsoleCard
+              digest={guidanceDigest}
               recommendations={recommendations}
+              guidanceQuestions={guidanceQuestions}
+              strategicBriefing={strategicBriefing}
               missingProfileFields={missingProfileFields}
               isRefreshing={isRefreshingBriefing}
               onRefresh={() => {
@@ -364,6 +378,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               onCapture={() => handleInsertTemplate('DAILY_CHECKIN')}
               onKeepRecommendation={keepRecommendation}
               onRemoveRecommendation={removeRecommendation}
+              onAnswerQuestion={onAnswerGuidanceQuestion}
+              onDismissQuestion={onDismissGuidanceQuestion}
+              onSnoozeQuestion={onSnoozeGuidanceQuestion}
             />
 
 

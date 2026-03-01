@@ -16,7 +16,7 @@ import {
   RefreshCw,
   Server,
 } from 'lucide-react';
-import { RuleOfLife, isSupabaseConfigured } from '@/data';
+import { GuidancePreferences, RuleOfLife, isSupabaseConfigured } from '@/data';
 import { VaultInput, VaultSelect, VaultSlider } from '@/shared';
 
 interface SettingsViewProps {
@@ -50,6 +50,9 @@ interface SettingsViewProps {
   onToggleInboxAutoMerge?: (value: boolean) => void;
   inboxReviewConfidence?: number;
   onChangeInboxReviewConfidence?: (value: number) => void;
+  guidancePreferences?: GuidancePreferences;
+  onChangeGuidancePreferences?: (value: GuidancePreferences) => void;
+  onSendTelegramGuidanceTest?: () => Promise<void> | void;
   auditLogs?: unknown[];
   exportAuditLogs?: () => void;
   clearAuditLogs?: () => void;
@@ -110,10 +113,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onToggleInboxAutoMerge,
   inboxReviewConfidence = 0.65,
   onChangeInboxReviewConfidence,
+  guidancePreferences,
+  onChangeGuidancePreferences,
+  onSendTelegramGuidanceTest,
 }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [isGeneratingLink, setIsGeneratingLink] = React.useState(false);
   const [isUnlinking, setIsUnlinking] = React.useState(false);
+  const [isSendingTelegramTest, setIsSendingTelegramTest] = React.useState(false);
   const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
   const [statusType, setStatusType] = React.useState<'success' | 'error' | 'info'>('info');
   const [health, setHealth] = React.useState<HealthPayload | null>(null);
@@ -164,6 +171,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     });
   };
 
+  const updateGuidance = (patch: Partial<GuidancePreferences>) => {
+    if (!guidancePreferences || !onChangeGuidancePreferences) return;
+    onChangeGuidancePreferences({ ...guidancePreferences, ...patch });
+  };
+
   const handleExport = async () => {
     try {
       await Promise.resolve(exportData());
@@ -212,6 +224,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       showStatus(error?.message || 'Failed to unlink Telegram.', 'error');
     } finally {
       setIsUnlinking(false);
+    }
+  };
+
+  const handleSendTelegramTest = async () => {
+    if (!onSendTelegramGuidanceTest) return;
+    setIsSendingTelegramTest(true);
+    try {
+      await onSendTelegramGuidanceTest();
+      showStatus('Telegram guidance sent.', 'success');
+    } catch (error: any) {
+      showStatus(error?.message || 'Failed to send Telegram guidance.', 'error');
+    } finally {
+      setIsSendingTelegramTest(false);
     }
   };
 
@@ -543,6 +568,84 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 onChange={(e) => onChangeInboxReviewConfidence?.(Number(e.target.value))}
                 className="h-1 w-full cursor-pointer appearance-none rounded-lg bg-slate-700 accent-indigo-400 disabled:opacity-45"
               />
+            </div>
+          </div>
+
+          <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-100">Guidance Delivery</p>
+                <p className="text-xs text-slate-400">How proactive Telegram coaching should behave.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleSendTelegramTest()}
+                disabled={!telegram?.linked || isSendingTelegramTest || !cloudConnected}
+                className="rounded-lg border border-sky-300/35 px-3 py-2 text-xs font-semibold text-sky-200 disabled:opacity-50"
+              >
+                {isSendingTelegramTest ? 'Sending...' : 'Send Test Brief'}
+              </button>
+            </div>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <VaultSelect
+                label="Telegram Mode"
+                value={guidancePreferences?.telegramMode || 'digest'}
+                options={['off', 'digest', 'important_only', 'coach']}
+                onChange={(value) =>
+                  updateGuidance({
+                    telegramMode: value as GuidancePreferences['telegramMode'],
+                  })
+                }
+              />
+              <VaultInput
+                label="Daily Limit"
+                value={String(guidancePreferences?.dailyTelegramLimit || 2)}
+                onChange={(value) =>
+                  updateGuidance({
+                    dailyTelegramLimit: Math.max(1, Math.min(5, Number(value) || 2)),
+                  })
+                }
+                placeholder="2"
+              />
+              <VaultInput
+                label="Quiet Hours Start"
+                value={guidancePreferences?.quietHoursStart || '22:00'}
+                onChange={(value) => updateGuidance({ quietHoursStart: value })}
+                placeholder="22:00"
+              />
+              <VaultInput
+                label="Quiet Hours End"
+                value={guidancePreferences?.quietHoursEnd || '07:00'}
+                onChange={(value) => updateGuidance({ quietHoursEnd: value })}
+                placeholder="07:00"
+              />
+            </div>
+            <div className="mt-4 flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-100">External Scan</p>
+                <p className="text-xs text-slate-400">
+                  Allow grounded external risk and opportunity checks.
+                </p>
+              </div>
+              <button
+                aria-label="Toggle External Scan"
+                disabled={!cloudConnected}
+                onClick={() =>
+                  updateGuidance({
+                    externalScanEnabled: !guidancePreferences?.externalScanEnabled,
+                  })
+                }
+                className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
+                  guidancePreferences?.externalScanEnabled ? 'bg-emerald-500' : 'bg-slate-700'
+                } disabled:opacity-45`}
+              >
+                <span
+                  className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                    guidancePreferences?.externalScanEnabled ? 'translate-x-7' : 'translate-x-1'
+                  }`}
+                />
+              </button>
             </div>
           </div>
         </div>

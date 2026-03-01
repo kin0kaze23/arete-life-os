@@ -73,17 +73,23 @@ test('prep tasks persist after refresh', async ({ page }) => {
   await page.getByTestId('prep-execute').click();
   await expect(page.getByTestId('prep-execute')).toBeHidden({ timeout: 10_000 });
 
+  let prepScope = page.locator('[data-testid="prep-group"]').first();
   if (eventId) {
     const prepGroup = page.locator(`[data-testid="prep-group"][data-event-id="${eventId}"]`);
     await expect(prepGroup).toBeVisible({ timeout: 15_000 });
     await prepGroup.click();
+    prepScope = prepGroup;
   }
-  await expect(page.getByText(stepText, { exact: false })).toBeVisible({ timeout: 15_000 });
+  await expect(prepScope.getByText(stepText, { exact: false }).first()).toBeVisible({
+    timeout: 15_000,
+  });
 
   await logInput(page, 'Quick note: wrapped up planning for the week.');
   await page.waitForTimeout(3000);
 
-  await expect(page.getByText(stepText, { exact: false })).toBeVisible({ timeout: 15_000 });
+  await expect(prepScope.getByText(stepText, { exact: false }).first()).toBeVisible({
+    timeout: 15_000,
+  });
 });
 
 test('recommendation feedback is recorded', async ({ page }) => {

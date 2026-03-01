@@ -13,6 +13,9 @@ import {
   FamilySpace,
   FinanceMetrics,
   Goal,
+  GuidanceDigest,
+  GuidancePreferences,
+  GuidanceQuestion,
   IntakeHorizon,
   IntakeIntent,
   IntakeItem,
@@ -51,10 +54,17 @@ import {
   generateDailyPlan,
   generateDeepTasks,
   generateDeepInitialization,
+  generateGuidanceDigest,
   generateStrategicBriefing,
   DEFAULT_PROMPTS,
   dailyIntelligenceBatch,
 } from '@/ai/geminiService';
+import {
+  DEFAULT_GUIDANCE_PREFERENCES,
+  buildDeterministicDoCandidates,
+  buildDeterministicGuidanceQuestions,
+  buildDeterministicWatchCandidates,
+} from './guidanceEngine';
 import {
   clearVault,
   createVault,
@@ -322,6 +332,9 @@ type VaultData = {
   insights: ProactiveInsight[];
   blindSpots: BlindSpot[];
   strategicBriefing?: StrategicBriefing | null;
+  guidanceDigest?: GuidanceDigest | null;
+  guidanceQuestions?: GuidanceQuestion[];
+  guidancePreferences?: GuidancePreferences;
   dailyPlan: DailyTask[];
   ruleOfLife: RuleOfLife;
   prompts: PromptConfig[];
@@ -368,6 +381,9 @@ const buildDefaultVault = (): VaultData => ({
   insights: [],
   blindSpots: [],
   strategicBriefing: null,
+  guidanceDigest: null,
+  guidanceQuestions: [],
+  guidancePreferences: DEFAULT_GUIDANCE_PREFERENCES,
   dailyPlan: [],
   ruleOfLife: INITIAL_RULE_OF_LIFE,
   prompts: DEFAULT_PROMPTS,
@@ -450,10 +466,12 @@ export const useAura = () => {
   const keyRef = useRef<CryptoKey | null>(null);
   const refreshTimeoutRef = useRef<number | null>(null);
   const vaultSaveTimeoutRef = useRef<number | null>(null);
+  const refreshAuraRef = useRef<((options?: { force?: boolean }) => Promise<void>) | null>(null);
   const memoryHashIndexRef = useRef<Set<string>>(new Set());
   const lastDailyBatchRef = useRef<number | null>(null);
   const lastDeepTasksRef = useRef<number | null>(null);
   const lastStrategicBriefingRef = useRef<number | null>(null);
+  const lastGuidanceDigestRef = useRef<number | null>(null);
   const [hasVault, setHasVault] = useState<boolean>(() =>
     typeof window !== 'undefined' ? hasEncryptedVault() : false
   );
@@ -569,6 +587,10 @@ export const useAura = () => {
   const [insights, setInsights] = useState<ProactiveInsight[]>([]);
   const [blindSpots, setBlindSpots] = useState<BlindSpot[]>([]);
   const [strategicBriefing, setStrategicBriefing] = useState<StrategicBriefing | null>(null);
+  const [guidanceDigest, setGuidanceDigest] = useState<GuidanceDigest | null>(null);
+  const [guidanceQuestions, setGuidanceQuestions] = useState<GuidanceQuestion[]>([]);
+  const [guidancePreferences, setGuidancePreferences] =
+    useState<GuidancePreferences>(DEFAULT_GUIDANCE_PREFERENCES);
   const [dailyPlan, setDailyPlan] = useState<DailyTask[]>([]);
   const [ruleOfLife, setRuleOfLife] = useState<RuleOfLife>(INITIAL_RULE_OF_LIFE);
   const [layouts, setLayouts] = useState<Record<string, DashboardLayout>>({
@@ -632,6 +654,10 @@ export const useAura = () => {
       setBlindSpots(ensureArray<BlindSpot>(data.blindSpots));
       setStrategicBriefing(data.strategicBriefing || null);
       lastStrategicBriefingRef.current = data.strategicBriefing?.generatedAt || null;
+      setGuidanceDigest(data.guidanceDigest || null);
+      lastGuidanceDigestRef.current = data.guidanceDigest?.generatedAt || null;
+      setGuidanceQuestions(ensureArray<GuidanceQuestion>(data.guidanceQuestions));
+      setGuidancePreferences(data.guidancePreferences || DEFAULT_GUIDANCE_PREFERENCES);
       setDailyPlan(ensureArray<DailyTask>(data.dailyPlan));
       setRuleOfLife(data.ruleOfLife || INITIAL_RULE_OF_LIFE);
       setPrompts(mergePrompts(data.prompts));
@@ -727,6 +753,9 @@ export const useAura = () => {
       insights,
       blindSpots,
       strategicBriefing,
+      guidanceDigest,
+      guidanceQuestions,
+      guidancePreferences,
       dailyPlan,
       ruleOfLife,
       prompts,
@@ -753,6 +782,9 @@ export const useAura = () => {
       insights,
       blindSpots,
       strategicBriefing,
+      guidanceDigest,
+      guidanceQuestions,
+      guidancePreferences,
       dailyPlan,
       ruleOfLife,
       prompts,
@@ -1333,6 +1365,155 @@ export const useAura = () => {
     void refreshTelegramStatus();
     void refreshInbox();
   }, [isUnlocked, cloudUserId, refreshTelegramStatus, refreshInbox]);
+
+  const answerGuidanceQuestion = useCallback(
+    (questionId: string, answer: string) => {
+      const trimmed = answer.trim();
+      if (!trimmed) return;
+      const question = guidanceQuestions.find((item) => item.id === questionId);
+      if (!question) return;
+
+      setGuidanceQuestions((prev) =>
+        prev.map((item) =>
+          item.id === questionId
+            ? {
+                ...item,
+                status: 'answered',
+                answeredValue: trimmed,
+                answeredAt: Date.now(),
+              }
+            : item
+        )
+      );
+
+      const timestamp = Date.now();
+      appendMemoryItems([
+        {
+          id: `mem-guidance-answer-${timestamp}`,
+          timestamp,
+          content: `Guidance answer: ${question.prompt} -> ${trimmed}`,
+          category: question.category,
+          sentiment: 'neutral',
+          extractedFacts: [],
+          ownerId: activeUserId,
+          extractionConfidence: 1,
+          metadata: {
+            type: 'guidance_question_answer',
+            source: question.channel,
+            version: 1,
+            payload: {
+              questionId,
+              answer: trimmed,
+              reason: question.reason,
+            },
+          },
+        },
+      ]);
+      addAuditLog(ActionType.APPROVE, 'Guidance question answered', question.prompt);
+      if (refreshTimeoutRef.current) {
+        window.clearTimeout(refreshTimeoutRef.current);
+      }
+      refreshTimeoutRef.current = window.setTimeout(() => {
+        void refreshAuraRef.current?.();
+      }, 500);
+    },
+    [guidanceQuestions, appendMemoryItems, activeUserId, addAuditLog]
+  );
+
+  const dismissGuidanceQuestion = useCallback(
+    (questionId: string) => {
+      setGuidanceQuestions((prev) =>
+        prev.map((item) => (item.id === questionId ? { ...item, status: 'dismissed' } : item))
+      );
+    },
+    []
+  );
+
+  const snoozeGuidanceQuestion = useCallback((questionId: string, hours = 24) => {
+    const snoozedUntil = Date.now() + hours * 60 * 60 * 1000;
+    setGuidanceQuestions((prev) =>
+      prev.map((item) =>
+        item.id === questionId ? { ...item, status: 'snoozed', snoozedUntil } : item
+      )
+    );
+  }, []);
+
+  const publishGuidanceSnapshot = useCallback(async () => {
+    if (!cloudUserId || !guidanceDigest || !isSupabaseConfigured) return;
+    try {
+      const headers = await getAuthHeaders();
+      await fetch('/api/guidance/publish', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          digest: guidanceDigest,
+          question:
+            guidanceQuestions.find((item) => item.status === 'open') || guidanceDigest.question || null,
+          preferences: guidancePreferences,
+        }),
+      });
+    } catch (error: any) {
+      console.warn('[useAura] publishGuidanceSnapshot failed', error?.message || error);
+    }
+  }, [
+    cloudUserId,
+    guidanceDigest,
+    guidanceQuestions,
+    guidancePreferences,
+    getAuthHeaders,
+  ]);
+
+  const sendGuidanceToTelegram = useCallback(
+    async (options?: { reason?: string; force?: boolean }) => {
+      if (!cloudUserId || !guidanceDigest || !telegram.linked || !isSupabaseConfigured) {
+        return { sent: false, reason: 'unavailable' };
+      }
+      try {
+        const headers = await getAuthHeaders();
+        const response = await fetch('/api/telegram/send-guidance', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            digest: guidanceDigest,
+            question:
+              guidanceQuestions.find((item) => item.status === 'open') || guidanceDigest.question || null,
+            preferences: guidancePreferences,
+            reason: options?.reason || 'refresh',
+            force: Boolean(options?.force),
+          }),
+        });
+        return await parseApiPayload(response);
+      } catch (error: any) {
+        console.warn('[useAura] sendGuidanceToTelegram failed', error?.message || error);
+        return { sent: false, reason: 'error' };
+      }
+    },
+    [
+      cloudUserId,
+      guidanceDigest,
+      guidanceQuestions,
+      guidancePreferences,
+      telegram.linked,
+      getAuthHeaders,
+      parseApiPayload,
+    ]
+  );
+
+  useEffect(() => {
+    if (!isUnlocked || !cloudUserId || !guidanceDigest) return;
+    void publishGuidanceSnapshot();
+    if (telegram.linked && guidancePreferences.telegramMode !== 'off') {
+      void sendGuidanceToTelegram({ reason: 'refresh' });
+    }
+  }, [
+    isUnlocked,
+    cloudUserId,
+    guidanceDigest?.generatedAt,
+    guidancePreferences.telegramMode,
+    telegram.linked,
+    publishGuidanceSnapshot,
+    sendGuidanceToTelegram,
+  ]);
 
   const migrateToCloud = useCallback(async () => {
     if (!keyRef.current) throw new Error('Unlock your vault first.');
@@ -2330,6 +2511,33 @@ export const useAura = () => {
     return !isSameLocalDay(Date.now(), lastRun);
   };
 
+  const shouldRunGuidanceDigest = (force?: boolean) => {
+    if (force) return true;
+    const lastRun = lastGuidanceDigestRef.current;
+    if (!lastRun) return true;
+    return !isSameLocalDay(Date.now(), lastRun);
+  };
+
+  const buildLocalGuidanceDigest = useCallback(
+    (
+      doCandidates: Recommendation[],
+      watchCandidates: BlindSpot[],
+      questionCandidates: GuidanceQuestion[]
+    ): GuidanceDigest => ({
+      generatedAt: Date.now(),
+      summary:
+        doCandidates.length > 0
+          ? `Focus on ${doCandidates[0].title} while keeping ${watchCandidates[0]?.signal || 'your main risk'} visible.`
+          : 'Capture more signals so the system can sharpen your next actions.',
+      activeHorizon: 'now',
+      question: questionCandidates[0] || null,
+      doItems: doCandidates.slice(0, 3),
+      watchItems: watchCandidates.slice(0, 3),
+      sources: [],
+    }),
+    []
+  );
+
   const planMyDay = async () => {
     setIsPlanningDay(true);
     try {
@@ -2351,8 +2559,6 @@ export const useAura = () => {
 
   const refreshAura = async (options?: { force?: boolean }) => {
     const force = Boolean(options?.force);
-    if (!shouldRunDailyBatch(force)) return;
-
     markPerf(PERF_MARKERS.refreshStart);
     setIsGeneratingTasks(true);
     try {
@@ -2369,25 +2575,27 @@ export const useAura = () => {
         claims,
       };
 
-      let batchResult: {
-        tasks: DailyTask[];
-        insights: ProactiveInsight[];
-        blindSpots: BlindSpot[];
-      };
-      try {
-        batchResult = await dailyIntelligenceBatch(memoryItems, profile, batchPrompt, context);
-        markPerf(PERF_MARKERS.refreshEnd);
-        measurePerf('arete-refresh', PERF_MARKERS.refreshStart, PERF_MARKERS.refreshEnd);
-      } catch (err) {
-        console.error('[refreshAura] daily batch failed', err);
-        markPerf(PERF_MARKERS.refreshEnd);
-        measurePerf('arete-refresh', PERF_MARKERS.refreshStart, PERF_MARKERS.refreshEnd);
-        return;
-      }
-      const rawTasks = Array.isArray(batchResult?.tasks) ? batchResult.tasks : [];
-      setTasks((prev) => {
+      let nextTasks = [...tasks];
+      let nextInsights = [...insights];
+      let nextBlindSpots = [...blindSpots];
+      let nextRecommendations = [...recommendations];
+
+      if (shouldRunDailyBatch(force)) {
+        let batchResult: {
+          tasks: DailyTask[];
+          insights: ProactiveInsight[];
+          blindSpots: BlindSpot[];
+        };
+        try {
+          batchResult = await dailyIntelligenceBatch(memoryItems, profile, batchPrompt, context);
+        } catch (err) {
+          console.error('[refreshAura] daily batch failed', err);
+          batchResult = { tasks: [], insights: [], blindSpots: [] };
+        }
+
+        const rawTasks = Array.isArray(batchResult?.tasks) ? batchResult.tasks : [];
         const now = Date.now();
-        const prevById = new Map(prev.map((t) => [t.id, t]));
+        const prevById = new Map(tasks.map((t) => [t.id, t]));
         const normalizedAi = rawTasks.map((task) => {
           const title = typeof task.title === 'string' ? task.title : 'New task';
           const description =
@@ -2409,17 +2617,21 @@ export const useAura = () => {
             createdAt: existing?.createdAt || task.createdAt || now,
           } as DailyTask;
         });
-        const aiIds = new Set(normalizedAi.map((t) => t.id));
-        const manualTasks = prev.filter((t) => !String(t.id || '').startsWith('ai-'));
-        const completedAi = prev.filter(
-          (t) => String(t.id || '').startsWith('ai-') && t.completed && !aiIds.has(t.id)
+        const aiIds = new Set(normalizedAi.map((task) => task.id));
+        const manualTasks = tasks.filter((task) => !String(task.id || '').startsWith('ai-'));
+        const completedAi = tasks.filter(
+          (task) => String(task.id || '').startsWith('ai-') && task.completed && !aiIds.has(task.id)
         );
-        return [...manualTasks, ...normalizedAi, ...completedAi];
-      });
 
-      setInsights(Array.isArray(batchResult?.insights) ? batchResult.insights : []);
-      setBlindSpots(Array.isArray(batchResult?.blindSpots) ? batchResult.blindSpots : []);
-      lastDailyBatchRef.current = Date.now();
+        nextTasks = [...manualTasks, ...normalizedAi, ...completedAi];
+        nextInsights = Array.isArray(batchResult?.insights) ? batchResult.insights : [];
+        nextBlindSpots = Array.isArray(batchResult?.blindSpots) ? batchResult.blindSpots : [];
+
+        setTasks(nextTasks);
+        setInsights(nextInsights);
+        setBlindSpots(nextBlindSpots);
+        lastDailyBatchRef.current = Date.now();
+      }
 
       if (shouldRunDeepTasks(force)) {
         try {
@@ -2431,7 +2643,8 @@ export const useAura = () => {
             context
           );
           if (Array.isArray(deepResult?.recommendations) && deepResult.recommendations.length > 0) {
-            setRecommendations(deepResult.recommendations);
+            nextRecommendations = deepResult.recommendations;
+            setRecommendations(nextRecommendations);
             lastDeepTasksRef.current = Date.now();
           }
         } catch (err) {
@@ -2453,10 +2666,88 @@ export const useAura = () => {
           setIsRefreshingBriefing(false);
         }
       }
+
+      const questionCandidates = buildDeterministicGuidanceQuestions({
+        memory: memoryItems,
+        profile,
+        missingProfileFields,
+        recommendations: nextRecommendations,
+        blindSpots: nextBlindSpots,
+      }).map((question) => {
+        const existing = guidanceQuestions.find((item) => item.id === question.id);
+        return existing ? { ...question, ...existing } : question;
+      });
+
+      const doCandidates = buildDeterministicDoCandidates({
+        recommendations: nextRecommendations,
+        dailyPlan,
+        tasks: nextTasks,
+        timelineEvents,
+        profile,
+      });
+
+      const watchCandidates = buildDeterministicWatchCandidates({
+        blindSpots: nextBlindSpots,
+        memory: memoryItems,
+        timelineEvents,
+        profile,
+      });
+
+      setGuidanceQuestions(questionCandidates);
+
+      const localDigest = buildLocalGuidanceDigest(doCandidates, watchCandidates, questionCandidates);
+
+      if (shouldRunGuidanceDigest(force)) {
+        try {
+          const aiDigest = await generateGuidanceDigest(
+            memoryItems,
+            profile,
+            doCandidates,
+            watchCandidates,
+            questionCandidates.filter((item) => item.status === 'open'),
+            {
+              ...context,
+              externalScanEnabled: guidancePreferences.externalScanEnabled,
+            }
+          );
+          if (aiDigest) {
+            const digestQuestion = aiDigest.question
+              ? (() => {
+                  const existing = questionCandidates.find((item) => item.id === aiDigest.question?.id);
+                  return existing ? { ...aiDigest.question, ...existing } : aiDigest.question;
+                })()
+              : questionCandidates.find((item) => item.status === 'open') || null;
+
+            setGuidanceDigest({
+              ...aiDigest,
+              question: digestQuestion,
+            });
+            lastGuidanceDigestRef.current = aiDigest.generatedAt || Date.now();
+          } else {
+            setGuidanceDigest(localDigest);
+          }
+        } catch (err) {
+          console.error('[refreshAura] guidance digest failed', err);
+          setGuidanceDigest(localDigest);
+        }
+      } else {
+        setGuidanceDigest((prev) => ({
+          ...(prev || localDigest),
+          generatedAt: Date.now(),
+          summary: localDigest.summary,
+          question: questionCandidates.find((item) => item.status === 'open') || null,
+          doItems: doCandidates.slice(0, 3),
+          watchItems: watchCandidates.slice(0, 3),
+        }));
+      }
+      markPerf(PERF_MARKERS.refreshEnd);
+      measurePerf('arete-refresh', PERF_MARKERS.refreshStart, PERF_MARKERS.refreshEnd);
     } finally {
       setIsGeneratingTasks(false);
     }
   };
+
+  refreshAuraRef.current = refreshAura;
 
   const refreshStrategicBriefingNow = useCallback(
     async (options?: { force?: boolean }) => {
@@ -2587,9 +2878,9 @@ export const useAura = () => {
       window.clearTimeout(refreshTimeoutRef.current);
     }
     refreshTimeoutRef.current = window.setTimeout(() => {
-      refreshAura();
+      void refreshAuraRef.current?.();
     }, 500);
-  }, [refreshAura]);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -2632,6 +2923,9 @@ export const useAura = () => {
     inboxReviewConfidence,
     missingProfileFields,
     telegram,
+    guidanceDigest,
+    guidanceQuestions,
+    guidancePreferences,
     lifeContextSnapshots,
     latestDimensionSnapshots,
     lastSessionScores,
@@ -2654,10 +2948,15 @@ export const useAura = () => {
     mergeInboxEntries,
     refreshInbox,
     checkInbox: refreshInbox,
+    answerGuidanceQuestion,
+    dismissGuidanceQuestion,
+    snoozeGuidanceQuestion,
     generateTelegramLinkCode,
     unlinkTelegram,
+    sendGuidanceToTelegram,
     setInboxAutoMerge,
     setInboxReviewConfidence,
+    setGuidancePreferences,
     planMyDay,
     refreshStrategicBriefing: refreshStrategicBriefingNow,
     resolveConflict,

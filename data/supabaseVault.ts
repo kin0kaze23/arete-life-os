@@ -7,6 +7,9 @@ import {
   Claim,
   DailyTask,
   DashboardLayout,
+  GuidanceDigest,
+  GuidancePreferences,
+  GuidanceQuestion,
   Goal,
   MemoryItem,
   ProactiveInsight,
@@ -70,6 +73,9 @@ export interface CloudVaultSnapshot {
   timelineEvents: TimelineEvent[];
   insights: ProactiveInsight[];
   blindSpots: BlindSpot[];
+  guidanceDigest?: GuidanceDigest | null;
+  guidanceQuestions?: GuidanceQuestion[];
+  guidancePreferences?: GuidancePreferences;
   dailyPlan: DailyTask[];
   ruleOfLife: RuleOfLife;
   prompts: PromptConfig[];
@@ -170,6 +176,9 @@ const buildEntryPayloads = (snapshot: CloudVaultSnapshot): EntryPayload[] => {
       sources: snapshot.sources,
       auditLogs: snapshot.auditLogs,
       insights: snapshot.insights,
+      guidanceDigest: snapshot.guidanceDigest || null,
+      guidanceQuestions: snapshot.guidanceQuestions || [],
+      guidancePreferences: snapshot.guidancePreferences || null,
       dailyPlan: snapshot.dailyPlan,
       prompts: snapshot.prompts,
       layouts: snapshot.layouts,
@@ -359,6 +368,12 @@ export const loadVaultSnapshotFromSupabase = async (
           snapshot.sources = Array.isArray(parsed.sources) ? parsed.sources : snapshot.sources;
           snapshot.auditLogs = Array.isArray(parsed.auditLogs) ? parsed.auditLogs : snapshot.auditLogs;
           snapshot.insights = Array.isArray(parsed.insights) ? parsed.insights : snapshot.insights;
+          snapshot.guidanceDigest = parsed.guidanceDigest || snapshot.guidanceDigest;
+          snapshot.guidanceQuestions = Array.isArray(parsed.guidanceQuestions)
+            ? parsed.guidanceQuestions
+            : snapshot.guidanceQuestions;
+          snapshot.guidancePreferences =
+            parsed.guidancePreferences || snapshot.guidancePreferences;
           snapshot.dailyPlan = Array.isArray(parsed.dailyPlan) ? parsed.dailyPlan : snapshot.dailyPlan;
           snapshot.prompts = Array.isArray(parsed.prompts) ? parsed.prompts : snapshot.prompts;
           snapshot.layouts = parsed.layouts || snapshot.layouts;

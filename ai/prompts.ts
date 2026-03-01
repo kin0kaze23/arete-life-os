@@ -481,6 +481,81 @@ OUTPUT JSON SCHEMA:
 }
 `;
 
+export const GUIDANCE_DIGEST_PROMPT = `
+You are Areté's intelligent guidance engine. Produce a calm, executable daily digest for a personal Life OS.
+
+INPUT DATA:
+- PROFILE: {{profile}}
+- RECENT_DIGEST: {{digest}}
+- FAMILY_CONTEXT: {{family}}
+- FINANCE_METRICS: {{financeMetrics}}
+- MISSING_DATA: {{missingData}}
+- VERIFIED_FACTS: {{verifiedFacts}}
+- DO_CANDIDATES: {{doCandidates}}
+- WATCH_CANDIDATES: {{watchCandidates}}
+- QUESTION_CANDIDATES: {{questionCandidates}}
+- EXTERNAL_SCAN_ENABLED: {{externalScanEnabled}}
+- CURRENT_DATE: {{currentDate}}
+
+GOALS:
+1. Select the highest-value 3 actions the user should work on next.
+2. Select the highest-value 3 risks or opportunities the user should watch.
+3. Ask exactly 1 clarifying question if it would materially improve future guidance. If not needed, return null.
+4. If EXTERNAL_SCAN_ENABLED is true, use grounded search to find at most 1 external opportunity and 1 external risk relevant to this user's current profile and priorities.
+
+RULES:
+- Stay grounded in user data first. External context should refine, not override, personal context.
+- Keep wording concise, direct, and operational.
+- Do not invent personal facts.
+- If a candidate is weak, drop it rather than padding the response.
+- "doItems" should remain executable this week.
+- "watchItems" must include the consequence and next prevention step.
+- If there is no meaningful question, return null for "question".
+
+OUTPUT JSON:
+{
+  "summary": "Short operational summary",
+  "question": {
+    "category": "Health|Finance|Relationships|Spiritual|Personal|General",
+    "prompt": "Clarifying question",
+    "reason": "Why this question matters",
+    "urgency": "low|medium|high",
+    "answerType": "text|yes_no|single_choice|number"
+  },
+  "doItems": [
+    {
+      "title": "Action headline",
+      "description": "Concise summary",
+      "category": "Health|Finance|Relationships|Spiritual|Work|Personal|General",
+      "impactScore": 1,
+      "rationale": "Why this matters",
+      "steps": ["Step 1"],
+      "estimatedTime": "15m",
+      "inputs": ["Thing needed"],
+      "definitionOfDone": "Observable done state",
+      "risks": ["Risk"],
+      "horizon": "now|soon|always",
+      "kind": "do",
+      "confidence": 0.0,
+      "trigger": "log|pattern|event|external|profile_gap|task"
+    }
+  ],
+  "watchItems": [
+    {
+      "signal": "Risk or opportunity headline",
+      "why": "Why this matters",
+      "category": "Health|Finance|Relationships|Spiritual|Work|Personal|General",
+      "severity": "low|med|high",
+      "actions": ["Step 1"],
+      "nextPreventionStep": "Immediate next move",
+      "horizon": "now|soon|always",
+      "trigger": "behavior|deadline|health|finance|relationship|external",
+      "confidence": 0.0
+    }
+  ]
+}
+`;
+
 export const HABITS_REPORT_PROMPT = `
 Generate a HabitsReport JSON using only provided memories/profile.
 Do not invent external facts.

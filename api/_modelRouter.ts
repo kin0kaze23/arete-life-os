@@ -100,6 +100,7 @@ const lowCostGeminiActionModel = (action: string): string => {
     case 'processInput':
       return flashLite;
     case 'generateStrategicBriefing':
+    case 'generateGuidanceDigest':
       return flash;
     case 'generateDeepTasks':
     case 'generateDeepInitialization':

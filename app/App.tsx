@@ -333,8 +333,13 @@ const App: React.FC = () => {
                     onMergeInbox={aura.mergeInboxEntries}
                     onRefreshInbox={aura.refreshInbox}
                     strategicBriefing={(aura as any).strategicBriefing}
+                    guidanceDigest={(aura as any).guidanceDigest}
+                    guidanceQuestions={(aura as any).guidanceQuestions}
                     isRefreshingBriefing={(aura as any).isRefreshingBriefing}
                     onRefreshStrategicBriefing={(aura as any).refreshStrategicBriefing}
+                    onAnswerGuidanceQuestion={(aura as any).answerGuidanceQuestion}
+                    onDismissGuidanceQuestion={(aura as any).dismissGuidanceQuestion}
+                    onSnoozeGuidanceQuestion={(aura as any).snoozeGuidanceQuestion}
                     isInboxAvailable={aura.isCloudConnected || import.meta.env.VITE_E2E === '1'}
                     inboxUnavailableReason={
                       !aura.isCloudSyncAvailable
@@ -427,6 +432,11 @@ const App: React.FC = () => {
                     onToggleInboxAutoMerge={aura.setInboxAutoMerge}
                     inboxReviewConfidence={aura.inboxReviewConfidence}
                     onChangeInboxReviewConfidence={aura.setInboxReviewConfidence}
+                    guidancePreferences={(aura as any).guidancePreferences}
+                    onChangeGuidancePreferences={(aura as any).setGuidancePreferences}
+                    onSendTelegramGuidanceTest={() =>
+                      (aura as any).sendGuidanceToTelegram({ reason: 'settings_test', force: true })
+                    }
                     auditLogs={aura.auditLogs}
                     exportAuditLogs={aura.exportAuditLogs}
                     clearAuditLogs={aura.clearAuditLogs}

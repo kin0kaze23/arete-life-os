@@ -3,6 +3,8 @@ import {
   BlindSpot,
   DailyTask,
   Goal,
+  GuidanceDigest,
+  GuidanceQuestion,
   MemoryEntry,
   PromptConfig,
   ProactiveInsight,
@@ -19,6 +21,7 @@ import {
   HYPER_PERSONALIZED_PROMPT,
   LOG_BAR_INGEST_PROMPT,
   DAILY_INTELLIGENCE_BATCH_PROMPT,
+  GUIDANCE_DIGEST_PROMPT,
 } from './prompts';
 
 const callGemini = async <T>(action: string, payload: Record<string, unknown>, fallback: T) => {
@@ -233,6 +236,31 @@ export const generateStrategicBriefing = async (
     null
   );
 
+export const generateGuidanceDigest = async (
+  history: MemoryEntry[],
+  profile: UserProfile,
+  doCandidates: Recommendation[],
+  watchCandidates: BlindSpot[],
+  questionCandidates: GuidanceQuestion[],
+  context?: PromptContext & { externalScanEnabled?: boolean }
+): Promise<GuidanceDigest | null> =>
+  callGemini(
+    'generateGuidanceDigest',
+    {
+      history,
+      profile,
+      doCandidates,
+      watchCandidates,
+      questionCandidates,
+      familyMembers: context?.familyMembers,
+      financeMetrics: context?.financeMetrics,
+      missingData: context?.missingData,
+      claims: context?.claims,
+      externalScanEnabled: context?.externalScanEnabled,
+    },
+    null
+  );
+
 export const generateDailyPlan = async (
   profile: UserProfile,
   timeline: TimelineEvent[],
@@ -305,5 +333,12 @@ export const DEFAULT_PROMPTS: PromptConfig[] = [
     purpose: 'Generates daily tasks, insights, and blind spots in a single batch.',
     template: DAILY_INTELLIGENCE_BATCH_PROMPT,
     defaultTemplate: DAILY_INTELLIGENCE_BATCH_PROMPT,
+  },
+  {
+    id: 'guidanceDigest',
+    name: 'Guidance Digest',
+    purpose: 'Ranks the best Do, Watch, and Ask items and adds grounded external context.',
+    template: GUIDANCE_DIGEST_PROMPT,
+    defaultTemplate: GUIDANCE_DIGEST_PROMPT,
   },
 ];

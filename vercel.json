@@ -1,4 +1,10 @@
 {
+  "crons": [
+    {
+      "path": "/api/telegram/proactive",
+      "schedule": "0 * * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

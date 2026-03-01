@@ -83,6 +83,32 @@ export const ensureAppReady = async (page: Page) => {
       case 'generateDeepTasks':
         payload = { recommendations: [makeRec()], tasks: [] };
         break;
+      case 'generateGuidanceDigest':
+        payload = {
+          summary: 'Synthetic guidance digest for tests.',
+          question: {
+            category: 'Personal',
+            prompt: 'What matters most this week?',
+            reason: 'Improves prioritization.',
+            urgency: 'low',
+            answerType: 'text',
+          },
+          doItems: [makeRec()],
+          watchItems: [
+            {
+              signal: 'Synthetic watch item',
+              why: 'Generated for test stability.',
+              category: 'Personal',
+              severity: 'med',
+              actions: ['Review priorities'],
+              nextPreventionStep: 'Clarify the next move.',
+              horizon: 'now',
+              trigger: 'behavior',
+              confidence: 0.8,
+            },
+          ],
+        };
+        break;
       case 'generateEventPrepPlan':
         payload = {
           ...makeRec(),
@@ -116,14 +142,49 @@ export const ensureAppReady = async (page: Page) => {
   const createHeading = page.getByRole('heading', { name: /create secure vault/i });
   const unlockHeading = page.getByRole('heading', { name: /unlock secure vault/i });
 
-  if (await isVisible(createHeading)) {
+  const resetVaultState = async () => {
+    await page.evaluate(async () => {
+      localStorage.clear();
+      sessionStorage.clear();
+      if (typeof indexedDB !== 'undefined' && typeof indexedDB.databases === 'function') {
+        const databases = await indexedDB.databases();
+        await Promise.all(
+          databases
+            .map((database) => database.name)
+            .filter((name): name is string => Boolean(name))
+            .map(
+              (name) =>
+                new Promise<void>((resolve) => {
+                  const request = indexedDB.deleteDatabase(name);
+                  request.onsuccess = () => resolve();
+                  request.onerror = () => resolve();
+                  request.onblocked = () => resolve();
+                })
+            )
+        );
+      }
+    });
+    await page.reload();
+  };
+
+  const createVault = async () => {
     const passphraseInput = page.getByPlaceholder('Enter passphrase');
     await passphraseInput.fill(DEFAULT_PASSPHRASE);
     await page.getByPlaceholder('Confirm passphrase').fill(DEFAULT_PASSPHRASE);
     await page.getByRole('button', { name: /create vault/i }).click();
+  };
+
+  if (await isVisible(createHeading)) {
+    await createVault();
   } else if (await isVisible(unlockHeading)) {
     await page.getByPlaceholder('Enter passphrase').fill(DEFAULT_PASSPHRASE);
     await page.getByRole('button', { name: /unlock/i }).click();
+    if (await isVisible(unlockHeading, 1500)) {
+      await resetVaultState();
+      if (await isVisible(createHeading, 3000)) {
+        await createVault();
+      }
+    }
   }
 
   const onboardingHeader = page.getByText('Neural Identity');

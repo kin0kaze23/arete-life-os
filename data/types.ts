@@ -292,6 +292,8 @@ export interface Recommendation {
   id: string;
   ownerId: string;
   category: Category;
+  horizon?: 'now' | 'soon' | 'always';
+  kind?: 'do' | 'opportunity';
   title: string;
   description: string;
   impactScore: number;
@@ -303,6 +305,10 @@ export interface Recommendation {
   risks: string[];
   status: 'ACTIVE' | 'DISMISSED' | 'APPLIED';
   userFeedback?: 'kept' | 'removed';
+  confidence?: number;
+  trigger?: 'log' | 'pattern' | 'event' | 'external' | 'profile_gap' | 'task';
+  staleAt?: number;
+  questionId?: string;
   needsReview: boolean;
   missingFields: string[];
   createdAt: number;
@@ -394,12 +400,17 @@ export interface FamilySpace {
 export interface BlindSpot {
   id: string;
   ownerId: string;
+  category?: Category;
+  horizon?: 'now' | 'soon' | 'always';
+  trigger?: 'behavior' | 'deadline' | 'health' | 'finance' | 'relationship' | 'external';
   createdAt: number;
   signal: string;
   why: string;
   confidence: number;
   severity: 'low' | 'med' | 'high';
   actions: string[];
+  nextPreventionStep?: string;
+  linkedTaskId?: string;
 }
 
 export interface ProactiveInsight {
@@ -429,6 +440,46 @@ export interface StrategicBriefing {
     title: string;
     uri: string;
   }[];
+}
+
+export interface GuidanceQuestion {
+  id: string;
+  ownerId: string;
+  category: Category;
+  prompt: string;
+  reason: string;
+  sourceType: 'recommendation' | 'blind_spot' | 'profile_gap' | 'external_scan' | 'pattern';
+  sourceId?: string;
+  urgency: 'low' | 'medium' | 'high';
+  channel: 'dashboard' | 'telegram';
+  answerType: 'text' | 'yes_no' | 'single_choice' | 'number';
+  status: 'open' | 'answered' | 'dismissed' | 'snoozed';
+  askedAt?: number;
+  answeredAt?: number;
+  answeredValue?: string;
+  snoozedUntil?: number;
+}
+
+export interface GuidanceDigest {
+  generatedAt: number;
+  summary: string;
+  activeHorizon: 'now' | 'soon' | 'always';
+  question: GuidanceQuestion | null;
+  doItems: Recommendation[];
+  watchItems: BlindSpot[];
+  sources: {
+    title: string;
+    uri: string;
+  }[];
+}
+
+export interface GuidancePreferences {
+  telegramMode: 'off' | 'digest' | 'important_only' | 'coach';
+  quietHoursStart?: string;
+  quietHoursEnd?: string;
+  dailyTelegramLimit: number;
+  externalScanEnabled: boolean;
+  externalScanCategories: Category[];
 }
 
 export interface TimelineEvent {

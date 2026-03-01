@@ -36,4 +36,20 @@ if (!payload.text || typeof payload.text !== "string") throw new Error("origin-b
 console.log("[prod-smoke] browser-origin askAura: OK");
 ' "$origin_ask_json"
 
+guidance_json="$(curl -fsS "$BASE_URL/api/gemini" -H 'content-type: application/json' --data-raw '{"action":"generateGuidanceDigest","payload":{"history":[],"profile":{"id":"u1","identify":{"name":"Prod Smoke"},"personal":{"jobRole":"Operator","company":"","interests":["markets"]},"health":{"height":"","weight":"","sleepTime":"","wakeTime":"","activities":[],"activityFrequency":"","conditions":[],"medications":[]},"finances":{"assetsTotal":"","assetsBreakdown":{"cash":"","investments":"","property":"","other":""},"liabilities":"","income":"8000","fixedCosts":"3000","variableCosts":"1500"},"relationship":{"relationshipStatus":"Single","livingArrangement":"","socialEnergy":"","dailyCommitments":[],"socialGoals":[]},"spiritual":{"worldview":"","coreValues":["Discipline"],"practicePulse":""}},"doCandidates":[{"id":"rec-1","ownerId":"u1","category":"Personal","title":"Review goals","description":"Re-anchor the week","impactScore":8,"rationale":"A short review improves focus.","steps":["Open your goals","Choose one priority"],"estimatedTime":"15m","inputs":[],"definitionOfDone":"One priority is chosen","risks":[],"status":"ACTIVE","needsReview":false,"missingFields":[],"createdAt":1,"evidenceLinks":{"claims":[],"sources":[]}}],"watchCandidates":[{"id":"watch-1","ownerId":"u1","signal":"Budget drift","why":"Spending may exceed plan.","confidence":0.8,"severity":"med","actions":["Review discretionary spend"],"category":"Finance","createdAt":1}],"questionCandidates":[{"id":"q-1","ownerId":"u1","category":"Finance","prompt":"What is your target savings rate?","reason":"Improves finance guidance","sourceType":"profile_gap","urgency":"medium","channel":"dashboard","answerType":"number","status":"open"}],"externalScanEnabled":true}}')"
+node -e '
+const payload = JSON.parse(process.argv[1]);
+if (!payload.summary || !Array.isArray(payload.doItems) || !Array.isArray(payload.watchItems)) {
+  throw new Error("generateGuidanceDigest response missing required fields");
+}
+console.log("[prod-smoke] guidance digest: OK");
+' "$guidance_json"
+
+telegram_guidance_json="$(curl -fsS "$BASE_URL/api/telegram/proactive?dryRun=1")"
+node -e '
+const payload = JSON.parse(process.argv[1]);
+if (!payload.ok || typeof payload.processed !== "number") throw new Error("telegram proactive dry-run failed");
+console.log("[prod-smoke] telegram proactive dry-run: OK");
+' "$telegram_guidance_json"
+
 echo "[prod-smoke] all checks passed"

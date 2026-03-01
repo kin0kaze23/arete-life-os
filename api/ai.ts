@@ -4,6 +4,7 @@ import {
   DAILY_PLAN_PROMPT,
   DIMENSION_CONTEXT_PROMPT,
   DOMAIN_PROMPTS,
+  GUIDANCE_DIGEST_PROMPT,
   HYPER_PERSONALIZED_PROMPT,
   LIFE_SNAPSHOT_SYNTHESIS_PROMPT,
   STRATEGIC_BRIEFING_PROMPT,
@@ -34,6 +35,8 @@ import type {
   DailyTask,
   DimensionContextSnapshot,
   DimensionSwot,
+  GuidanceDigest,
+  GuidanceQuestion,
   Goal,
   LifeDimension,
   MemoryEntry,
@@ -75,6 +78,38 @@ const StrategicBriefingSchema = z.object({
   opportunities: z.array(StrategicBriefingItemSchema).max(3).default([]),
   risks: z.array(StrategicBriefingItemSchema).max(3).default([]),
   actions: z.array(z.string().min(1)).max(5).default([]),
+});
+
+const GuidanceQuestionSchema = z.object({
+  category: z.nativeEnum(Category),
+  prompt: z.string().min(1),
+  reason: z.string().min(1),
+  urgency: z.enum(['low', 'medium', 'high']).default('low'),
+  answerType: z.enum(['text', 'yes_no', 'single_choice', 'number']).default('text'),
+});
+
+const GuidanceDigestSchema = z.object({
+  summary: z.string().min(1),
+  question: GuidanceQuestionSchema.nullish(),
+  doItems: z.array(RecommendationSchema).max(3).default([]),
+  watchItems: z
+    .array(
+      z.object({
+        signal: z.string().min(1),
+        why: z.string().min(1),
+        category: z.nativeEnum(Category).default(Category.GENERAL),
+        severity: z.enum(['low', 'med', 'high']).default('med'),
+        actions: z.array(z.string()).default([]),
+        nextPreventionStep: z.string().optional(),
+        horizon: z.enum(['now', 'soon', 'always']).default('now'),
+        trigger: z
+          .enum(['behavior', 'deadline', 'health', 'finance', 'relationship', 'external'])
+          .default('behavior'),
+        confidence: z.number().min(0).max(1).default(0.75),
+      })
+    )
+    .max(3)
+    .default([]),
 });
 
 const parseJSONObject = (raw: string) => {
@@ -729,6 +764,129 @@ const generateStrategicBriefing = async (
   }
 };
 
+const generateGuidanceDigest = async (
+  history: MemoryEntry[],
+  profile: UserProfile,
+  doCandidates: Recommendation[] = [],
+  watchCandidates: BlindSpot[] = [],
+  questionCandidates: GuidanceQuestion[] = [],
+  familyMembers: UserProfile[] = [],
+  financeMetrics?: FinanceMetrics | null,
+  missingData?: string[],
+  claims?: any[],
+  externalScanEnabled = true
+): Promise<GuidanceDigest> => {
+  const memberContext = familyMembers.map((m) => ({
+    id: m.id,
+    name: m.identify.name,
+    role: m.role,
+  }));
+
+  const committedClaims = (claims || [])
+    .filter((c: any) => c.status === 'COMMITTED')
+    .slice(0, 20)
+    .map((c: any) => ({ fact: c.fact, category: c.category, confidence: c.confidence }));
+
+  const finalPrompt = fillTemplate(GUIDANCE_DIGEST_PROMPT, {
+    profile: JSON.stringify(buildCompactProfile(profile)),
+    digest: JSON.stringify(buildDailyDigest(history, 14)),
+    family: JSON.stringify(memberContext),
+    financeMetrics: JSON.stringify(financeMetrics || null),
+    missingData: JSON.stringify(missingData || []),
+    verifiedFacts: JSON.stringify(committedClaims),
+    doCandidates: JSON.stringify(doCandidates.slice(0, 6)),
+    watchCandidates: JSON.stringify(watchCandidates.slice(0, 6)),
+    questionCandidates: JSON.stringify(questionCandidates.slice(0, 4)),
+    externalScanEnabled: JSON.stringify(Boolean(externalScanEnabled)),
+    currentDate: new Date().toISOString(),
+  });
+
+  const normalizeResult = (
+    value: unknown,
+    sources: { title: string; uri: string }[] = []
+  ): GuidanceDigest => {
+    const parsed = validateAIOutput(GuidanceDigestSchema, value) as
+      | z.infer<typeof GuidanceDigestSchema>
+      | null;
+    const generatedAt = Date.now();
+    const question = parsed?.question
+      ? {
+          id: `gq-ai-${generatedAt}`,
+          ownerId: profile.id,
+          category: parsed.question.category,
+          prompt: parsed.question.prompt,
+          reason: parsed.question.reason,
+          sourceType: 'pattern' as const,
+          urgency: parsed.question.urgency,
+          channel: 'dashboard' as const,
+          answerType: parsed.question.answerType,
+          status: 'open' as const,
+        }
+      : null;
+    const allowedCategories = new Set(Object.values(Category));
+
+    return {
+      generatedAt,
+      summary:
+        parsed?.summary || 'Focus on the highest-value action, keep one risk visible, and answer one question that sharpens the system.',
+      activeHorizon: 'now',
+      question,
+      doItems: Array.isArray(parsed?.doItems)
+        ? parsed.doItems.slice(0, 3).map((item, index) => ({
+            id: `guide-do-${generatedAt}-${index}`,
+            ownerId: profile.id,
+            category: allowedCategories.has(item.category as Category)
+              ? (item.category as Category)
+              : Category.GENERAL,
+            title: item.title,
+            description: item.description,
+            impactScore: item.impactScore,
+            rationale: item.rationale,
+            steps: item.steps || [],
+            estimatedTime: item.estimatedTime || '',
+            inputs: item.inputs || [],
+            definitionOfDone: item.definitionOfDone || '',
+            risks: item.risks || [],
+            createdAt: generatedAt,
+            status: 'ACTIVE',
+            needsReview: false,
+            missingFields: [],
+            evidenceLinks: { claims: [], sources: [] },
+            horizon: 'now',
+            kind: 'do',
+          }))
+        : [],
+      watchItems: Array.isArray(parsed?.watchItems)
+        ? parsed.watchItems.slice(0, 3).map((item, index) => ({
+            id: `guide-watch-${generatedAt}-${index}`,
+            ownerId: profile.id,
+            category: item.category,
+            horizon: item.horizon,
+            trigger: item.trigger,
+            createdAt: generatedAt,
+            signal: item.signal,
+            why: item.why,
+            confidence: item.confidence,
+            severity: item.severity,
+            actions: item.actions,
+            nextPreventionStep: item.nextPreventionStep,
+          }))
+        : [],
+      sources,
+    };
+  };
+
+  try {
+    const result = externalScanEnabled
+      ? await modelRouter.generateWithSearch('generateGuidanceDigest', finalPrompt)
+      : { text: JSON.stringify(await modelRouter.generateJSON('generateGuidanceDigest', finalPrompt)), sources: [] };
+    return normalizeResult(parseJSONObject(result.text || '{}'), result.sources || []);
+  } catch (err) {
+    const parsed = await modelRouter.generateJSON('generateGuidanceDigest', finalPrompt);
+    return normalizeResult(parsed);
+  }
+};
+
 const generateBlindSpots = async (
   history: MemoryEntry[],
   profile: UserProfile,
@@ -1253,6 +1411,20 @@ const actionSchemas: Record<string, z.ZodTypeAny> = {
       claims: z.any().optional(),
     })
     .passthrough(),
+  generateGuidanceDigest: z
+    .object({
+      history: z.any().optional(),
+      profile: z.any().optional(),
+      doCandidates: z.any().optional(),
+      watchCandidates: z.any().optional(),
+      questionCandidates: z.any().optional(),
+      familyMembers: z.any().optional(),
+      financeMetrics: z.any().optional(),
+      missingData: z.any().optional(),
+      claims: z.any().optional(),
+      externalScanEnabled: z.boolean().optional(),
+    })
+    .passthrough(),
   generateBlindSpots: z
     .object({
       history: z.any().optional(),
@@ -1409,6 +1581,19 @@ export const handleAIAction = async (action: string, payload: any) => {
         payload.financeMetrics,
         payload.missingData,
         payload.claims
+      );
+    case 'generateGuidanceDigest':
+      return await generateGuidanceDigest(
+        payload.history,
+        payload.profile,
+        payload.doCandidates,
+        payload.watchCandidates,
+        payload.questionCandidates,
+        payload.familyMembers,
+        payload.financeMetrics,
+        payload.missingData,
+        payload.claims,
+        payload.externalScanEnabled
       );
     case 'generateBlindSpots':
       return await generateBlindSpots(
