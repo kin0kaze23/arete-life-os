@@ -103,6 +103,8 @@ const lowCostGeminiActionModel = (action: string): string => {
       return flash;
     case 'generateDeepTasks':
     case 'generateDeepInitialization':
+    case 'generateInsights':
+    case 'generateBlindSpots':
       return pro;
     default:
       return flash;
@@ -110,6 +112,15 @@ const lowCostGeminiActionModel = (action: string): string => {
 };
 
 const defaultModelConfig = (action?: string): ModelConfig => {
+  // Aura (Chat) defaults to xAI Grok-3 per architecture
+  if (action === 'askAura' && hasApiKey('xai')) {
+    return {
+      provider: 'xai',
+      model: process.env.XAI_MODEL || 'grok-3',
+      apiKeyEnvVar: PROVIDER_KEY_ENV['xai'],
+    };
+  }
+
   const providerCandidate = process.env.AI_DEFAULT_PROVIDER?.trim().toLowerCase();
   const provider = isProviderType(providerCandidate) ? providerCandidate : 'gemini';
   const model =
@@ -125,6 +136,7 @@ const defaultModelConfig = (action?: string): ModelConfig => {
       : undefined,
   };
 };
+
 
 const resolveActionConfig = (action: string): ModelConfig => {
   const envKey = `AI_MODEL_${action.replace(/([A-Z])/g, '_$1').toUpperCase()}`;

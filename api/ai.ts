@@ -6,6 +6,7 @@ import {
   DOMAIN_PROMPTS,
   HYPER_PERSONALIZED_PROMPT,
   LIFE_SNAPSHOT_SYNTHESIS_PROMPT,
+  STRATEGIC_BRIEFING_PROMPT,
   buildCompactProfile,
   buildDailyDigest,
   buildDimensionContext,
@@ -15,6 +16,7 @@ import {
   buildProfileForDimension,
   normalizePreComputedMetrics,
 } from '../ai/prompts.js';
+
 import {
   BaselineSwotSchema,
   CriticalPrioritySchema,
@@ -673,54 +675,15 @@ const generateStrategicBriefing = async (
     .slice(0, 20)
     .map((c: any) => ({ fact: c.fact, category: c.category, confidence: c.confidence }));
 
-  const finalPrompt = `You are Areté's strategic briefing engine.
-
-Create one concise, high-signal briefing for a desktop life operating system.
-
-Goals:
-1. Detect the user's current context from their profile and recent private history.
-2. Identify external developments, trends, or news that may create opportunities or risks for this user.
-3. Ask one deep, meaningful question that would improve the user's decisions this week.
-4. Turn the briefing into clear actions.
-
-Rules:
-- Use the profile and history as the primary source of truth.
-- Use search grounding to find only external developments likely relevant to the user's location, work, finances, health, interests, or life stage.
-- If profile data is missing, state the limitation plainly and keep the external guidance conservative.
-- Do not invent facts about the user.
-- Keep the tone direct, calm, and operational.
-- Prefer 2 opportunities and 2 risks. Maximum 3 each.
-- Actions must be concrete and executable this week.
-- Return strict JSON only with this shape:
-{
-  "profileSummary": "short synthesis",
-  "focusQuestion": "one deep question",
-  "summary": "short strategic summary",
-  "opportunities": [{"title":"", "detail":"", "action":""}],
-  "risks": [{"title":"", "detail":"", "action":""}],
-  "actions": ["", ""]
-}
-
-PROFILE:
-${JSON.stringify(buildCompactProfile(profile))}
-
-RECENT_DIGEST:
-${JSON.stringify(buildDailyDigest(history, 14))}
-
-FAMILY_CONTEXT:
-${JSON.stringify(memberContext)}
-
-FINANCE_METRICS:
-${JSON.stringify(financeMetrics || null)}
-
-MISSING_DATA:
-${JSON.stringify(missingData || [])}
-
-VERIFIED_FACTS:
-${JSON.stringify(committedClaims)}
-
-CURRENT_DATE:
-${new Date().toISOString()}`;
+  const finalPrompt = fillTemplate(STRATEGIC_BRIEFING_PROMPT, {
+    profile: JSON.stringify(buildCompactProfile(profile)),
+    digest: JSON.stringify(buildDailyDigest(history, 14)),
+    family: JSON.stringify(memberContext),
+    financeMetrics: JSON.stringify(financeMetrics || null),
+    missingData: JSON.stringify(missingData || []),
+    verifiedFacts: JSON.stringify(committedClaims),
+    currentDate: new Date().toISOString(),
+  });
 
   const normalizeResult = (
     value: unknown,

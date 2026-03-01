@@ -5,7 +5,6 @@ import {
   BookOpen,
   MessageSquare,
   Settings,
-  Plus,
 } from 'lucide-react';
 import { FamilySpace } from '@/data';
 import { AreteLogo } from '@/shared';
@@ -34,7 +33,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeUserId,
   onSwitchUser,
   onAddMember,
-  onCapture,
 }) => {
   const activeMember = familySpace.members.find((member) => member.id === activeUserId);
   const canShowMembers = familySpace.members.length > 1 || Boolean(onAddMember);
@@ -53,14 +51,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <p className="text-[11px] text-slate-500">Life OS</p>
           </div>
         </div>
-      </button>
-
-      <button
-        type="button"
-        onClick={onCapture}
-        className="mt-4 inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[#86a8ff] px-4 text-sm font-semibold text-slate-950 transition hover:bg-[#99b6ff]"
-      >
-        <Plus size={16} /> Capture
       </button>
 
       <div className="mt-5 space-y-1.5">

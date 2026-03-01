@@ -292,7 +292,7 @@ export const FocusList: React.FC<FocusListProps> = ({
             className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-xs font-medium text-slate-300 transition hover:border-white/20 hover:bg-white/[0.05] disabled:opacity-50"
           >
             <RefreshCw size={12} className={isPlanning ? 'animate-spin' : ''} />
-            {isPlanning ? 'Refreshing' : 'Refresh'}
+            {isPlanning ? 'Syncing' : 'Sync'}
           </button>
         </div>
 
@@ -334,14 +334,6 @@ export const FocusList: React.FC<FocusListProps> = ({
             <ArrowRight size={13} />
             <p className="text-sm font-semibold">Queue</p>
           </div>
-          <button
-            type="button"
-            onClick={onRefreshQueue}
-            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-xs font-medium text-slate-300 transition hover:border-white/20 hover:bg-white/[0.05]"
-          >
-            <RefreshCw size={12} />
-            Plan
-          </button>
         </div>
 
         <div className="space-y-3">

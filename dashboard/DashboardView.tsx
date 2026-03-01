@@ -282,11 +282,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   Today&apos;s board
                 </h2>
                 <p className="mt-2 text-sm text-slate-400">
-                  Keep the next move obvious. Hide the rest.
+                  Keep the next move obvious.
                 </p>
               </div>
-              <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-slate-300">
-                {openTasks} open
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsFocusMode((prev) => !prev)}
+                  className="flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:border-white/20"
+                >
+                  <Target size={14} />
+                  {isFocusMode ? 'Overview' : 'Focus mode'}
+                </button>
+
+                <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-xs text-slate-400">
+                  {openTasks} open
+                </div>
               </div>
             </div>
 
@@ -306,11 +317,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 icon={<Sparkles size={14} />}
                 onClick={() => onNavigate('chat')}
               />
-              <ActionPill
-                label={isFocusMode ? 'Overview' : 'Focus mode'}
-                icon={<Target size={14} />}
-                onClick={() => setIsFocusMode((prev) => !prev)}
-              />
               {isEveningWindow && (
                 <ActionPill
                   label="Shutdown"
@@ -319,6 +325,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 />
               )}
             </div>
+
 
             {memory.length === 0 && (
               <div className="mt-4 rounded-[20px] border border-dashed border-white/10 bg-black/20 px-4 py-4 text-sm leading-6 text-slate-300">
@@ -346,6 +353,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
             <StrategicBriefingCard
               briefing={strategicBriefing}
+              recommendations={recommendations}
               missingProfileFields={missingProfileFields}
               isRefreshing={isRefreshingBriefing}
               onRefresh={() => {
@@ -354,13 +362,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               onOpenAssistant={() => onNavigate('chat')}
               onOpenLife={() => onNavigate('vault')}
               onCapture={() => handleInsertTemplate('DAILY_CHECKIN')}
-            />
-
-            <RecommendationsPanel
-              recommendations={recommendations}
               onKeepRecommendation={keepRecommendation}
               onRemoveRecommendation={removeRecommendation}
             />
+
 
             <section className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5" id="dashboard-inbox">
               <div className="flex items-start justify-between gap-3">
@@ -793,163 +798,3 @@ const ShutdownStep: React.FC<{
     </div>
   </div>
 );
-
-const demoRecommendations: Recommendation[] = [
-  {
-    id: 'demo-priority-block',
-    title: 'Protect one 90-minute block',
-    description: 'Reserve one uninterrupted block for the most important open work.',
-    rationale: 'One protected block usually changes the quality of the day more than several shallow wins.',
-    category: Category.WORK,
-    impactScore: 8,
-    status: 'ACTIVE',
-    steps: ['Pick the key task', 'Block 90 minutes', 'Silence distractions'],
-    ownerId: 'system',
-    estimatedTime: '90m',
-    inputs: [],
-    definitionOfDone: 'The most important block is complete.',
-    risks: ['Context switching'],
-    needsReview: false,
-    missingFields: [],
-    createdAt: Date.now(),
-    evidenceLinks: { claims: [], sources: [] },
-  },
-  {
-    id: 'demo-open-loop',
-    title: 'Close one open loop',
-    description: 'Pick the unresolved item causing the most drag and define the next step.',
-    rationale: 'Mental clarity improves when the largest unresolved loop becomes explicit and scheduled.',
-    category: Category.PERSONAL,
-    impactScore: 7,
-    status: 'ACTIVE',
-    steps: ['Name the loop', 'Write the next step', 'Schedule it'],
-    ownerId: 'system',
-    estimatedTime: '10m',
-    inputs: [],
-    definitionOfDone: 'The next step is explicit and scheduled.',
-    risks: ['Keeping it vague'],
-    needsReview: false,
-    missingFields: [],
-    createdAt: Date.now(),
-    evidenceLinks: { claims: [], sources: [] },
-  },
-];
-
-const RecommendationsPanel: React.FC<{
-  recommendations: Recommendation[];
-  onKeepRecommendation?: (id: string) => void;
-  onRemoveRecommendation?: (id: string) => void;
-}> = ({ recommendations, onKeepRecommendation, onRemoveRecommendation }) => {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [dismissedIds, setDismissedIds] = useState<Record<string, boolean>>({});
-  const [keptIds, setKeptIds] = useState<Record<string, boolean>>({});
-
-  const liveRecommendations = recommendations
-    .filter((item) => item.status === 'ACTIVE')
-    .sort((a, b) => b.impactScore - a.impactScore)
-    .slice(0, 2);
-
-  const items = (liveRecommendations.length > 0 ? liveRecommendations : demoRecommendations).filter(
-    (item) => !dismissedIds[item.id]
-  );
-
-  return (
-    <section className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
-      <div>
-        <p className="text-sm font-semibold text-slate-100">Suggestions</p>
-        <p className="mt-1 text-xs text-slate-400">A small set of moves worth considering.</p>
-      </div>
-
-      <div className="mt-4 space-y-2.5">
-        {items.map((rec) => {
-          const expanded = expandedId === rec.id;
-          const isDemo = rec.ownerId === 'system' || rec.id.startsWith('demo-');
-
-          return (
-            <article
-              key={rec.id}
-              data-testid="rec-card"
-              data-rec-id={rec.id}
-              onClick={() => setExpandedId(expanded ? null : rec.id)}
-              className={`cursor-pointer rounded-[18px] border p-3 transition ${
-                expanded
-                  ? 'border-[#86a8ff]/22 bg-[#86a8ff]/[0.06]'
-                  : 'border-white/8 bg-black/20 hover:border-white/20'
-              }`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-slate-100">{rec.title}</p>
-                  <p className="mt-1 text-xs leading-5 text-slate-400">{rec.description}</p>
-                </div>
-                <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-semibold text-slate-300">
-                  {Math.max(0, Math.round(rec.impactScore || 0))}
-                </span>
-              </div>
-
-              {expanded && (
-                <div className="mt-3 space-y-3 border-t border-white/8 pt-3">
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                      Rationale
-                    </p>
-                    <p className="mt-1 text-xs leading-5 text-slate-300">{rec.rationale}</p>
-                  </div>
-
-                  {Array.isArray(rec.steps) && rec.steps.length > 0 && (
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                        Steps
-                      </p>
-                      <ul className="mt-1 space-y-1">
-                        {rec.steps.slice(0, 3).map((step, index) => (
-                          <li key={`${rec.id}-step-${index}`} className="text-xs text-slate-300">
-                            {index + 1}. {step}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    {onKeepRecommendation && !keptIds[rec.id] && (
-                      <button
-                        type="button"
-                        data-testid="rec-keep"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setKeptIds((prev) => ({ ...prev, [rec.id]: true }));
-                          if (!isDemo) onKeepRecommendation(rec.id);
-                        }}
-                        className="rounded-full border border-emerald-300/25 bg-emerald-500/[0.08] px-3 py-1 text-[11px] font-medium text-emerald-200"
-                      >
-                        Keep
-                      </button>
-                    )}
-                    {onRemoveRecommendation && !dismissedIds[rec.id] && (
-                      <button
-                        type="button"
-                        data-testid="rec-remove"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setDismissedIds((prev) => ({ ...prev, [rec.id]: true }));
-                          if (!isDemo) onRemoveRecommendation(rec.id);
-                        }}
-                        className="rounded-full border border-rose-300/25 bg-rose-500/[0.08] px-3 py-1 text-[11px] font-medium text-rose-200"
-                      >
-                        Remove
-                      </button>
-                    )}
-                    {keptIds[rec.id] && (
-                      <span className="text-[11px] font-medium text-emerald-300">Kept</span>
-                    )}
-                  </div>
-                </div>
-              )}
-            </article>
-          );
-        })}
-      </div>
-    </section>
-  );
-};
