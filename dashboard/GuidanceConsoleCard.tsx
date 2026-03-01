@@ -32,6 +32,7 @@ interface GuidanceConsoleCardProps {
   onAnswerQuestion?: (id: string, answer: string) => void;
   onDismissQuestion?: (id: string) => void;
   onSnoozeQuestion?: (id: string, hours?: number) => void;
+  embedded?: boolean;
 }
 
 export const GuidanceConsoleCard: React.FC<GuidanceConsoleCardProps> = ({
@@ -50,6 +51,7 @@ export const GuidanceConsoleCard: React.FC<GuidanceConsoleCardProps> = ({
   onAnswerQuestion,
   onDismissQuestion,
   onSnoozeQuestion,
+  embedded = false,
 }) => {
   const [expandedRecId, setExpandedRecId] = useState<string | null>(null);
   const [dismissedRecIds, setDismissedRecIds] = useState<Record<string, boolean>>({});
@@ -201,7 +203,13 @@ export const GuidanceConsoleCard: React.FC<GuidanceConsoleCardProps> = ({
   const briefingRisks = Array.isArray(strategicBriefing?.risks) ? strategicBriefing.risks : [];
 
   return (
-    <section className="rounded-[24px] border border-white/8 bg-[linear-gradient(180deg,rgba(19,28,40,0.96),rgba(11,16,24,0.94))] p-5 shadow-[0_18px_42px_rgba(0,0,0,0.22)]">
+    <section
+      className={
+        embedded
+          ? 'space-y-0'
+          : 'rounded-[24px] border border-white/8 bg-[linear-gradient(180deg,rgba(19,28,40,0.96),rgba(11,16,24,0.94))] p-5 shadow-[0_18px_42px_rgba(0,0,0,0.22)]'
+      }
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">

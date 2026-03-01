@@ -187,8 +187,12 @@ export const ensureAppReady = async (page: Page) => {
     }
   }
 
-  const onboardingHeader = page.getByText('Neural Identity');
+  const onboardingHeader = page.getByText(/neural identity|start with the next 90 days/i);
   if (await isVisible(onboardingHeader, 3000)) {
+    const goalInput = page.getByPlaceholder(/build a stronger health baseline|examples:/i);
+    if (await isVisible(goalInput, 1000)) {
+      await goalInput.fill('Build a calmer, more focused operating rhythm for the next 90 days.');
+    }
     const skipButton = page.getByRole('button', { name: /skip for later/i });
     let safety = 0;
     while ((await isVisible(skipButton, 500)) && safety < 10) {
