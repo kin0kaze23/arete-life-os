@@ -45,7 +45,7 @@ if (!payload.summary || !Array.isArray(payload.doItems) || !Array.isArray(payloa
 console.log("[prod-smoke] guidance digest: OK");
 ' "$guidance_json"
 
-telegram_guidance_json="$(curl -fsS "$BASE_URL/api/telegram/proactive?dryRun=1")"
+telegram_guidance_json="$(curl -fsS "$BASE_URL/api/telegram/webhook?dryRun=1")"
 node -e '
 const payload = JSON.parse(process.argv[1]);
 if (!payload.ok || typeof payload.processed !== "number") throw new Error("telegram proactive dry-run failed");

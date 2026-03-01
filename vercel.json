@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/telegram/proactive",
+      "path": "/api/telegram/webhook",
       "schedule": "0 9 * * *"
     }
   ],

@@ -1442,10 +1442,11 @@ export const useAura = () => {
     if (!cloudUserId || !guidanceDigest || !isSupabaseConfigured) return;
     try {
       const headers = await getAuthHeaders();
-      await fetch('/api/guidance/publish', {
+      await fetch('/api/telegram/status', {
         method: 'POST',
         headers,
         body: JSON.stringify({
+          action: 'publish_guidance',
           digest: guidanceDigest,
           question:
             guidanceQuestions.find((item) => item.status === 'open') || guidanceDigest.question || null,
@@ -1470,10 +1471,11 @@ export const useAura = () => {
       }
       try {
         const headers = await getAuthHeaders();
-        const response = await fetch('/api/telegram/send-guidance', {
+        const response = await fetch('/api/telegram/status', {
           method: 'POST',
           headers,
           body: JSON.stringify({
+            action: 'send_guidance',
             digest: guidanceDigest,
             question:
               guidanceQuestions.find((item) => item.status === 'open') || guidanceDigest.question || null,
