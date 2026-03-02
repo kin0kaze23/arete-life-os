@@ -1,13 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ArrowRight,
-  BookOpen,
-  Compass,
-  Inbox,
-  ShieldAlert,
-  Sparkles,
-  Target,
-} from 'lucide-react';
+import { BookOpen, Inbox, ShieldAlert, Sparkles, Target } from 'lucide-react';
 import {
   AlwaysChip,
   BlindSpot,
@@ -77,7 +69,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   tasks,
   dailyPlan,
   timelineEvents,
-  blindSpots = [],
   profile,
   recommendations = [],
   goals,
@@ -90,6 +81,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   keepRecommendation,
   removeRecommendation,
   onToast,
+  alwaysDoChips = [],
+  alwaysWatchChips = [],
   isPlanningDay,
   personalizedGreeting = 'Welcome',
   inboxEntries = [],
@@ -113,10 +106,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [isFocusMode, setIsFocusMode] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     return window.localStorage.getItem('arete:dashboardFocusMode') === 'true';
-  });
-  const [showContext, setShowContext] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    return window.localStorage.getItem('arete:dashboardShowContext') === 'true';
   });
   const [reviewEntryId, setReviewEntryId] = useState<string | null>(null);
   const [showShutdownFlow, setShowShutdownFlow] = useState(false);
@@ -162,48 +151,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   );
 
   const nextEvent = upcomingEvents[0];
-  const primaryGuidanceItem =
-    guidanceDigest?.doItems?.[0] || recommendations.find((item) => item.status === 'ACTIVE') || null;
-  const primaryWatchItem = guidanceDigest?.watchItems?.[0] || blindSpots[0] || null;
-  const openGuidanceQuestion =
-    guidanceQuestions.find(
-      (question) =>
-        question.status === 'open' && (!question.snoozedUntil || question.snoozedUntil < Date.now())
-    ) ||
-    guidanceDigest?.question ||
-    null;
   const openTasks = useMemo(
     () => focusTasks.filter((task) => !task.completed).length,
     [focusTasks]
   );
-  const pulseAction = useMemo(() => {
-    if (inboxEntries.length > 0) {
-      return {
-        label: 'Review intake',
-        detail: `${inboxEntries.length} entr${inboxEntries.length === 1 ? 'y needs' : 'ies need'} review before it enters the vault.`,
-        onClick: () => setReviewEntryId(inboxEntries[0]?.id || null),
-      };
-    }
-    if (primaryGuidanceItem) {
-      return {
-        label: primaryGuidanceItem.title,
-        detail: primaryGuidanceItem.description,
-        onClick: () => setShowContext(true),
-      };
-    }
-    if (nextEvent) {
-      return {
-        label: `Prep ${nextEvent.title}`,
-        detail: 'An upcoming event is the next thing worth protecting.',
-        onClick: () => setActivePrepEvent(nextEvent),
-      };
-    }
-    return {
-      label: 'Capture a fresh signal',
-      detail: 'A short check-in will sharpen the next recommendation.',
-      onClick: () => handleInsertTemplate('DAILY_CHECKIN'),
-    };
-  }, [inboxEntries, nextEvent, primaryGuidanceItem]);
 
   const headerSummary = useMemo(() => {
     if (nextEvent) {
@@ -260,7 +211,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   };
 
   const getInboxItems = (entry: InboxEntry) =>
-    Array.isArray((entry.ai_result as any)?.items) ? (((entry.ai_result as any).items as any[]) || []) : [];
+    Array.isArray((entry.ai_result as any)?.items)
+      ? ((entry.ai_result as any).items as any[]) || []
+      : [];
 
   const getInboxReviewQuestions = (entry: InboxEntry) => {
     const itemQuestions = getInboxItems(entry).flatMap((item) =>
@@ -287,11 +240,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     if (typeof window === 'undefined') return;
     window.localStorage.setItem('arete:dashboardFocusMode', isFocusMode ? 'true' : 'false');
   }, [isFocusMode]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem('arete:dashboardShowContext', showContext ? 'true' : 'false');
-  }, [showContext]);
 
   useEffect(() => {
     const now = Date.now();
@@ -335,51 +283,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     <div className="mx-auto w-full max-w-[1420px] space-y-6 pb-32">
       <DashboardHeader greeting={greeting} summary={headerSummary} />
 
-      <section className="rounded-[26px] border border-white/8 bg-[linear-gradient(180deg,rgba(16,22,31,0.95),rgba(10,14,21,0.92))] px-5 py-5 shadow-[0_18px_48px_rgba(0,0,0,0.16)] xl:px-6">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div className="max-w-3xl">
-            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
-              Currently
-            </p>
-            <h3 className="mt-2 text-[1.65rem] font-semibold tracking-[-0.04em] text-slate-100">
-              {pulseAction.label}
-            </h3>
-            <p className="mt-2 text-sm leading-6 text-slate-300">{pulseAction.detail}</p>
-            <button
-              type="button"
-              onClick={pulseAction.onClick}
-              className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#86a8ff] px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-[#9ab7ff]"
-            >
-              Continue <ArrowRight size={15} />
-            </button>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[460px]">
-            <PulseStat
-              label="Alerts"
-              value={primaryWatchItem ? primaryWatchItem.signal : 'No immediate threat'}
-              tone={primaryWatchItem ? 'warn' : 'calm'}
-            />
-            <PulseStat
-              label="Question"
-              value={openGuidanceQuestion ? openGuidanceQuestion.prompt : 'No clarification needed'}
-              tone={openGuidanceQuestion ? 'info' : 'calm'}
-            />
-            <PulseStat
-              label="Horizon"
-              value={nextEvent ? nextEvent.title : `${openTasks} open item${openTasks === 1 ? '' : 's'}`}
-              tone={nextEvent ? 'info' : 'neutral'}
-            />
-          </div>
-        </div>
-      </section>
-
       <section
         className={`grid grid-cols-1 gap-6 ${
           isFocusMode ? '' : 'xl:grid-cols-[minmax(0,1.1fr)_minmax(340px,380px)]'
         }`}
       >
         <div className="space-y-6">
+          <GuidanceConsoleCard
+            digest={guidanceDigest}
+            recommendations={recommendations}
+            guidanceQuestions={guidanceQuestions}
+            strategicBriefing={strategicBriefing}
+            missingProfileFields={missingProfileFields}
+            alwaysDoChips={alwaysDoChips}
+            alwaysWatchChips={alwaysWatchChips}
+            isRefreshing={isRefreshingBriefing}
+            onRefresh={() => {
+              void refreshAll?.({ force: true });
+              void onRefreshStrategicBriefing?.({ force: true });
+            }}
+            onOpenAssistant={() => onNavigate('chat')}
+            onOpenLife={() => onNavigate('vault')}
+            onCapture={() => handleInsertTemplate('DAILY_CHECKIN')}
+            onKeepRecommendation={keepRecommendation}
+            onRemoveRecommendation={removeRecommendation}
+            onAnswerQuestion={onAnswerGuidanceQuestion}
+            onDismissQuestion={onDismissGuidanceQuestion}
+            onSnoozeQuestion={onSnoozeGuidanceQuestion}
+          />
+
           <section className="rounded-[26px] border border-white/8 bg-white/[0.03] p-5 xl:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/8 pb-5">
               <div>
@@ -390,18 +322,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   Today&apos;s mission
                 </h2>
                 <p className="mt-2 text-sm text-slate-400">
-                  Keep the next move obvious and let context stay secondary.
+                  Keep the next move obvious and the supporting rituals within reach.
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowContext((prev) => !prev)}
-                  className="flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:border-white/20"
-                >
-                  <Compass size={14} />
-                  {showContext ? 'Hide context' : 'Context'}
-                </button>
                 <button
                   type="button"
                   onClick={() => setIsFocusMode((prev) => !prev)}
@@ -442,31 +366,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               )}
             </div>
 
-            {showContext && (
-              <div className="mt-4 grid gap-3 xl:grid-cols-3">
-                <ContextPill
-                  label="Signals"
-                  value={memory.length > 0 ? `${memory.length} captured` : 'Need first signal'}
-                />
-                <ContextPill
-                  label="Baseline"
-                  value={
-                    missingProfileFields.length > 0
-                      ? `${missingProfileFields.length} gaps still open`
-                      : 'Profile is grounded'
-                  }
-                />
-                <ContextPill
-                  label="Upcoming"
-                  value={nextEvent ? nextEvent.title : 'No scheduled event'}
-                />
-              </div>
-            )}
-
-
             {memory.length === 0 && (
               <div className="mt-4 rounded-[20px] border border-dashed border-white/10 bg-black/20 px-4 py-4 text-sm leading-6 text-slate-300">
-                Start with a short check-in, a recent expense, or an upcoming event. The board becomes useful after a few real signals.
+                Start with a short check-in, a recent expense, or an upcoming event. The board
+                becomes useful after a few real signals.
               </div>
             )}
 
@@ -489,42 +392,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {!isFocusMode && (
           <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
             <section className="rounded-[24px] border border-white/8 bg-[linear-gradient(180deg,rgba(16,22,31,0.95),rgba(10,14,21,0.92))] p-5 shadow-[0_18px_42px_rgba(0,0,0,0.18)]">
-              <div className="border-b border-white/8 pb-4">
-                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
-                  Intelligence
-                </p>
-                <h3 className="mt-1 text-lg font-semibold tracking-tight text-slate-100">
-                  Guidance, intake, and horizon
-                </h3>
-                <p className="mt-2 text-sm leading-6 text-slate-400">
-                  Keep the system legible without losing the review loop.
-                </p>
-              </div>
-
-              <div className="mt-4 space-y-4">
-                <GuidanceConsoleCard
-                  digest={guidanceDigest}
-                  recommendations={recommendations}
-                  guidanceQuestions={guidanceQuestions}
-                  strategicBriefing={strategicBriefing}
-                  missingProfileFields={missingProfileFields}
-                  isRefreshing={isRefreshingBriefing}
-                  embedded
-                  onRefresh={() => {
-                    void refreshAll?.({ force: true });
-                    void onRefreshStrategicBriefing?.({ force: true });
-                  }}
-                  onOpenAssistant={() => onNavigate('chat')}
-                  onOpenLife={() => onNavigate('vault')}
-                  onCapture={() => handleInsertTemplate('DAILY_CHECKIN')}
-                  onKeepRecommendation={keepRecommendation}
-                  onRemoveRecommendation={removeRecommendation}
-                  onAnswerQuestion={onAnswerGuidanceQuestion}
-                  onDismissQuestion={onDismissGuidanceQuestion}
-                  onSnoozeQuestion={onSnoozeGuidanceQuestion}
-                />
-
-                <section className="rounded-[20px] border border-white/8 bg-black/20 p-4" id="dashboard-inbox">
+              <div className="space-y-4">
+                <section
+                  className="rounded-[20px] border border-white/8 bg-black/20 p-4"
+                  id="dashboard-inbox"
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-2">
                       <Inbox size={14} className="text-emerald-200" />
@@ -560,7 +432,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                   {!isInboxAvailable && (
                     <div className="mt-3 rounded-xl border border-amber-300/20 bg-amber-500/[0.06] px-3 py-2 text-xs text-amber-100">
-                      {inboxUnavailableReason || 'Inbox actions are unavailable in this environment.'}
+                      {inboxUnavailableReason ||
+                        'Inbox actions are unavailable in this environment.'}
                     </div>
                   )}
 
@@ -655,7 +528,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           className="flex w-full items-center justify-between gap-3 rounded-[18px] border border-white/8 bg-black/20 px-3 py-3 text-left transition hover:border-white/20 hover:bg-white/[0.04]"
                         >
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-slate-100">{event.title}</p>
+                            <p className="truncate text-sm font-semibold text-slate-100">
+                              {event.title}
+                            </p>
                             <p className="mt-1 text-xs text-slate-400">
                               {date.toLocaleDateString(undefined, {
                                 weekday: 'short',
@@ -751,35 +626,6 @@ const ActionPill: React.FC<{
   </button>
 );
 
-const PulseStat: React.FC<{
-  label: string;
-  value: string;
-  tone: 'warn' | 'info' | 'neutral' | 'calm';
-}> = ({ label, value, tone }) => {
-  const toneClass =
-    tone === 'warn'
-      ? 'border-amber-300/20 bg-amber-500/[0.08] text-amber-100'
-      : tone === 'info'
-        ? 'border-[#86a8ff]/20 bg-[#86a8ff]/[0.08] text-slate-100'
-        : tone === 'calm'
-          ? 'border-emerald-300/20 bg-emerald-500/[0.08] text-emerald-100'
-          : 'border-white/8 bg-white/[0.03] text-slate-100';
-
-  return (
-    <div className={`rounded-[20px] border p-4 ${toneClass}`}>
-      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">{label}</p>
-      <p className="mt-2 text-sm leading-6">{value}</p>
-    </div>
-  );
-};
-
-const ContextPill: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <div className="rounded-[18px] border border-white/8 bg-black/20 px-4 py-3">
-    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">{label}</p>
-    <p className="mt-1 text-sm text-slate-300">{value}</p>
-  </div>
-);
-
 const InboxReviewModal: React.FC<{
   entry: InboxEntry;
   confidence: number;
@@ -845,7 +691,10 @@ const InboxReviewModal: React.FC<{
           {items.length > 0 && (
             <div className="mt-4 space-y-3">
               {items.slice(0, 4).map((item, index) => (
-                <div key={`${item?.title || 'item'}-${index}`} className="rounded-xl border border-white/8 bg-white/[0.03] p-3">
+                <div
+                  key={`${item?.title || 'item'}-${index}`}
+                  className="rounded-xl border border-white/8 bg-white/[0.03] p-3"
+                >
                   <p className="text-sm font-semibold text-slate-100">
                     {item?.title || item?.content || `Item ${index + 1}`}
                   </p>

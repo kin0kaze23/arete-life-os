@@ -9,6 +9,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import {
+  AlwaysChip,
   BlindSpot,
   GuidanceDigest,
   GuidanceQuestion,
@@ -22,6 +23,8 @@ interface GuidanceConsoleCardProps {
   guidanceQuestions?: GuidanceQuestion[];
   strategicBriefing?: StrategicBriefing | null;
   missingProfileFields?: string[];
+  alwaysDoChips?: AlwaysChip[];
+  alwaysWatchChips?: AlwaysChip[];
   isRefreshing?: boolean;
   onRefresh: () => void;
   onOpenAssistant: () => void;
@@ -41,6 +44,8 @@ export const GuidanceConsoleCard: React.FC<GuidanceConsoleCardProps> = ({
   guidanceQuestions = [],
   strategicBriefing,
   missingProfileFields = [],
+  alwaysDoChips = [],
+  alwaysWatchChips = [],
   isRefreshing = false,
   onRefresh,
   onOpenAssistant,
@@ -77,17 +82,53 @@ export const GuidanceConsoleCard: React.FC<GuidanceConsoleCardProps> = ({
     );
     const fallback = recommendations.filter(
       (item) =>
-        item.status === 'ACTIVE' &&
-        (item.horizon || 'now') === horizon &&
-        !dismissedRecIds[item.id]
+        item.status === 'ACTIVE' && (item.horizon || 'now') === horizon && !dismissedRecIds[item.id]
     );
     return (digestItems.length > 0 ? digestItems : fallback).slice(0, 3);
   }, [digest?.doItems, recommendations, horizon, dismissedRecIds]);
 
   const activeWatchItems = useMemo(
-    () => (digest?.watchItems || []).filter((item) => (item.horizon || 'now') === horizon).slice(0, 3),
+    () =>
+      (digest?.watchItems || []).filter((item) => (item.horizon || 'now') === horizon).slice(0, 3),
     [digest?.watchItems, horizon]
   );
+  const activeAlwaysDo = useMemo(
+    () => alwaysDoChips.filter((chip) => !dismissedRecIds[chip.id]).slice(0, 4),
+    [alwaysDoChips, dismissedRecIds]
+  );
+  const activeAlwaysWatch = useMemo(() => alwaysWatchChips.slice(0, 4), [alwaysWatchChips]);
+  const strategicCards = useMemo(() => {
+    const cards: {
+      label: string;
+      value: string;
+      tone: 'focus' | 'opportunity' | 'risk' | 'profile';
+    }[] = [];
+    if (strategicBriefing?.focusQuestion) {
+      cards.push({ label: 'Focus', value: strategicBriefing.focusQuestion, tone: 'focus' });
+    }
+    if (strategicBriefing?.opportunities?.[0]?.action) {
+      cards.push({
+        label: 'Opportunity',
+        value: strategicBriefing.opportunities[0].action,
+        tone: 'opportunity',
+      });
+    }
+    if (strategicBriefing?.risks?.[0]?.detail) {
+      cards.push({
+        label: 'Risk',
+        value: strategicBriefing.risks[0].detail,
+        tone: 'risk',
+      });
+    }
+    if (missingProfileFields.length > 0) {
+      cards.push({
+        label: 'Missing context',
+        value: missingProfileFields.slice(0, 2).join(', ').replaceAll('_', ' '),
+        tone: 'profile',
+      });
+    }
+    return cards.slice(0, 4);
+  }, [strategicBriefing, missingProfileFields]);
 
   const renderRecommendationCard = (rec: Recommendation) => {
     const expanded = expandedRecId === rec.id;
@@ -101,7 +142,9 @@ export const GuidanceConsoleCard: React.FC<GuidanceConsoleCardProps> = ({
         data-rec-id={rec.id}
         onClick={() => setExpandedRecId(expanded ? null : rec.id)}
         className={`cursor-pointer rounded-[18px] border p-3 transition ${
-          expanded ? 'border-[#86a8ff]/30 bg-[#86a8ff]/[0.08]' : 'border-white/8 bg-black/20 hover:border-white/15'
+          expanded
+            ? 'border-[#86a8ff]/30 bg-[#86a8ff]/[0.08]'
+            : 'border-white/8 bg-black/20 hover:border-white/15'
         }`}
       >
         <div className="flex items-start justify-between gap-3">
@@ -200,6 +243,33 @@ export const GuidanceConsoleCard: React.FC<GuidanceConsoleCardProps> = ({
     </article>
   );
 
+  const renderAlwaysChip = (chip: AlwaysChip, kind: 'do' | 'watch') => (
+    <article
+      key={chip.id}
+      className={`rounded-[18px] border p-3 ${
+        kind === 'do'
+          ? 'border-emerald-300/18 bg-emerald-500/[0.06]'
+          : 'border-amber-300/18 bg-amber-500/[0.06]'
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-slate-100">{chip.label}</p>
+          <p className="mt-1 text-xs leading-5 text-slate-300">{chip.rationale}</p>
+        </div>
+        <span
+          className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] ${
+            kind === 'do'
+              ? 'border-emerald-300/20 text-emerald-200'
+              : 'border-amber-300/20 text-amber-200'
+          }`}
+        >
+          {chip.priority}
+        </span>
+      </div>
+    </article>
+  );
+
   const briefingRisks = Array.isArray(strategicBriefing?.risks) ? strategicBriefing.risks : [];
 
   return (
@@ -239,7 +309,9 @@ export const GuidanceConsoleCard: React.FC<GuidanceConsoleCardProps> = ({
             type="button"
             onClick={() => setHorizon(item)}
             className={`rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] transition ${
-              horizon === item ? 'bg-[#86a8ff] text-slate-950' : 'text-slate-400 hover:text-slate-200'
+              horizon === item
+                ? 'bg-[#86a8ff] text-slate-950'
+                : 'text-slate-400 hover:text-slate-200'
             }`}
           >
             {item}
@@ -247,13 +319,41 @@ export const GuidanceConsoleCard: React.FC<GuidanceConsoleCardProps> = ({
         ))}
       </div>
 
+      {strategicCards.length > 0 && (
+        <section className="mt-5 grid gap-2 md:grid-cols-2">
+          {strategicCards.map((card) => {
+            const toneClass =
+              card.tone === 'risk'
+                ? 'border-amber-300/18 bg-amber-500/[0.06]'
+                : card.tone === 'opportunity'
+                  ? 'border-emerald-300/18 bg-emerald-500/[0.06]'
+                  : card.tone === 'profile'
+                    ? 'border-white/8 bg-black/20'
+                    : 'border-[#86a8ff]/18 bg-[#86a8ff]/[0.08]';
+            return (
+              <div
+                key={`${card.label}-${card.value}`}
+                className={`rounded-[18px] border p-3 ${toneClass}`}
+              >
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                  {card.label}
+                </p>
+                <p className="mt-2 text-xs leading-5 text-slate-200">{card.value}</p>
+              </div>
+            );
+          })}
+        </section>
+      )}
+
       {activeQuestion && (
         <section className="mt-5 rounded-[20px] border border-[#86a8ff]/20 bg-[#86a8ff]/[0.08] p-4">
           <div className="flex items-center gap-2 text-blue-200">
             <Compass size={13} />
             <p className="text-[10px] font-semibold uppercase tracking-[0.14em]">Ask</p>
           </div>
-          <p className="mt-3 text-sm font-semibold leading-6 text-slate-100">{activeQuestion.prompt}</p>
+          <p className="mt-3 text-sm font-semibold leading-6 text-slate-100">
+            {activeQuestion.prompt}
+          </p>
           <p className="mt-1 text-xs leading-5 text-slate-400">{activeQuestion.reason}</p>
           <div className="mt-3 flex gap-2">
             <input
@@ -301,7 +401,18 @@ export const GuidanceConsoleCard: React.FC<GuidanceConsoleCardProps> = ({
             <p className="text-[10px] font-semibold uppercase tracking-[0.14em]">Do</p>
           </div>
           <div className="mt-3 space-y-2">
-            {activeDoItems.length > 0 ? (
+            {horizon === 'always' ? (
+              activeAlwaysDo.length > 0 ? (
+                activeAlwaysDo.map((chip) => renderAlwaysChip(chip, 'do'))
+              ) : activeDoItems.length > 0 ? (
+                activeDoItems.map((item) => renderRecommendationCard(item))
+              ) : (
+                <div className="rounded-[18px] border border-dashed border-white/10 bg-black/20 px-3 py-4 text-xs text-slate-500">
+                  No steadying routines yet. Add a few non-negotiables in your profile or rule of
+                  life.
+                </div>
+              )
+            ) : activeDoItems.length > 0 ? (
               activeDoItems.map((item) => renderRecommendationCard(item))
             ) : (
               <div className="rounded-[18px] border border-dashed border-white/10 bg-black/20 px-3 py-4 text-xs text-slate-500">
@@ -317,7 +428,17 @@ export const GuidanceConsoleCard: React.FC<GuidanceConsoleCardProps> = ({
             <p className="text-[10px] font-semibold uppercase tracking-[0.14em]">Watch</p>
           </div>
           <div className="mt-3 space-y-2">
-            {activeWatchItems.length > 0 ? (
+            {horizon === 'always' ? (
+              activeAlwaysWatch.length > 0 ? (
+                activeAlwaysWatch.map((chip) => renderAlwaysChip(chip, 'watch'))
+              ) : activeWatchItems.length > 0 ? (
+                activeWatchItems.map((item) => renderWatchCard(item))
+              ) : (
+                <div className="rounded-[18px] border border-dashed border-white/10 bg-black/20 px-3 py-4 text-xs text-slate-500">
+                  No standing guardrails are active right now.
+                </div>
+              )
+            ) : activeWatchItems.length > 0 ? (
               activeWatchItems.map((item) => renderWatchCard(item))
             ) : (
               <div className="rounded-[18px] border border-dashed border-white/10 bg-black/20 px-3 py-4 text-xs text-slate-500">
@@ -334,6 +455,20 @@ export const GuidanceConsoleCard: React.FC<GuidanceConsoleCardProps> = ({
             </summary>
             <div className="mt-3 space-y-3">
               <p className="text-sm leading-6 text-slate-300">{strategicBriefing.summary}</p>
+              {strategicBriefing.actions?.length > 0 && (
+                <div className="rounded-[16px] border border-white/8 bg-white/[0.03] p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Strategic actions
+                  </p>
+                  <ul className="mt-2 space-y-1.5">
+                    {strategicBriefing.actions.slice(0, 3).map((action, index) => (
+                      <li key={`${action}-${index}`} className="text-xs leading-5 text-slate-300">
+                        {index + 1}. {action}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {briefingRisks.length > 0 && (
                 <div className="rounded-[16px] border border-white/8 bg-white/[0.03] p-3">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">

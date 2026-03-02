@@ -6,7 +6,11 @@ import { askAura } from '@/ai';
 import { ErrorBoundary } from '@/app/ErrorBoundary';
 import { AuthScreen } from '@/app/AuthScreen';
 import { isSupabaseConfigured, supabase } from '@/data';
-import { GUIDED_VAULT_FIELDS, getGuidedVaultFields, normalizeGuidedVaultValue } from '@/chat/guidedVaultFields';
+import {
+  GUIDED_VAULT_FIELDS,
+  getGuidedVaultFields,
+  normalizeGuidedVaultValue,
+} from '@/chat/guidedVaultFields';
 import { useOnlineStatus, NetworkBanner, Toast } from '@/shared';
 
 const loadVault = () => import('@/vault');
@@ -321,12 +325,9 @@ const App: React.FC = () => {
                     memory={aura.memoryItems}
                     refreshAll={aura.refreshAura}
                     onNavigate={setActiveTab as any}
-                    logMemory={handleLog}
                     onToast={showToast}
                     alwaysDoChips={aura.alwaysDo}
                     alwaysWatchChips={aura.alwaysWatch}
-                    updateTimelineEvent={aura.updateTimelineEvent}
-                    deleteTimelineEvent={aura.deleteTimelineEvent}
                     inboxEntries={aura.inboxEntries}
                     inboxReviewConfidence={aura.inboxReviewConfidence}
                     missingProfileFields={(aura as any).missingProfileFields}
@@ -397,7 +398,8 @@ const App: React.FC = () => {
                     guidedFields={guidedVaultFields}
                     onOpenVault={() => setActiveTab('vault')}
                     onSaveGuidedField={(fieldId, value) => {
-                      const config = GUIDED_VAULT_FIELDS[fieldId as keyof typeof GUIDED_VAULT_FIELDS];
+                      const config =
+                        GUIDED_VAULT_FIELDS[fieldId as keyof typeof GUIDED_VAULT_FIELDS];
                       if (!config) return;
                       aura.setProfile((prev) => ({
                         ...prev,

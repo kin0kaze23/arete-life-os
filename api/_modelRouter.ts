@@ -35,6 +35,15 @@ const PROVIDER_KEY_ENV: Record<ProviderType, string> = {
 };
 
 const PROVIDERS = Object.keys(PROVIDER_KEY_ENV) as ProviderType[];
+const ACTION_BASELINES: Partial<Record<string, { provider: ProviderType; model: string }>> = {
+  processInput: { provider: 'gemini', model: 'gemini-2.5-flash-lite' },
+  generateStrategicBriefing: { provider: 'gemini', model: 'gemini-2.5-flash' },
+  generateGuidanceDigest: { provider: 'gemini', model: 'gemini-2.5-flash' },
+  generateDeepTasks: { provider: 'gemini', model: 'gemini-2.5-pro' },
+  generateDeepInitialization: { provider: 'gemini', model: 'gemini-2.5-pro' },
+  generateInsights: { provider: 'gemini', model: 'gemini-2.5-pro' },
+  generateBlindSpots: { provider: 'gemini', model: 'gemini-2.5-pro' },
+};
 
 const isProviderType = (value: string | undefined | null): value is ProviderType =>
   Boolean(value) && PROVIDERS.includes(value as ProviderType);
@@ -122,11 +131,33 @@ const defaultModelConfig = (action?: string): ModelConfig => {
     };
   }
 
+  const baseline = action ? ACTION_BASELINES[action] : undefined;
+  if (baseline) {
+    const resolvedModel =
+      baseline.model === 'gemini-2.5-flash-lite'
+        ? process.env.GEMINI_MODEL_FLASH_LITE || baseline.model
+        : baseline.model === 'gemini-2.5-flash'
+          ? process.env.GEMINI_MODEL_FLASH || baseline.model
+          : baseline.model === 'gemini-2.5-pro'
+            ? process.env.GEMINI_MODEL_PRO || baseline.model
+            : baseline.model;
+    return {
+      provider: baseline.provider,
+      model: resolvedModel,
+      apiKeyEnvVar: PROVIDER_KEY_ENV[baseline.provider],
+      temperature: process.env.AI_DEFAULT_TEMPERATURE
+        ? Number(process.env.AI_DEFAULT_TEMPERATURE)
+        : undefined,
+    };
+  }
+
   const providerCandidate = process.env.AI_DEFAULT_PROVIDER?.trim().toLowerCase();
   const provider = isProviderType(providerCandidate) ? providerCandidate : 'gemini';
   const model =
     process.env.AI_DEFAULT_MODEL ||
-    (provider === 'gemini' ? lowCostGeminiActionModel(action || '') : providerDefaultModel(provider));
+    (provider === 'gemini'
+      ? lowCostGeminiActionModel(action || '')
+      : providerDefaultModel(provider));
 
   return {
     provider,
@@ -137,7 +168,6 @@ const defaultModelConfig = (action?: string): ModelConfig => {
       : undefined,
   };
 };
-
 
 const resolveActionConfig = (action: string): ModelConfig => {
   const envKey = `AI_MODEL_${action.replace(/([A-Z])/g, '_$1').toUpperCase()}`;
@@ -179,7 +209,9 @@ const resolveFallback = (primaryProvider: ProviderType): ModelConfig | undefined
     'fireworks',
   ];
 
-  const provider = fallbackCandidates.find((candidate) => candidate !== primaryProvider && hasApiKey(candidate));
+  const provider = fallbackCandidates.find(
+    (candidate) => candidate !== primaryProvider && hasApiKey(candidate)
+  );
   if (!provider) return undefined;
   return {
     provider,
