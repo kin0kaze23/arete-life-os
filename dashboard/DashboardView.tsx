@@ -308,12 +308,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1420px] space-y-6 pb-32">
-      <DashboardHeader greeting={greeting} summary={headerSummary} />
+    <div className="mx-auto w-full max-w-[1420px] space-y-4 pb-32 pt-4">
+      {/* Merged Compact Header */}
+      <header className="flex items-center justify-between gap-4 rounded-[20px] border border-white/8 bg-white/[0.02] p-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-100">{greeting}</h1>
+          <p className="mt-1 text-sm text-slate-400">{headerSummary}</p>
+        </div>
+        <LifePulseBar scores={scores} onViewDetails={() => setShowLifeOverview(true)} />
+      </header>
 
-      <LifePulseBar scores={scores} onViewDetails={() => setShowLifeOverview(true)} />
-
-      <section className="rounded-[26px] border border-white/8 bg-white/[0.03] p-5 xl:p-6">
+      <section className="rounded-[20px] border border-white/8 bg-white/[0.03] p-4">
         <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/8 pb-5">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
