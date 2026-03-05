@@ -308,342 +308,214 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1420px] space-y-4 pb-32 pt-4">
+    <div className="mx-auto w-full max-w-[1420px] space-y-3 pb-32 pt-3">
       {/* Merged Compact Header */}
-      <header className="flex items-center justify-between gap-4 rounded-[20px] border border-white/8 bg-white/[0.02] p-4">
+      <header className="flex items-center justify-between gap-4 rounded-[16px] border border-white/8 bg-white/[0.02] p-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-100">{greeting}</h1>
-          <p className="mt-1 text-sm text-slate-400">{headerSummary}</p>
+          <h1 className="text-xl font-semibold text-slate-100">{greeting}</h1>
+          <p className="text-sm text-slate-400">{headerSummary}</p>
         </div>
         <LifePulseBar scores={scores} onViewDetails={() => setShowLifeOverview(true)} />
       </header>
 
-      <section className="rounded-[20px] border border-white/8 bg-white/[0.03] p-4">
-        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/8 pb-5">
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
-              Today&apos;s Focus
-            </p>
-            <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-100">
-              Do &amp; Watch
-            </h2>
-            <p className="mt-2 text-sm text-slate-400">
-              Keep the next move obvious and the supporting rituals within reach.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-xs text-slate-400">
-              {openTasks} open
+      {/* TWO-COLUMN LAYOUT - Main Content + Sidebar */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+        {/* Left: Do & Watch (2/3 width) */}
+        <section className="rounded-[16px] border border-white/8 bg-white/[0.03] p-3 lg:col-span-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-500">
+                Today
+              </p>
+              <h2 className="text-lg font-semibold text-slate-100">Do &amp; Watch</h2>
             </div>
+            <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-xs text-slate-400">
+              {openTasks} open
+            </span>
           </div>
-        </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          <ActionPill
-            label="Capture"
-            icon={<BookOpen size={14} />}
-            onClick={() =>
-              window.dispatchEvent(
-                new CustomEvent('logbar:insert', { detail: { template: 'DAILY_CHECKIN' } })
-              )
-            }
-          />
-          <ActionPill
-            label="Journal"
-            icon={<BookOpen size={14} />}
-            onClick={() => onNavigate('stream')}
-          />
-          <ActionPill
-            label="Aura"
-            icon={<Sparkles size={14} />}
-            onClick={() => onNavigate('chat')}
-          />
-        </div>
-
-        {memory.length === 0 && (
-          <div className="mt-4 rounded-[20px] border border-dashed border-white/10 bg-black/20 px-4 py-4 text-sm leading-6 text-slate-300">
-            Start with a short check-in, a recent expense, or an upcoming event. The board becomes
-            useful after a few real signals.
-          </div>
-        )}
-
-        <div className="mt-5 xl:max-h-[920px] xl:overflow-y-auto xl:pr-1 premium-scrollbar">
-          <FocusList
-            tasks={focusTasks}
-            habitItems={habitItems}
-            onToggleTask={toggleTask}
-            onToggleHabit={(id) => updateMemoryItem?.(id, { timestamp: Date.now() })}
-            onDeleteTask={deleteTask}
-            onRefreshPlan={planMyDay}
-            onRefreshQueue={planMyDay}
-            isPlanning={isPlanningDay}
-            events={timelineEvents}
-          />
-        </div>
-      </section>
-
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <aside className="rounded-[24px] border border-white/8 bg-[linear-gradient(180deg,rgba(16,22,31,0.95),rgba(10,14,21,0.92))] p-5">
-          <div className="space-y-4">
-            <section
-              className="rounded-[20px] border border-white/8 bg-black/20 p-4"
-              id="dashboard-inbox"
+          {/* Compact Actions */}
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                window.dispatchEvent(
+                  new CustomEvent('logbar:insert', { detail: { template: 'DAILY_CHECKIN' } })
+                )
+              }
+              className="flex-1 rounded-full bg-blue-500 px-2.5 py-1.5 text-xs font-semibold text-slate-950 transition-all duration-150 hover:bg-blue-400 active:scale-[0.98]"
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <Inbox size={14} className="text-emerald-200" />
-                  <div>
-                    <p className="text-sm font-semibold text-slate-100">Inbox</p>
-                    <p className="mt-1 text-xs text-slate-400">
-                      {inboxEntries.length > 0
-                        ? `${inboxEntries.length} pending entr${inboxEntries.length === 1 ? 'y' : 'ies'}`
-                        : 'No pending entries'}
-                    </p>
-                  </div>
+              <span className="mr-1">+</span>Capture
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigate('stream')}
+              className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-slate-300 transition-all duration-150 hover:border-white/20 hover:bg-white/[0.05] active:scale-[0.98]"
+            >
+              Journal
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigate('chat')}
+              className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-slate-300 transition-all duration-150 hover:border-white/20 hover:bg-white/[0.05] active:scale-[0.98]"
+            >
+              Aura
+            </button>
+          </div>
+
+          {memory.length === 0 && (
+            <div className="mt-2 rounded-[12px] border border-dashed border-white/10 bg-black/20 px-3 py-2 text-xs text-slate-400">
+              Start with check-in, expense, or event. Board useful after few signals.
+            </div>
+          )}
+
+          <div className="mt-3 max-h-[500px] overflow-y-auto pr-1 premium-scrollbar xl:max-h-[550px]">
+            <FocusList
+              tasks={focusTasks}
+              habitItems={habitItems}
+              onToggleTask={toggleTask}
+              onToggleHabit={(id) => updateMemoryItem?.(id, { timestamp: Date.now() })}
+              onDeleteTask={deleteTask}
+              onRefreshPlan={planMyDay}
+              onRefreshQueue={planMyDay}
+              isPlanning={isPlanningDay}
+              events={timelineEvents}
+            />
+          </div>
+        </section>
+
+        {/* Right: Sidebar (1/3 width) - Stacked */}
+        <aside className="space-y-2.5">
+          {/* Upcoming Events */}
+          <section className="rounded-[16px] border border-white/8 bg-[linear-gradient(180deg,rgba(16,22,31,0.95),rgba(10,14,21,0.92))] p-3">
+            <div className="flex items-center gap-2">
+              <Sparkles size={12} className="text-blue-200" />
+              <p className="text-sm font-semibold text-slate-100">Upcoming</p>
+            </div>
+            <div className="mt-2 space-y-1.5">
+              {upcomingEvents.length === 0 ? (
+                <div className="rounded-[12px] border border-dashed border-white/10 bg-black/20 px-2.5 py-2 text-center text-xs text-slate-500">
+                  Nothing scheduled
                 </div>
-
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setReviewEntryId(inboxEntries[0]?.id || null)}
-                    disabled={inboxEntries.length === 0}
-                    className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:border-white/20 hover:bg-white/[0.05] disabled:opacity-40"
-                  >
-                    Review
-                  </button>
-                </div>
-              </div>
-
-              {!isInboxAvailable && (
-                <div className="mt-3 rounded-xl border border-amber-300/20 bg-amber-500/[0.06] px-3 py-2 text-xs text-amber-100">
-                  {inboxUnavailableReason ||
-                    'Inbox actions are unavailable in this environment.'}
-                </div>
-              )}
-
-              <div className="mt-4 space-y-2.5">
-                {inboxEntries.length === 0 && (
-                  <div className="rounded-[18px] border border-dashed border-white/10 bg-black/20 px-3 py-4 text-center text-xs text-slate-500">
-                    Inbox is clear.
-                  </div>
-                )}
-
-                {inboxEntries.slice(0, 2).map((entry) => {
-                  const confidence =
-                    (entry.ai_result as any)?.confidence ||
-                    Array.isArray((entry.ai_result as any)?.items)
-                      ? ((entry.ai_result as any).items as any[]).reduce(
-                          (sum, item) => sum + (item?.confidence || 0.6),
-                          0
-                        ) / ((entry.ai_result as any).items as any[]).length
-                      : 0.6;
-                  const needsReview = confidence < inboxReviewConfidence;
-                  const preview =
-                    Array.isArray((entry.ai_result as any)?.items) &&
-                    (entry.ai_result as any).items.length > 0
-                      ? (entry.ai_result as any).items[0]?.title || ''
-                      : '';
-
-                  return (
-                    <div
-                      key={entry.id}
-                      className="rounded-[18px] border border-white/8 bg-black/20 px-3 py-3 text-xs text-slate-200"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-400">
-                              {entry.content_type}
-                            </span>
-                            {needsReview && (
-                              <span className="rounded-full border border-amber-300/25 bg-amber-500/[0.08] px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-200">
-                                Review
-                              </span>
-                            )}
-                          </div>
-                          <p className="mt-2 line-clamp-2 leading-5 text-slate-200">
-                            {(entry.raw_content || '').slice(0, 100) || 'Inbox entry'}
-                          </p>
-                          {preview && (
-                            <p className="mt-1 text-[11px] leading-5 text-slate-400">
-                              AI: {preview}
-                            </p>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setReviewEntryId(entry.id)}
-                          className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-slate-200 transition hover:border-white/20 hover:bg-white/[0.05]"
-                        >
-                          Open
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="mt-4 flex justify-end gap-2">
-                {canMergeInbox && inboxEntries.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => onMergeInbox?.()}
-                    className="rounded-full bg-emerald-400 px-3 py-1.5 text-xs font-semibold text-slate-950 transition hover:bg-emerald-300"
-                  >
-                    Merge all
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => onRefreshInbox?.()}
-                  disabled={!canRefreshInbox}
-                  className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:border-white/20 hover:bg-white/[0.05] disabled:opacity-40"
-                >
-                  Refresh
-                </button>
-              </div>
-            </section>
-
-            <section className="rounded-[20px] border border-white/8 bg-black/20 p-4">
-              <div className="flex items-center gap-2">
-                <Sparkles size={14} className="text-blue-200" />
-                <div>
-                  <p className="text-sm font-semibold text-slate-100">Upcoming</p>
-                  <p className="mt-1 text-xs text-slate-400">What needs prep next.</p>
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-2.5">
-                {upcomingEvents.length === 0 && (
-                  <div className="rounded-[18px] border border-dashed border-white/10 bg-black/20 px-3 py-4 text-center text-xs text-slate-500">
-                    Nothing scheduled yet.
-                  </div>
-                )}
-
-                {upcomingEvents.map((event) => {
+              ) : (
+                upcomingEvents.slice(0, 3).map((event) => {
                   const date = new Date(event.date);
                   const prepStatus = event.metadata?.prepStatus === 'ready' ? 'Ready' : 'Prep';
                   return (
                     <button
                       key={event.id}
                       type="button"
-                      data-testid="event-card"
-                      data-event-id={event.id}
                       onClick={() => setActivePrepEvent(event)}
-                      className="flex w-full items-center justify-between gap-3 rounded-[18px] border border-white/8 bg-black/20 px-3 py-3 text-left transition hover:border-white/20 hover:bg-white/[0.04]"
+                      className="flex w-full items-center justify-between gap-2 rounded-[12px] border border-white/8 bg-black/20 px-2.5 py-2 text-left transition-all duration-150 hover:border-white/20 hover:bg-white/[0.04] active:scale-[0.98]"
                     >
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-slate-100">
-                          {event.title}
-                        </p>
-                        <p className="mt-1 text-xs text-slate-400">
+                        <p className="truncate text-sm font-medium text-slate-100">{event.title}</p>
+                        <p className="mt-0.5 text-[9px] text-slate-400">
                           {date.toLocaleDateString(undefined, {
                             weekday: 'short',
                             month: 'short',
                             day: 'numeric',
                           })}{' '}
-                          {date.toLocaleTimeString([], {
-                            hour: 'numeric',
-                            minute: '2-digit',
-                          })}
+                          {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </p>
                       </div>
-                      <span className="rounded-full border border-blue-300/20 bg-blue-500/[0.08] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-blue-200">
+                      <span className="shrink-0 rounded-full border border-blue-300/20 bg-blue-500/[0.08] px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.1em] text-blue-200">
                         {prepStatus}
                       </span>
                     </button>
                   );
-                })}
+                })
+              )}
+            </div>
+          </section>
+
+          {/* Inbox - Compact Preview */}
+          <section className="rounded-[16px] border border-white/8 bg-black/20 p-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Inbox size={12} className="text-emerald-200" />
+                <p className="text-sm font-semibold text-slate-100">Inbox</p>
+              </div>
+              {inboxEntries.length > 0 && (
+                <span className="rounded-full border border-amber-300/20 bg-amber-500/[0.08] px-1.5 py-0.5 text-[9px] font-semibold text-amber-200">
+                  {inboxEntries.length}
+                </span>
+              )}
+            </div>
+            <div className="mt-2 space-y-1.5">
+              {inboxEntries.length === 0 ? (
+                <div className="rounded-[12px] border border-dashed border-white/10 bg-black/20 px-2.5 py-2 text-center text-xs text-slate-500">
+                  Inbox clear
+                </div>
+              ) : (
+                <>
+                  {inboxEntries.slice(0, 2).map((entry) => (
+                    <button
+                      key={entry.id}
+                      type="button"
+                      onClick={() => setReviewEntryId(entry.id)}
+                      className="w-full rounded-[12px] border border-white/8 bg-white/[0.03] px-2.5 py-2 text-left text-xs text-slate-200 transition-all duration-150 hover:border-white/20 hover:bg-white/[0.05] active:scale-[0.98]"
+                    >
+                      <p className="line-clamp-2 text-[10px] leading-tight">
+                        {(entry.raw_content || '').slice(0, 60) || 'Inbox entry'}
+                      </p>
+                    </button>
+                  ))}
+                  {inboxEntries.length > 0 && canMergeInbox && (
+                    <button
+                      type="button"
+                      onClick={() => onMergeInbox?.()}
+                      className="mt-1 w-full rounded-full bg-emerald-400 px-2.5 py-1.5 text-xs font-semibold text-slate-950 transition-all duration-150 hover:bg-emerald-300 active:scale-[0.98]"
+                    >
+                      Merge all
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </section>
+
+          {/* Always-Do Chips */}
+          {alwaysDoChips.length > 0 && (
+            <section className="rounded-[16px] border border-emerald-300/18 bg-emerald-500/[0.06] p-2.5">
+              <div className="flex items-center gap-1.5 text-emerald-200">
+                <Sparkles size={10} />
+                <p className="text-xs font-semibold">Always-Do</p>
+              </div>
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {alwaysDoChips.slice(0, 4).map((chip) => (
+                  <span
+                    key={chip.id}
+                    className="rounded-full border border-emerald-300/20 bg-emerald-500/[0.08] px-2 py-0.5 text-[9px] font-medium text-emerald-200"
+                  >
+                    {chip.label}
+                  </span>
+                ))}
               </div>
             </section>
-          </div>
+          )}
+
+          {/* Always-Watch Chips */}
+          {alwaysWatchChips.length > 0 && (
+            <section className="rounded-[16px] border border-amber-300/18 bg-amber-500/[0.06] p-2.5">
+              <div className="flex items-center gap-1.5 text-amber-200">
+                <Sparkles size={10} />
+                <p className="text-xs font-semibold">Always-Watch</p>
+              </div>
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {alwaysWatchChips.slice(0, 4).map((chip) => (
+                  <span
+                    key={chip.id}
+                    className="rounded-full border border-amber-300/20 bg-amber-500/[0.08] px-2 py-0.5 text-[9px] font-medium text-amber-200"
+                  >
+                    {chip.label}
+                  </span>
+                ))}
+              </div>
+            </section>
+          )}
         </aside>
-
-        <aside className="rounded-[24px] border border-white/8 bg-[linear-gradient(180deg,rgba(16,22,31,0.95),rgba(10,14,21,0.92))] p-5">
-          <section className="space-y-4">
-            {alwaysDoChips.length > 0 && (
-              <section className="rounded-[20px] border border-emerald-300/18 bg-emerald-500/[0.06] p-4">
-                <div className="flex items-center gap-2 text-emerald-200">
-                  <Sparkles size={14} />
-                  <p className="text-sm font-semibold">Always-Do</p>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {alwaysDoChips.slice(0, 4).map((chip) => (
-                    <div
-                      key={chip.id}
-                      className="rounded-full border border-emerald-300/20 bg-emerald-500/[0.08] px-3 py-1.5 text-xs font-medium text-emerald-200"
-                    >
-                      {chip.label}
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {alwaysWatchChips.length > 0 && (
-              <section className="rounded-[20px] border border-amber-300/18 bg-amber-500/[0.06] p-4">
-                <div className="flex items-center gap-2 text-amber-200">
-                  <Sparkles size={14} />
-                  <p className="text-sm font-semibold">Always-Watch</p>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {alwaysWatchChips.slice(0, 4).map((chip) => (
-                    <div
-                      key={chip.id}
-                      className="rounded-full border border-amber-300/20 bg-amber-500/[0.08] px-3 py-1.5 text-xs font-medium text-amber-200"
-                    >
-                      {chip.label}
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {recommendations.length > 0 && (
-              <section className="rounded-[20px] border border-white/8 bg-black/20 p-4">
-                <div className="flex items-center gap-2">
-                  <Sparkles size={14} className="text-blue-200" />
-                  <p className="text-sm font-semibold">Recommendations</p>
-                </div>
-                <div className="mt-3 space-y-2">
-                  {recommendations.slice(0, 3).map((rec) => (
-                    <div
-                      key={rec.id}
-                      className="rounded-[16px] border border-white/8 bg-white/[0.03] p-3"
-                    >
-                      <p className="text-sm font-semibold text-slate-100">{rec.title}</p>
-                      <p className="mt-1 text-xs text-slate-400">{rec.description}</p>
-                      <div className="mt-2 flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            keepRecommendation?.(rec.id);
-                            onToast?.('Recommendation kept', 'success');
-                          }}
-                          className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-200"
-                        >
-                          Keep
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            removeRecommendation?.(rec.id);
-                            onToast?.('Recommendation removed', 'info');
-                          }}
-                          className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] font-medium text-slate-300"
-                        >
-                          Dismiss
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-          </section>
-        </aside>
-      </section>
+      </div>
 
       <EventPrepPopup
         event={activePrepEvent}
