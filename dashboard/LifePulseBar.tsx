@@ -64,56 +64,43 @@ export const LifePulseBar: React.FC<LifePulseBarProps> = ({ scores, onViewDetail
   const focusLabel = getFocusLabel();
 
   return (
-    <section className="rounded-[20px] border border-white/8 bg-white/[0.02] p-4">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              {categories.map((category) => {
-                const score = scores[category];
-                const dim = DIMENSIONS.find((d) => d.category === category);
-                const dotColor = getDotColor(score);
-                
-                return (
-                  <div
-                    key={category}
-                    className="group relative flex flex-col items-center gap-1.5"
-                    title={`${dim?.label}: ${score > 0 ? score : 'No data'} (${score > 0 ? getStatusLabel(score) : 'No data'})`}
-                  >
-                    <div
-                      className={`flex h-8 w-8 items-center justify-center rounded-full ${dotColor} text-slate-950 transition-all hover:scale-110`}
-                    >
-                      {dim?.icon}
-                    </div>
-                    <span className="text-[9px] font-medium uppercase tracking-[0.1em] text-slate-500">
-                      {dim?.label.slice(0, 3)}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-
-            {focusLabel && (
-              <div className="ml-4 flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-500/[0.06] px-3 py-1.5">
-                <span className="text-xs font-medium text-amber-200">{focusLabel}</span>
+    <section className="rounded-[16px] border border-white/8 bg-white/[0.02] p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          {categories.map((category) => {
+            const score = scores[category];
+            const dim = DIMENSIONS.find((d) => d.category === category);
+            const dotColor = getDotColor(score);
+            
+            return (
+              <div
+                key={category}
+                className="group relative flex flex-col items-center gap-1 cursor-pointer"
+                title={`${dim?.label}: ${score > 0 ? score : 'No data'} (${score > 0 ? getStatusLabel(score) : 'No data'})`}
+                onClick={onViewDetails}
+              >
+                <div
+                  className={`flex h-7 w-7 items-center justify-center rounded-full ${dotColor} text-slate-950 transition-all hover:scale-110`}
+                >
+                  {dim?.icon}
+                </div>
               </div>
-            )}
-          </div>
-
-          {!focusLabel && (
-            <p className="mt-3 text-xs text-emerald-300">
-              All dimensions are healthy. Keep maintaining your rhythms.
-            </p>
+            );
+          })}
+          
+          {focusLabel && (
+            <div className="ml-2 hidden items-center gap-1.5 rounded-full border border-amber-300/20 bg-amber-500/[0.06] px-2.5 py-1 md:flex">
+              <span className="text-[10px] font-medium text-amber-200">{focusLabel}</span>
+            </div>
           )}
         </div>
 
         <button
           type="button"
           onClick={onViewDetails}
-          className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-xs font-medium text-slate-300 transition hover:border-white/20 hover:bg-white/[0.05]"
+          className="flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-[10px] font-medium text-slate-300 transition hover:border-white/20 hover:bg-white/[0.05]"
         >
-          View Details
-          <ArrowRight size={14} />
+          Details
         </button>
       </div>
     </section>
