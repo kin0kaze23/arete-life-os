@@ -1,7 +1,14 @@
 import React, { useMemo } from 'react';
-import { Category, MemoryItem, Goal, Recommendation } from '@/data';
-import { Activity, Wallet, Heart, Zap, User, ArrowLeft, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Category, MemoryItem, Goal, Recommendation, UserProfile } from '@/data';
+import { Activity, Wallet, Heart, Zap, User, ArrowLeft, TrendingUp, TrendingDown, Minus, Target, Clock, PiggyBank, Scale, Moon, Activity as ActivityIcon } from 'lucide-react';
 import { computeScoreInternal, computeTrend, getScoreColor } from '@/dashboard/ScoreStrip';
+import {
+  calculateHealthMetrics,
+  calculateFinanceMetrics,
+  calculateRelationshipMetrics,
+  calculateSpiritualMetrics,
+  getBenchmarks,
+} from './metricsCalculator';
 
 interface DimensionConfig {
   category: Category;
@@ -113,6 +120,7 @@ interface LifeOverviewProps {
   recommendations: Recommendation[];
   onBack: () => void;
   onLogSignal: (category: Category) => void;
+  profile?: UserProfile;
 }
 
 export const LifeOverview: React.FC<LifeOverviewProps> = ({
@@ -121,6 +129,7 @@ export const LifeOverview: React.FC<LifeOverviewProps> = ({
   recommendations,
   onBack,
   onLogSignal,
+  profile,
 }) => {
   const scores = useMemo(() => {
     const result: Partial<Record<Category, number>> = {};
@@ -137,6 +146,12 @@ export const LifeOverview: React.FC<LifeOverviewProps> = ({
     });
     return result;
   }, [memoryItems, goals]);
+
+  const healthMetrics = useMemo(() => profile ? calculateHealthMetrics(profile) : null, [profile]);
+  const financeMetrics = useMemo(() => profile ? calculateFinanceMetrics(profile) : null, [profile]);
+  const relationshipMetrics = useMemo(() => profile ? calculateRelationshipMetrics(profile) : null, [profile]);
+  const spiritualMetrics = useMemo(() => profile ? calculateSpiritualMetrics(profile) : null, [profile]);
+  const benchmarks = useMemo(() => profile ? getBenchmarks(profile) : [], [profile]);
 
   const overallScore = useMemo(() => {
     const validScores = Object.values(scores).filter((s): s is number => s !== undefined && s > 0);
@@ -200,6 +215,101 @@ export const LifeOverview: React.FC<LifeOverviewProps> = ({
               <p className="text-2xl font-bold text-rose-300">{criticalCount}</p>
               <p className="mt-1 text-xs text-rose-200">Critical</p>
             </div>
+          </div>
+        </section>
+      )}
+
+      {/* Personal Metrics from Profile */}
+      {(healthMetrics || financeMetrics) && (
+        <section className="rounded-[24px] border border-white/8 bg-white/[0.02] p-6">
+          <h2 className="text-lg font-semibold text-slate-100">Your Personal Metrics</h2>
+          <p className="mt-1 text-sm text-slate-400">
+            Calculated from your profile data
+          </p>
+          
+          <div className="mt-5 grid gap-4 md:grid-cols-3">
+            {/* Health Metrics */}
+            {healthMetrics && (
+              <div className="rounded-xl border border-white/8 bg-white/[0.03] p-4">
+                <div className="flex items-center gap-2 text-rose-300">
+                  <ActivityIcon size={16} />
+                  <p className="text-sm font-semibold">Health</p>
+                </div>
+                <div className="mt-3 space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-xs text-slate-400">BMI</span>
+                    <span className={`text-xs font-semibold ${healthMetrics.bmiColor}`}>
+                      {healthMetrics.bmi ? `${healthMetrics.bmi.toFixed(1)} (${healthMetrics.bmiCategory})` : 'No data'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-slate-400">Sleep</span>
+                    <span className={`text-xs font-semibold ${healthMetrics.sleepColor}`}>
+                      {healthMetrics.sleepHours ? `${healthMetrics.sleepHours.toFixed(1)}h (${healthMetrics.sleepStatus})` : 'No data'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-slate-400">Activity</span>
+                    <span className="text-xs font-semibold text-blue-300">
+                      {healthMetrics.activityLevel}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Finance Metrics */}
+            {financeMetrics && (
+              <div className="rounded-xl border border-white/8 bg-white/[0.03] p-4">
+                <div className="flex items-center gap-2 text-emerald-300">
+                  <PiggyBank size={16} />
+                  <p className="text-sm font-semibold">Finance</p>
+                </div>
+                <div className="mt-3 space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-xs text-slate-400">Net Worth</span>
+                    <span className="text-xs font-semibold text-slate-200">
+                      {financeMetrics.netWorthFormatted}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-slate-400">Savings Rate</span>
+                    <span className={`text-xs font-semibold ${financeMetrics.savingsRateColor}`}>
+                      {financeMetrics.savingsRateFormatted} ({financeMetrics.savingsRateStatus})
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-slate-400">Emergency Fund</span>
+                    <span className={`text-xs font-semibold ${financeMetrics.emergencyFundColor}`}>
+                      {financeMetrics.emergencyFundMonths !== null ? `${financeMetrics.emergencyFundMonths.toFixed(1)} months` : 'No data'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Benchmarks */}
+            {benchmarks.length > 0 && (
+              <div className="rounded-xl border border-white/8 bg-white/[0.03] p-4">
+                <div className="flex items-center gap-2 text-amber-300">
+                  <Target size={16} />
+                  <p className="text-sm font-semibold">Benchmarks</p>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {benchmarks.slice(0, 3).map((bench, idx) => (
+                    <div key={idx} className="flex justify-between items-center">
+                      <span className="text-xs text-slate-400">{bench.label}</span>
+                      <span className={`text-xs font-semibold ${
+                        bench.status === 'above' ? 'text-emerald-400' : 
+                        bench.status === 'below' ? 'text-amber-400' : 'text-slate-300'
+                      }`}>
+                        {bench.userValue}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </section>
       )}
