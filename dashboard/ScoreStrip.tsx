@@ -27,34 +27,13 @@ export function computeTrend(
 ): 'up' | 'down' | 'stable' {
   const now = Date.now();
   const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
-  const twoWeeksAgo = now - 14 * 24 * 60 * 60 * 1000;
 
-  // We need "last week's score". This is tricky because computeScore looks at "recent" (last 7 days).
-  // To get "last week's score", we need to pass a subset of memoryItems that excludes the last 7 days,
-  // effectively shifting the window back. But computeScore uses Date.now().
-  // The plan says: "use same algorithm, different date windows".
-  // Since computeScore hardcodes Date.now(), we cannot easily reuse it for historical windows without refactoring it to accept a "now" timestamp.
-
-  // Let's REFACTOR computeScore slightly to accept an optional referenceDate, OR just implement the logic here manually using the helper.
-  // Actually, to avoid code duplication, I should refactor computeScore to take a reference timestamp.
-
-  const thisWeekScore = computeScore(memoryItems, goals, category); // Uses Date.now()
-
-  // For last week score, we simulates "now" as weekAgo.
-  // Wait, computeScore filters: m.timestamp > referenceDate - 7 days.
-  // If I add `referenceTimestamp` to computeScore, I can pass `weekAgo` to it.
-  // But wait, computeScore signature in plan: `computeScore(memoryItems, goals, category)`
-  // If I change signature, I violate plan acceptance criteria? "Functions are exported for reuse".
-  // It doesn't forbid adding an optional argument.
-
-  // Let's add optional referenceTimestamp to computeScore.
-  // ... check below ...
-
+  const thisWeekScore = computeScore(memoryItems, goals, category);
   const lastWeekScore = computeScoreInternal(memoryItems, goals, category, weekAgo);
 
   const diff = thisWeekScore - lastWeekScore;
   if (diff >= 5) return 'up';
-  if (diff <= -5) return 'down'; // Plan says: lastWeek - thisWeek >= 5 => diff <= -5
+  if (diff <= -5) return 'down';
   return 'stable';
 }
 

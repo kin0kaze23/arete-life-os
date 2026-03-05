@@ -198,8 +198,28 @@ export const FocusList: React.FC<FocusListProps> = ({
             </div>
 
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-300">
-                {task.category}
+              <span
+                className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${
+                  task.category === 'Finance'
+                    ? 'border border-emerald-300/20 bg-emerald-500/[0.08] text-emerald-200'
+                    : task.category === 'Health'
+                      ? 'border border-rose-300/20 bg-rose-500/[0.08] text-rose-200'
+                      : task.category === 'Relationships'
+                        ? 'border border-violet-300/20 bg-violet-500/[0.08] text-violet-200'
+                        : task.category === 'Spiritual'
+                          ? 'border border-amber-300/20 bg-amber-500/[0.08] text-amber-200'
+                          : 'border border-white/10 bg-black/20 text-slate-300'
+                }`}
+              >
+                {task.category === 'Finance'
+                  ? 'Fin'
+                  : task.category === 'Health'
+                    ? 'Health'
+                    : task.category === 'Relationships'
+                      ? 'Rel'
+                      : task.category === 'Spiritual'
+                        ? 'Spirit'
+                        : task.category.slice(0, 6)}
               </span>
               {task.estimate_min && (
                 <span className="text-xs text-slate-500">{task.estimate_min} min</span>
