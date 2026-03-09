@@ -1,25 +1,28 @@
 ## Summary
-
--
+<!-- Briefly describe what this PR does and why -->
 
 ## Changes
+<!-- List key changes made -->
+- 
 
--
+## Type of Change
+- [ ] Bug fix
+- [ ] New feature
+- [ ] Refactor / cleanup
+- [ ] Documentation
+- [ ] Security fix
+- [ ] Dependency update
 
-## Screenshots / UI Evidence (if applicable)
+## Testing
+<!-- How was this tested? -->
+- [ ] Unit tests pass
+- [ ] Manual testing done
+- [ ] No new tests needed (explain why)
 
--
+## Security Checklist
+- [ ] No secrets, API keys, or credentials in code or commits
+- [ ] No new external dependencies without review
+- [ ] Input validated / sanitized where applicable
 
-## How I Tested
-
-- [ ] `npm run doctor`
-- [ ] `npm run lint`
-- [ ] `npm run typecheck`
-- [ ] `npm run test`
-- [ ] `npm run build`
-
-## Checklist
-
-- [ ] No secrets committed
-- [ ] Docs updated (if needed)
-- [ ] Verified locally
+## Notes for Reviewer
+<!-- Anything the reviewer should pay special attention to -->
