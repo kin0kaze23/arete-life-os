@@ -3,7 +3,7 @@
 ## Supported Versions
 
 | Version | Supported |
-|---------|-----------|
+| ------- | --------- |
 | Latest  | ✅        |
 
 ## Reporting a Vulnerability
@@ -12,7 +12,7 @@
 
 Please report security issues privately:
 
-1. **Email:** kin0.k423@gmail.com  
+1. **Email:** kin0.k423@gmail.com
 2. **Subject:** `[SECURITY] <repo-name> — <brief description>`
 3. Include: steps to reproduce, impact assessment, suggested fix (if any)
 

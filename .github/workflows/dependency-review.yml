@@ -2,11 +2,11 @@ name: Dependency Review
 
 on:
   pull_request:
-    branches: ["main", "master"]
+    branches: ['main', 'master']
 
 permissions:
   contents: read
-  pull-requests: write   # allows posting a comment with the vulnerability report
+  pull-requests: write # allows posting a comment with the vulnerability report
 
 jobs:
   dependency-review:
