@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { getProfileCompletion } from '@/shared';
-import {
+import { 
   AlwaysChip,
   DailyTask,
   UserProfile,
@@ -20,6 +20,11 @@ import { EventPrepPopup } from './EventPrepPopup';
 import { EventEditSheet } from './EventEditSheet';
 import { SystemStatusFooter } from './SystemStatusFooter';
 import { UpcomingCalendar } from './UpcomingCalendar';
+import { LifePulseBar } from './LifePulseBar';
+import { LifeRadarChart } from './LifeRadarChart';
+import { SmartSuggestions } from './SmartSuggestions';
+import { WeeklyDigest } from './WeeklyDigest';
+import { DimensionTrendIndicator } from './DimensionTrendIndicator';
 
 interface DashboardViewProps {
   memory: MemoryEntry[];
@@ -115,48 +120,146 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
   };
 
+  // Sample radar chart data to demonstrate
+  const radarChartData = [
+    { subject: 'Health', A: 80 },
+    { subject: 'Finance', A: 70 },
+    { subject: 'Relationships', A: 85 },
+    { subject: 'Spirit', A: 55 },
+    { subject: 'Personal', A: 90 },
+  ];
+
+  // Mock for SmartSuggestions (would come from actual data in implementation)
+  const mockSuggestions = [
+    {
+      id: '1',
+      title: 'Review budget this week',
+      description: 'Based on your recent spending patterns, consider revising your expense categories.',
+      context: 'Finance related, due to pending payment',
+      cta: 'Plan now',
+      score: 85
+    },
+    {
+      id: '2',
+      title: 'Schedule health check-up',
+      description: 'Your last physical was 10 months ago. Time for an annual check-up.',
+      context: 'Health related, based on calendar',
+      cta: 'Book appointment',
+      score: 78
+    }
+  ];
+
+  // Mock for WeeklyDigest (would come from actual data in implementation)
+  const mockWeeklyDigest = {
+    totalLogs: 12,
+    logFrequency: 'Daily',
+    avgScore: 74,
+    bestDimension: 'Personal',
+    bestDimensionScore: 88,
+    dimensionChanges: [
+      { dimension: 'Health', change: -2 },
+      { dimension: 'Finance', change: 5 },
+      { dimension: 'Relationships', change: 1 },
+    ],
+    nextWeekFocus: 'Improve sleep consistency',
+    highlights: undefined
+  };
+
+  // Mock function handlers
+  const handleSuggestionAction = (id: string) => console.log('Suggestion action:', id);
+  const handleSuggestionDismiss = (id: string) => console.log('Suggestion dismissed:', id);
+  const handleDigestShare = () => console.log('Sharing digest');
+
+  // Mock function handlers
+  const handleSuggestionAction = (id: string) => console.log('Suggestion action:', id);
+  const handleSuggestionDismiss = (id: string) => console.log('Suggestion dismissed:', id);
+  const handleDigestShare = () => console.log('Sharing digest');
+
   return (
     <div className="max-w-7xl mx-auto pb-32">
+      {/* Added header with Life Pulse Bar (Enhanced version of LifePulseBar - similar to old DimensionPulseBar concept but enhanced) */}
+      <div className="mb-8 p-4 rounded-2xl border border-white/5 bg-white/[0.02]">
+        <LifePulseBar memoryEntries={memory} goals={goals} />
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start">
-        {/* Column 1: Tactics (Focus) */}
+        {/* Column 1: Changed to include both Tactics + Life Radar Chart */}
         <div className="space-y-8">
-          <div className="flex items-center justify-between pb-4 border-b border-white/5">
-            <div>
-              <h3 className="text-xl font-black text-white tracking-tight">Mission Control</h3>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest">Horizon Focus</p>
+          {/* Radar Chart Section */}
+          <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-6">
+            <div className="flex items-center justify-between pb-4">
+              <div>
+                <h3 className="text-xl font-black text-white tracking-tight">Life Radar</h3>
+                <p className="text-[10px] text-slate-500 uppercase tracking-widest">5-Dimension View</p>
+              </div>
+            </div>
+            <div className="h-64">
+              <LifeRadarChart 
+                data={radarChartData} 
+                onScoreUpdate={(prev, next) => console.log(`Score updated from ${prev} to ${next}`)}
+              />
             </div>
           </div>
-          <FocusList
-            tasks={focusTasks}
-            habitItems={habitItems}
-            onToggleTask={(id) => toggleTask(id)}
-            onToggleHabit={handleToggleHabit}
-            onDeleteTask={(id) => deleteTask(id)}
-            onRefreshPlan={planMyDay}
-            onRefreshQueue={planMyDay} // Re-using planMyDay for simplicity, or could be generateTasks
-            isPlanning={isPlanningDay}
-            events={timelineEvents}
-          />
+
+          {/* Original Focus List */}
+          <div>
+            <div className="flex items-center justify-between pb-4 border-b border-white/5">
+              <div>
+                <h3 className="text-xl font-black text-white tracking-tight">Mission Control</h3>
+                <p className="text-[10px] text-slate-500 uppercase tracking-widest">Horizon Focus</p>
+              </div>
+            </div>
+            <FocusList
+              tasks={focusTasks}
+              habitItems={habitItems}
+              onToggleTask={(id) => toggleTask(id)}
+              onToggleHabit={handleToggleHabit}
+              onDeleteTask={(id) => deleteTask(id)}
+              onRefreshPlan={planMyDay}
+              onRefreshQueue={planMyDay} // Re-using planMyDay for simplicity, or could be generateTasks
+              isPlanning={isPlanningDay}
+              events={timelineEvents}
+            />
+          </div>
         </div>
 
         {/* Column 2: Horizon (Upcoming) */}
         <div className="space-y-8">
-          <div className="flex items-center justify-between pb-4 border-b border-white/5">
-            <div>
-              <h3 className="text-xl font-black text-white tracking-tight">Upcoming Events</h3>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest">Schedule</p>
-            </div>
+          {/* Smart Suggestions */}
+          <div className="p-4 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 backdrop-blur-sm">
+            <SmartSuggestions
+              suggestions={mockSuggestions}
+              onAction={handleSuggestionAction}
+              onDismiss={handleSuggestionDismiss}
+            />
           </div>
-          <UpcomingCalendar
-            events={timelineEvents}
-            onSelectEvent={setActivePrepEvent}
-            onEditEvent={setEditingEvent}
-            onDeleteEvent={deleteTimelineEvent}
-          />
+
+          {/* Original Upcoming */}
+          <div>
+            <div className="flex items-center justify-between pb-4 border-b border-white/5">
+              <div>
+                <h3 className="text-xl font-black text-white tracking-tight">Upcoming Events</h3>
+                <p className="text-[10px] text-slate-500 uppercase tracking-widest">Schedule</p>
+              </div>
+            </div>
+            <UpcomingCalendar
+              events={timelineEvents}
+              onSelectEvent={setActivePrepEvent}
+              onEditEvent={setEditingEvent}
+              onDeleteEvent={deleteTimelineEvent}
+            />
+          </div>
         </div>
 
-        {/* Column 3: Insight & Status */}
+        {/* Column 3: Insight & Status - Updated with Weekly Digest */}
         <div className="space-y-8">
+          {/* Weekly Digest for Mondays */}
+          <WeeklyDigest
+            stats={mockWeeklyDigest}
+            isMonday={new Date().getDay() === 1} // True only on Mondays
+            onShare={handleDigestShare}
+          />
+          
           {/* StatusSidebar (Header handled internally) */}
           <StatusSidebar
             profile={profile}
