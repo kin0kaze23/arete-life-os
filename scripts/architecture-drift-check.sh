@@ -45,7 +45,7 @@ if [ -z "$FILES" ]; then
 fi
 
 CORE_REGEX='^(core/|api/|ai/|data/)'
-DOC_REGEX='^(docs/ARCHITECTURE\.md|docs/AI_PROMPT_FLOW\.md|docs/PRD\.md|\.agent/README\.md)'
+DOC_REGEX='^(docs/ARCHITECTURE\.md|docs/AI_PROMPT_FLOW\.md|docs/PRD\.md|\.agent/core/README\.md)'
 
 match() {
   local regex="$1"
@@ -70,7 +70,7 @@ done <<< "$FILES"
 
 if [ "$core_touched" -eq 1 ] && [ "$docs_touched" -eq 0 ]; then
   echo "Architecture drift check: core/AI/backend files changed without doc updates."
-  echo "Update one of: docs/ARCHITECTURE.md, docs/AI_PROMPT_FLOW.md, docs/PRD.md, .agent/README.md"
+  echo "Update one of: docs/ARCHITECTURE.md, docs/AI_PROMPT_FLOW.md, docs/PRD.md, .agent/core/README.md"
   if [ "$STRICT" -eq 1 ]; then
     exit 2
   fi

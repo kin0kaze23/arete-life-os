@@ -6,7 +6,127 @@ on:
     branches: [main]
 
 jobs:
+  risk-policy-gate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: read
+      pull-requests: write
+    outputs:
+      tier: ${{ steps.policy.outputs.tier }}
+      required_checks: ${{ steps.policy.outputs.required_checks }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run deterministic risk policy gate
+        id: policy
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const policyPath = ".github/risk-policy.json";
+            const policy = JSON.parse(fs.readFileSync(policyPath, "utf8"));
+            const isPR = context.eventName === "pull_request";
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const prNumber = context.payload.pull_request?.number;
+            const files = [];
+
+            if (isPR) {
+              const changed = await github.paginate(github.rest.pulls.listFiles, {
+                owner,
+                repo,
+                pull_number: prNumber,
+                per_page: 100
+              });
+              for (const file of changed) files.push(file.filename);
+            }
+
+            const highPrefixes = policy.riskTierRules?.highPrefixes || [];
+            const isHigh = files.some((file) => highPrefixes.some((prefix) => file.startsWith(prefix)));
+            const tier = isHigh ? "high" : "low";
+            const requiredChecks = policy.mergePolicy?.[tier]?.requiredChecks || [];
+
+            const controlPlane = policy.docsDrift?.controlPlanePrefixes || [];
+            const docPrefixes = policy.docsDrift?.requiredDocPrefixes || [];
+            const touchedControl = files.some((file) => controlPlane.some((prefix) => file.startsWith(prefix)));
+            const touchedDocs = files.some((file) => docPrefixes.some((prefix) => file === prefix || file.startsWith(prefix)));
+
+            if (isPR && touchedControl && !touchedDocs) {
+              core.setFailed("Control-plane changes require a docs update (docs/** or README.md).");
+              return;
+            }
+
+            const reviewAgent = policy.reviewAgent || {};
+            const maybeRequestRerun = async (headSha) => {
+              const rerun = reviewAgent.autoRerun || {};
+              if (!isPR || rerun.enabled !== true) return;
+
+              const marker = rerun.marker || "<!-- review-agent-auto-rerun -->";
+              const trigger = `sha:${headSha}`;
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner,
+                repo,
+                issue_number: prNumber,
+                per_page: 100
+              });
+              const alreadyRequested = comments.some((comment) => {
+                const body = comment.body || "";
+                return body.includes(marker) && body.includes(trigger);
+              });
+
+              if (alreadyRequested) return;
+
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: prNumber,
+                body: `${marker}\n@review-agent please re-review\n${trigger}`
+              });
+            };
+            const enforceReview = isPR && reviewAgent.enabled === true && (reviewAgent.enforceOnTiers || []).includes(tier);
+
+            if (enforceReview) {
+              const headSha = context.payload.pull_request.head.sha;
+              const checkName = reviewAgent.checkName;
+              const timeoutMs = (reviewAgent.timeoutMinutes || 20) * 60 * 1000;
+              const sleepMs = 15000;
+              const started = Date.now();
+              let latest = null;
+
+              while (Date.now() - started < timeoutMs) {
+                const checkRuns = await github.paginate(github.rest.checks.listForRef, {
+                  owner,
+                  repo,
+                  ref: headSha,
+                  per_page: 100
+                });
+                latest = checkRuns.find((run) => run.name === checkName) || null;
+                if (latest && latest.status === "completed") break;
+                await new Promise((resolve) => setTimeout(resolve, sleepMs));
+              }
+
+              if (!latest) {
+                await maybeRequestRerun(headSha);
+                core.setFailed(`Timed out waiting for review check '${checkName}' on head SHA ${headSha}.`);
+                return;
+              }
+
+              if (latest.conclusion !== "success") {
+                await maybeRequestRerun(headSha);
+                core.setFailed(`Review check '${checkName}' concluded '${latest.conclusion}' on head SHA ${headSha}.`);
+                return;
+              }
+            }
+
+            core.info(`Risk tier: ${tier}`);
+            core.info(`Required checks: ${requiredChecks.join(", ")}`);
+            core.setOutput("tier", tier);
+            core.setOutput("required_checks", JSON.stringify(requiredChecks));
+
   build:
+    needs: risk-policy-gate
     runs-on: ubuntu-latest
     env:
       CI: true
@@ -27,6 +147,7 @@ jobs:
         run: npm run doctor
 
   ui_smoke:
+    needs: risk-policy-gate
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     env:
@@ -83,6 +204,7 @@ jobs:
         run: echo \"No UI changes detected. Skipping UI smoke.\"
 
   guardrails:
+    needs: risk-policy-gate
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     env:

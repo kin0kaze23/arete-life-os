@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-LEARNINGS_FILE=".agent/LEARNINGS.md"
-QUICKREF_FILE=".agent/LEARNINGS_QUICKREF.md"
-ARCHIVE_DIR=".agent/archive"
+LEARNINGS_FILE=".agent/core/LEARNINGS.md"
+QUICKREF_FILE=".agent/core/LEARNINGS_QUICKREF.md"
+ARCHIVE_DIR=".agent/core/archive"
 LINE_LIMIT=600
 KEEP_RECENT=30
 
@@ -27,9 +27,9 @@ from pathlib import Path
 import re
 import os
 
-learnings_path = Path(os.environ.get("LEARNINGS_FILE", ".agent/LEARNINGS.md"))
-quickref_path = Path(os.environ.get("QUICKREF_FILE", ".agent/LEARNINGS_QUICKREF.md"))
-archive_dir = Path(os.environ.get("ARCHIVE_DIR", ".agent/archive"))
+learnings_path = Path(os.environ.get("LEARNINGS_FILE", ".agent/core/LEARNINGS.md"))
+quickref_path = Path(os.environ.get("QUICKREF_FILE", ".agent/core/LEARNINGS_QUICKREF.md"))
+archive_dir = Path(os.environ.get("ARCHIVE_DIR", ".agent/core/archive"))
 line_limit = int(os.environ.get("LINE_LIMIT", "600"))
 keep_recent = int(os.environ.get("KEEP_RECENT", "30"))
 

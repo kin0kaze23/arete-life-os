@@ -58,8 +58,6 @@ export const KnowledgeFeed: React.FC<KnowledgeFeedProps> = ({
         return <Compass size={14} />;
       case Category.SPIRITUAL:
         return <Globe size={14} />;
-      case Category.WORK:
-        return <Briefcase size={14} />;
       case Category.PERSONAL:
         return <User size={14} />;
       default:

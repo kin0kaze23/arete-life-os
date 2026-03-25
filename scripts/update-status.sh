@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-STATUS_FILE=".agent/CURRENT_STATUS.md"
+STATUS_FILE=".agent/core/CURRENT_STATUS.md"
 
 BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
 LAST_COMMIT=$(git log -1 --oneline 2>/dev/null || echo "no commits")
@@ -21,7 +21,7 @@ import os
 import re
 from pathlib import Path
 
-path = Path(".agent/CURRENT_STATUS.md")
+path = Path(".agent/core/CURRENT_STATUS.md")
 text = path.read_text() if path.exists() else ""
 
 
@@ -87,5 +87,5 @@ for name, content in new_sections:
     out_lines.append("")
 
 path.write_text("\n".join(out_lines).rstrip() + "\n")
-print("Updated .agent/CURRENT_STATUS.md")
+print("Updated .agent/core/CURRENT_STATUS.md")
 PY

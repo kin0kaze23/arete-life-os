@@ -25,15 +25,16 @@ export const handleIntelRequest = async (
 ): Promise<IntelResponseBody> => {
   try {
     switch (req.action) {
-      case 'generate_insights':
+      case 'generate_insights': {
         // Generate proactive insights using the intelligence engine
         const insights = await generateInsights(req.memory, req.profile, req.options);
         return {
           success: true,
           data: { insights }
         };
+      }
       
-      case 'analyze_patterns':
+      case 'analyze_patterns': {
         // This would be a new function that just analyzes patterns without generating full insights
         // Importing here to prevent circular dependencies
         const { detectPatterns } = await import('./patternDetection');
@@ -42,14 +43,16 @@ export const handleIntelRequest = async (
           success: true,
           data: { patterns }
         };
+      }
         
-      case 'benchmark_comparison':
+      case 'benchmark_comparison': {
         const { getBenchmark } = await import('./benchmarks');
         const benchmarks = getBenchmark(req.memory, req.profile);
         return {
           success: true,
           data: { benchmarks }
         };
+      }
 
       default:
         throw new Error(`Unknown action: ${req.action}`);

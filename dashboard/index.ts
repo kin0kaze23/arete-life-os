@@ -6,7 +6,7 @@ export { StatusSidebar } from './StatusSidebar';
 export { UpcomingCalendar } from './UpcomingCalendar';
 export * from './DashboardHeader';
 export { SystemStatusFooter } from './SystemStatusFooter';
-export { ScoreStrip } from './ScoreStrip';
+
 export { DailyBriefing } from './DailyBriefing';
 export { DimensionPulseBar } from './DimensionPulseBar';
 export { SWOTGrid } from './SWOTGrid';
@@ -14,7 +14,7 @@ export { GoalsPanel } from './GoalsPanel';
 export { BaselineSwotPanel } from './BaselineSwotPanel';
 export { CommandStrip } from './CommandStrip';
 export { AdvanceProtectPanel } from './AdvanceProtectPanel';
-export { SignalGrid } from './SignalGrid';
+
 export { GoalsSpotlight } from './GoalsSpotlight';
 export { ScoreRing } from './ScoreRing';
 export { DimensionCard } from './DimensionCard';

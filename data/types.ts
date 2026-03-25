@@ -86,6 +86,210 @@ export type RelationshipType =
   | 'Colleague'
   | 'Self';
 
+export type LifeDimension =
+  | Category.HEALTH
+  | Category.FINANCE
+  | Category.RELATIONSHIPS
+  | Category.SPIRITUAL
+  | Category.PERSONAL;
+
+export const LIFE_DIMENSIONS: LifeDimension[] = [
+  Category.HEALTH,
+  Category.FINANCE,
+  Category.RELATIONSHIPS,
+  Category.SPIRITUAL,
+  Category.PERSONAL,
+];
+
+export type DimensionStatus = 'thriving' | 'stable' | 'needs_attention' | 'critical' | 'no_signal';
+export type DimensionTrend = 'up' | 'down' | 'stable';
+
+export interface DimensionSwot {
+  strengths: string[];
+  weaknesses: string[];
+  opportunities: string[];
+  threats: string[];
+}
+
+export interface DimensionScoreExplanation {
+  summary: string;
+  drivers: string[];
+  peerComparison: string;
+  confidence: 'low' | 'medium' | 'high';
+}
+
+export interface DimensionContextSnapshot {
+  dimension: LifeDimension;
+  status: DimensionStatus;
+  score: number;
+  trend: DimensionTrend;
+  delta: number;
+  insight: string;
+  gap: string;
+  nextStep: string;
+  swot?: DimensionSwot;
+  scoreExplanation?: DimensionScoreExplanation;
+  projection?: string;
+  missingData?: string[];
+  fidelityLevel: 0 | 1 | 2 | 3;
+  generatedAt: string;
+  triggeredBy?: string;
+}
+
+export interface CriticalPriority {
+  dimension: LifeDimension;
+  title: string;
+  rationale: string;
+  consequence: string;
+}
+
+export interface ProfileGap {
+  field: string;
+  dimension: LifeDimension;
+  prompt: string;
+  impactDescription: string;
+}
+
+export interface LifeContextSnapshot {
+  id: string;
+  snapshotAt: string;
+  weekLabel: string;
+  narrativeParagraph: string;
+  dimensions: DimensionContextSnapshot[];
+  criticalPriorities: CriticalPriority[];
+  profileGaps: ProfileGap[];
+  profileHash: string;
+}
+
+export interface LifeContextSignal {
+  tier: 1 | 2 | 3;
+  affectedDimensions: LifeDimension[];
+  reason: string;
+}
+
+export interface ContributionDimensionDelta {
+  dimension: LifeDimension;
+  scoreBefore: number;
+  scoreAfter: number;
+  delta: number;
+}
+
+export interface ContributionGoalImpact {
+  goalId?: string;
+  goalTitle: string;
+  progressBefore: number;
+  progressAfter: number;
+}
+
+export interface ContributionStreakUpdate {
+  dimension: LifeDimension;
+  days: number;
+  isMilestone: boolean;
+}
+
+export interface ContributionFeedback {
+  logSummary: string;
+  affectedDimensions: ContributionDimensionDelta[];
+  goalImpacts?: ContributionGoalImpact[];
+  streakUpdate?: ContributionStreakUpdate;
+}
+
+export interface DimensionLogAccumulator {
+  counts: Partial<Record<LifeDimension, number>>;
+  weekOf: string;
+}
+
+export interface SessionDelta {
+  dimension: LifeDimension;
+  previousScore: number;
+  currentScore: number;
+  delta: number;
+  reason?: string;
+}
+
+export interface DashboardPreferences {
+  isSnapshotExpanded: boolean;
+  selectedDimension: LifeDimension;
+  dismissedProfileGaps: Record<string, number>;
+}
+
+export interface TaskLineage {
+  goalId?: string;
+  goalTitle?: string;
+  recommendationId?: string;
+  recommendationTitle?: string;
+}
+
+export interface DailyIntelligenceDimensionGap {
+  dimension: LifeDimension;
+  daysSinceLastLog: number;
+  label: string;
+}
+
+export interface DailyIntelligenceStreakRisk {
+  dimension: LifeDimension;
+  currentStreak: number;
+  breaksToday: boolean;
+}
+
+export interface DailyIntelligenceEventCountdown {
+  event: TimelineEvent;
+  daysUntil: number;
+  prepReady: boolean;
+  urgencyLabel: string;
+}
+
+export interface DailyIntelligenceGoalDeadline {
+  goal: Goal;
+  daysLeft: number;
+  onTrack: boolean;
+  urgencyLabel: string;
+}
+
+export interface DailyIntelligenceCommitment {
+  commitment: string;
+  fulfilled: boolean;
+}
+
+export interface DailyIntelligence {
+  dimensionGaps: DailyIntelligenceDimensionGap[];
+  streaksAtRisk: DailyIntelligenceStreakRisk[];
+  eventCountdowns: DailyIntelligenceEventCountdown[];
+  goalDeadlines: DailyIntelligenceGoalDeadline[];
+  todaysCommitments: DailyIntelligenceCommitment[];
+  dailyPlanStale: boolean;
+  tasksCompleted: number;
+  tasksTotal: number;
+}
+
+export interface PreComputedMetrics {
+  bmi: number | null;
+  bmiCategory: string | null;
+  baselineSleepHours: number | null;
+  loggedSleepAvg: number | null;
+  exerciseSessionsThisWeek: number;
+  exerciseTarget: number;
+  exerciseAdherence: number;
+  daysSinceLastExercise: number | null;
+  savingsRate: number | null;
+  netWorth: number | null;
+  emergencyFundMonths: number | null;
+  debtToIncomeRatio: number | null;
+  socialInteractions14d: number;
+  innerCircleGaps: { name: string; role: string; daysSinceContact: number }[];
+  commitmentsFulfilled7d: number;
+  commitmentsTotal: number;
+  practiceSessionsThisWeek: number;
+  practiceTarget: number;
+  practiceAdherence: number;
+  daysSinceLastPractice: number | null;
+  careerLogsThisMonth: number;
+  interestLogsThisMonth: number;
+  growthLogsThisMonth: number;
+  statedInterests: string[];
+  dimensionLogCounts30d: Partial<Record<LifeDimension, number>>;
+}
+
 export interface PrivacySettings {
   viewFinance: boolean;
   viewHealth: boolean;
@@ -159,6 +363,7 @@ export interface UserProfile {
     conditions: string[];
     medications: string[];
     chronotype?: string; // Lark / Owl
+    healthGoals?: string[]; // Lose Weight, Build Muscle, Better Sleep, etc.
     lastUpdated?: number;
   };
   finances: {
@@ -169,6 +374,7 @@ export interface UserProfile {
     fixedCosts: string;
     variableCosts: string;
     investmentStrategy?: string; // Aggressive, Conservative
+    financialGoals?: string[]; // Emergency Fund, Pay Off Debt, Save for House, etc.
     lastUpdated?: number;
   };
   relationship: {
@@ -268,6 +474,7 @@ export interface IntakeItem {
   dedupeKey?: string;
   needsReview?: IntakeNeedsReview;
   links?: IntakeEntityLink[];
+  lifeContextSignal?: LifeContextSignal;
 }
 
 export interface IntakeResult {
@@ -411,6 +618,113 @@ export interface ProactiveInsight {
   feedback?: 'like' | 'dislike';
 }
 
+export interface BaselineSwotEntry {
+  dimension: Category;
+  strengths: string[];
+  weaknesses: string[];
+  opportunities: string[];
+  threats: string[];
+  confidence: string; // e.g., "profile", "signal"
+  nextAction: string;
+  scoreEstimate?: number; // 0-100 profile-derived score
+}
+
+export const createEmptySnapshot = (dimension: LifeDimension): DimensionContextSnapshot => {
+  const guidance: Record<
+    LifeDimension,
+    {
+      insight: string;
+      gap: string;
+      nextStep: string;
+      strengths: string[];
+      weaknesses: string[];
+      opportunities: string[];
+      threats: string[];
+    }
+  > = {
+    [Category.HEALTH]: {
+      insight: 'Health analysis requires your biometric and activity data to begin scoring.',
+      gap: 'Missing baseline biometrics for health scoring.',
+      nextStep: 'Log a workout, sleep report, or symptom to activate health tracking.',
+      strengths: ['Profile includes activity preferences — a strong starting foundation.'],
+      weaknesses: ['No verified health outcomes yet to score against.'],
+      opportunities: ['A single workout log activates exercise adherence tracking.'],
+      threats: ['Without baseline data, health risks cannot be assessed.'],
+    },
+    [Category.FINANCE]: {
+      insight: 'Finance analysis requires income, expense, and asset data to begin scoring.',
+      gap: 'Missing income or expense data for financial scoring.',
+      nextStep: 'Log an expense or update your monthly budget to activate finance tracking.',
+      strengths: ['Financial profile structure is in place.'],
+      weaknesses: ['No spending patterns verified yet.'],
+      opportunities: ['Adding your cash position unlocks emergency fund scoring.'],
+      threats: ['Savings rate and debt ratio cannot be monitored without income data.'],
+    },
+    [Category.RELATIONSHIPS]: {
+      insight: 'Relationship analysis requires social interaction data to begin scoring.',
+      gap: 'No social touchpoints recorded yet.',
+      nextStep: 'Log a conversation, date, or social event to activate relationship tracking.',
+      strengths: ['Relationship preferences are configured.'],
+      weaknesses: ['No connection frequency data to analyze.'],
+      opportunities: ['One social log activates your 14-day interaction tracker.'],
+      threats: ['Inner circle engagement gaps cannot be detected without data.'],
+    },
+    [Category.SPIRITUAL]: {
+      insight: 'Spiritual analysis requires practice or reflection data to begin scoring.',
+      gap: 'No practice sessions or reflections recorded.',
+      nextStep: 'Log a meditation, prayer, or reflection to activate spiritual tracking.',
+      strengths: ['Core values and worldview are articulated.'],
+      weaknesses: ['Practice consistency cannot be measured yet.'],
+      opportunities: ['A single practice log activates adherence tracking against your pulse.'],
+      threats: ['Values-behavior alignment cannot be verified without practice data.'],
+    },
+    [Category.PERSONAL]: {
+      insight: 'Personal growth analysis requires career or interest activity data to begin scoring.',
+      gap: 'No career updates or skill-building logs yet.',
+      nextStep: 'Log a work milestone, learning session, or project update to activate tracking.',
+      strengths: ['Professional identity and interests are defined.'],
+      weaknesses: ['Growth trajectory has no data points to track.'],
+      opportunities: ['One career or learning log activates your monthly growth score.'],
+      threats: ['Skill stagnation risk cannot be assessed without activity data.'],
+    },
+  };
+
+  const g = guidance[dimension];
+  return {
+    dimension,
+    status: 'no_signal',
+    score: 0,
+    trend: 'stable',
+    delta: 0,
+    insight: g.insight,
+    gap: g.gap,
+    nextStep: g.nextStep,
+    swot: {
+      strengths: g.strengths,
+      weaknesses: g.weaknesses,
+      opportunities: g.opportunities,
+      threats: g.threats,
+    },
+    scoreExplanation: {
+      summary: `${dimension} score is 0 — awaiting first data point to begin analysis.`,
+      drivers: ['No outcome data available for scoring.'],
+      peerComparison: 'Peer comparison activates after the first data point is logged.',
+      confidence: 'low',
+    },
+    missingData: [],
+    fidelityLevel: 0,
+    generatedAt: new Date().toISOString(),
+  };
+};
+
+export interface DimensionSignal {
+  category: Category;
+  score: number;
+  delta: number;
+  trend: 'up' | 'down' | 'stable';
+  updatedAt: number;
+}
+
 export interface TimelineEvent {
   id: string;
   ownerId: string;
@@ -491,4 +805,13 @@ export interface WidgetConfig {
 
 export interface DashboardLayout {
   widgets: WidgetConfig[];
+}
+
+export interface Event {
+  id: string;
+  title: string;
+  time: string;
+  location: string;
+  description: string;
+  prepRecommendations: string[];
 }

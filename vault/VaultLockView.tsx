@@ -3,42 +3,81 @@ import { Shield, AlertTriangle, Clock } from 'lucide-react';
 
 // Rate limiting constants
 const LOCKOUT_THRESHOLD = 5;
-const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+const LOCKOUT_BACKOFF_MS = [30_000, 2 * 60_000, 10 * 60_000, 30 * 60_000];
 const STORAGE_KEY = 'vault_lockout';
+const MIN_PASSPHRASE_LENGTH = 10;
 
 type LockoutState = {
   failedAttempts: number;
   lockoutUntil: number | null;
+  lockoutLevel: number;
 };
 
 const getLockoutState = (): LockoutState => {
   try {
-    const stored = sessionStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       return JSON.parse(stored);
     }
   } catch {
     // Ignore parse errors
   }
-  return { failedAttempts: 0, lockoutUntil: null };
+  return { failedAttempts: 0, lockoutUntil: null, lockoutLevel: 0 };
 };
 
 const saveLockoutState = (state: LockoutState) => {
-  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 };
 
 const clearLockoutState = () => {
-  sessionStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(STORAGE_KEY);
 };
 
 type PasswordStrength = {
   score: 0 | 1 | 2 | 3 | 4;
   label: string;
   color: string;
+  warnings: string[];
+  blocked: boolean;
 };
 
+const COMMON_PASSWORDS = new Set([
+  'password',
+  'password1',
+  '123456',
+  '1234567',
+  '12345678',
+  '123456789',
+  '1234567890',
+  'qwerty',
+  'qwerty123',
+  'letmein',
+  'admin',
+  'welcome',
+  'iloveyou',
+  'monkey',
+  'dragon',
+  'football',
+  'baseball',
+  'abc123',
+  'passw0rd',
+  'master',
+]);
+
+const hasSequentialPattern = (value: string) =>
+  /(0123|1234|2345|3456|4567|5678|6789|abcd|bcde|cdef|defg|qwerty|asdf|zxcv)/i.test(value);
+
+const hasRepeatedChars = (value: string) => /(.)\1{2,}/.test(value);
+
 const checkPasswordStrength = (password: string): PasswordStrength => {
-  if (!password) return { score: 0, label: '', color: '' };
+  if (!password) return { score: 0, label: '', color: '', warnings: [], blocked: false };
+
+  const normalized = password.toLowerCase().trim();
+  const warnings: string[] = [];
+  const blocked = COMMON_PASSWORDS.has(normalized);
+  if (blocked) warnings.push('Common password');
+  if (hasSequentialPattern(password)) warnings.push('Sequential pattern');
+  if (hasRepeatedChars(password)) warnings.push('Repeated characters');
 
   let score = 0;
   if (password.length >= 8) score++;
@@ -47,10 +86,12 @@ const checkPasswordStrength = (password: string): PasswordStrength => {
   if (/\d/.test(password)) score++;
   if (/[^a-zA-Z0-9]/.test(password)) score++;
 
-  if (score <= 1) return { score: 1, label: 'Weak', color: 'text-rose-400' };
-  if (score === 2) return { score: 2, label: 'Fair', color: 'text-amber-400' };
-  if (score === 3) return { score: 3, label: 'Good', color: 'text-yellow-400' };
-  return { score: 4, label: 'Strong', color: 'text-emerald-400' };
+  if (warnings.length > 0) score = Math.max(1, score - 1);
+
+  if (score <= 1) return { score: 1, label: 'Weak', color: 'text-rose-400', warnings, blocked };
+  if (score === 2) return { score: 2, label: 'Fair', color: 'text-amber-400', warnings, blocked };
+  if (score === 3) return { score: 3, label: 'Good', color: 'text-yellow-400', warnings, blocked };
+  return { score: 4, label: 'Strong', color: 'text-emerald-400', warnings, blocked };
 };
 
 type VaultLockViewProps = {
@@ -116,25 +157,33 @@ export const VaultLockView: React.FC<VaultLockViewProps> = ({
         await onUnlock(pass);
         // Success - clear lockout state
         clearLockoutState();
-        setLockoutState({ failedAttempts: 0, lockoutUntil: null });
+        setLockoutState({ failedAttempts: 0, lockoutUntil: null, lockoutLevel: 0 });
       } catch {
         // Failed attempt
         const newAttempts = lockoutState.failedAttempts + 1;
+        let lockoutLevel = lockoutState.lockoutLevel;
+        let lockoutUntil: number | null = null;
+        let attempts = newAttempts;
+        if (newAttempts >= LOCKOUT_THRESHOLD) {
+          lockoutLevel = Math.min(lockoutLevel + 1, LOCKOUT_BACKOFF_MS.length - 1);
+          lockoutUntil = Date.now() + LOCKOUT_BACKOFF_MS[lockoutLevel];
+          attempts = 0;
+        }
         const newState: LockoutState = {
-          failedAttempts: newAttempts,
-          lockoutUntil: newAttempts >= LOCKOUT_THRESHOLD ? Date.now() + LOCKOUT_DURATION_MS : null,
+          failedAttempts: attempts,
+          lockoutUntil,
+          lockoutLevel,
         };
         setLockoutState(newState);
         saveLockoutState(newState);
 
-        if (newAttempts >= LOCKOUT_THRESHOLD) {
-          setLocalError(
-            `Too many failed attempts. Vault locked for ${Math.ceil(LOCKOUT_DURATION_MS / 60000)} minutes.`
-          );
+        if (lockoutUntil) {
+          const minutes = Math.ceil(LOCKOUT_BACKOFF_MS[lockoutLevel] / 60000);
+          setLocalError(`Too many failed attempts. Vault locked for ${minutes} minutes.`);
         }
       }
     },
-    [onUnlock, lockoutState.failedAttempts]
+    [onUnlock, lockoutState.failedAttempts, lockoutState.lockoutLevel]
   );
 
   const handleSubmit = async () => {
@@ -150,14 +199,16 @@ export const VaultLockView: React.FC<VaultLockViewProps> = ({
       setLocalError('Passphrase is required.');
       return;
     }
-    if (!hasVault && passphrase.length < 8) {
-      setLocalError('Passphrase must be at least 8 characters.');
+    if (!hasVault && passphrase.length < MIN_PASSPHRASE_LENGTH && strength.score < 3) {
+      setLocalError(`Passphrase should be at least ${MIN_PASSPHRASE_LENGTH} characters.`);
+      return;
+    }
+    if (!hasVault && strength.blocked) {
+      setLocalError('This passphrase is too common. Please choose a more unique phrase.');
       return;
     }
     if (!hasVault && strength.score < 2) {
-      setLocalError(
-        'Please choose a stronger passphrase. Try mixing uppercase, lowercase, numbers, and symbols.'
-      );
+      setLocalError('Please choose a stronger passphrase.');
       return;
     }
     if (!hasVault && passphrase !== confirm) {
@@ -257,6 +308,9 @@ export const VaultLockView: React.FC<VaultLockViewProps> = ({
                 </span>
               </div>
             )}
+            {!hasVault && strength.warnings.length > 0 && (
+              <div className="mt-2 text-[10px] text-amber-300">{strength.warnings.join(' • ')}</div>
+            )}
           </div>
 
           {!hasVault && (
@@ -303,7 +357,7 @@ export const VaultLockView: React.FC<VaultLockViewProps> = ({
         {/* Security info */}
         <div className="mt-6 pt-4 border-t border-slate-800">
           <p className="text-[9px] text-slate-600 uppercase tracking-widest">
-            🔒 AES-256-GCM encryption • 100,000 PBKDF2 iterations • Zero-knowledge
+            🔒 AES-256-GCM encryption • 200,000 PBKDF2 iterations (new vaults) • Zero-knowledge
           </p>
         </div>
       </div>

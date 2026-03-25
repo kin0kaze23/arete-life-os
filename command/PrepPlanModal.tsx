@@ -11,7 +11,7 @@ import {
   MapPin,
   Circle,
 } from 'lucide-react';
-import { generateEventPrepPlan } from '@/ai/geminiService';
+import { generateEventPrepPlan } from '@/ai';
 import { getEventEmoji } from '@/shared';
 
 interface PrepPlanModalProps {

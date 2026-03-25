@@ -1,15 +1,18 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   ActionType,
   AlwaysChip,
   AuditLogEntry,
+  BaselineSwotEntry,
   BlindSpot,
   CategorizedFact,
   Category,
   Claim,
   ClaimStatus,
+  DashboardPreferences,
   DashboardLayout,
   DailyTask,
+  DimensionContextSnapshot,
   FamilySpace,
   FinanceMetrics,
   Goal,
@@ -20,6 +23,9 @@ import {
   IntakeResult,
   MemoryEntry,
   MemoryItem,
+  LifeContextSignal,
+  LifeContextSnapshot,
+  LifeDimension,
   ProactiveInsight,
   PromptConfig,
   Recommendation,
@@ -35,6 +41,14 @@ import {
   extractFinanceMetricsFromMemory,
   putFile,
 } from '@/data';
+import {
+  BackupMeta,
+  getBackupIdentity,
+  getBackupMeta,
+  setBackupMeta,
+  deriveBackupIdentity,
+  setBackupIdentity,
+} from '@/data/backup';
 import { contentHash } from '@/shared';
 import { LogRouter } from '@/command';
 import {
@@ -42,9 +56,10 @@ import {
   generateDailyPlan,
   generateDeepTasks,
   generateDeepInitialization,
+  generateBaselineSwot,
   DEFAULT_PROMPTS,
   dailyIntelligenceBatch,
-} from '@/ai/geminiService';
+} from '@/ai';
 import {
   clearVault,
   createVault,
@@ -62,6 +77,8 @@ import { parseLogDeterministically } from './logParser';
 
 const APP_VERSION = '3.2.0';
 const VAULT_INACTIVITY_MS = 15 * 60 * 1000;
+const DAILY_BATCH_MIN_INTERVAL_MS = 90 * 1000;
+const DEEP_TASK_MIN_INTERVAL_MS = 60 * 60 * 1000;
 const PERF_MARKERS = {
   logStart: 'arete-log-start',
   logAiEnd: 'arete-ai-initial-end',
@@ -94,6 +111,20 @@ const INITIAL_RULE_OF_LIFE: RuleOfLife = {
   weeklyRhythm: { startOfWeek: 'Monday', blockedTimes: [] },
   nonNegotiables: { sleepWindow: '11pm - 7am', sabbath: 'Sunday', devotion: 'Morning Calibration' },
   taskPreferences: { dailyCap: 3, energyOffset: 'Balanced', includeWeekends: false },
+};
+
+const LIFE_DIMENSIONS: LifeDimension[] = [
+  Category.HEALTH,
+  Category.FINANCE,
+  Category.RELATIONSHIPS,
+  Category.SPIRITUAL,
+  Category.PERSONAL,
+];
+
+const DEFAULT_DASHBOARD_PREFERENCES: DashboardPreferences = {
+  isSnapshotExpanded: false,
+  selectedDimension: Category.HEALTH,
+  dismissedProfileGaps: {},
 };
 
 const buildMissingData = (profile: UserProfile) => {
@@ -206,6 +237,63 @@ const normalizeHorizon = (value: unknown): IntakeHorizon => {
   return allowed.includes(value as IntakeHorizon) ? (value as IntakeHorizon) : 'unknown';
 };
 
+const normalizeLifeContextSignal = (value: unknown): LifeContextSignal | undefined => {
+  if (!value || typeof value !== 'object') return undefined;
+  const raw = value as Record<string, unknown>;
+  const tier = raw.tier;
+  if (tier !== 1 && tier !== 2 && tier !== 3) return undefined;
+  const affectedDimensions = Array.isArray(raw.affectedDimensions)
+    ? raw.affectedDimensions
+        .map((dimension) => normalizeCategory(dimension))
+        .filter(
+          (dimension) =>
+            dimension === Category.HEALTH ||
+            dimension === Category.FINANCE ||
+            dimension === Category.RELATIONSHIPS ||
+            dimension === Category.SPIRITUAL ||
+            dimension === Category.PERSONAL
+        )
+    : [];
+  const reason = typeof raw.reason === 'string' ? raw.reason.trim() : '';
+  if (affectedDimensions.length === 0 || reason.length === 0) return undefined;
+  return {
+    tier,
+    affectedDimensions,
+    reason,
+  };
+};
+
+const isLifeDimension = (value: unknown): value is LifeDimension => {
+  return LIFE_DIMENSIONS.includes(value as LifeDimension);
+};
+
+const normalizeDashboardPreferences = (
+  value: unknown,
+  fallback: DashboardPreferences = DEFAULT_DASHBOARD_PREFERENCES
+): DashboardPreferences => {
+  if (!value || typeof value !== 'object') return fallback;
+  const raw = value as Record<string, unknown>;
+  const dismissedRaw = raw.dismissedProfileGaps;
+  const dismissedProfileGaps: Record<string, number> = {};
+  if (dismissedRaw && typeof dismissedRaw === 'object') {
+    Object.entries(dismissedRaw as Record<string, unknown>).forEach(([key, ts]) => {
+      if (typeof ts === 'number' && Number.isFinite(ts)) {
+        dismissedProfileGaps[key] = ts;
+      }
+    });
+  }
+  return {
+    isSnapshotExpanded:
+      typeof raw.isSnapshotExpanded === 'boolean'
+        ? raw.isSnapshotExpanded
+        : fallback.isSnapshotExpanded,
+    selectedDimension: isLifeDimension(raw.selectedDimension)
+      ? raw.selectedDimension
+      : fallback.selectedDimension,
+    dismissedProfileGaps,
+  };
+};
+
 const coerceConfidence = (value: unknown, fallback = 0.5) => {
   if (typeof value !== 'number' || Number.isNaN(value)) return fallback;
   return Math.max(0, Math.min(1, value));
@@ -311,11 +399,16 @@ type VaultData = {
   insights: ProactiveInsight[];
   blindSpots: BlindSpot[];
   dailyPlan: DailyTask[];
+  baselineSwot?: Record<string, BaselineSwotEntry[]>;
   ruleOfLife: RuleOfLife;
   prompts: PromptConfig[];
   layouts: Record<string, DashboardLayout>;
   alwaysDo?: AlwaysChip[];
   alwaysWatch?: AlwaysChip[];
+  lifeContextSnapshots?: LifeContextSnapshot[];
+  latestDimensionSnapshots?: Partial<Record<LifeDimension, DimensionContextSnapshot>>;
+  lastSessionScores?: Partial<Record<LifeDimension, number>>;
+  dashboardPreferences?: DashboardPreferences;
 };
 
 const LEGACY_KEYS = [
@@ -352,11 +445,16 @@ const buildDefaultVault = (): VaultData => ({
   insights: [],
   blindSpots: [],
   dailyPlan: [],
+  baselineSwot: {},
   ruleOfLife: INITIAL_RULE_OF_LIFE,
   prompts: DEFAULT_PROMPTS,
   layouts: { [INITIAL_PROFILE.id]: DEFAULT_LAYOUT },
   alwaysDo: [],
   alwaysWatch: [],
+  lifeContextSnapshots: [],
+  latestDimensionSnapshots: {},
+  lastSessionScores: {},
+  dashboardPreferences: DEFAULT_DASHBOARD_PREFERENCES,
 });
 
 const detectLegacyData = () => {
@@ -379,7 +477,7 @@ const readLegacyLayouts = (activeUserId: string) => {
       if (raw) {
         try {
           layouts[userId] = JSON.parse(raw);
-        } catch {}
+        } catch { }
       }
     }
   });
@@ -409,12 +507,17 @@ const buildLegacyVault = (): VaultData => {
     insights: JSON.parse(localStorage.getItem('aura_insights') || '[]'),
     blindSpots: JSON.parse(localStorage.getItem('aura_blind_spots') || '[]'),
     dailyPlan: JSON.parse(localStorage.getItem('aura_daily_plan') || '[]'),
+    baselineSwot: {},
     ruleOfLife: (() => {
       const raw = localStorage.getItem('aura_rule_of_life');
       return raw ? JSON.parse(raw) : INITIAL_RULE_OF_LIFE;
     })(),
     prompts: DEFAULT_PROMPTS,
     layouts: readLegacyLayouts(activeUserId),
+    lifeContextSnapshots: [],
+    latestDimensionSnapshots: {},
+    lastSessionScores: {},
+    dashboardPreferences: DEFAULT_DASHBOARD_PREFERENCES,
   };
 };
 
@@ -430,6 +533,9 @@ export const useAura = () => {
   const refreshTimeoutRef = useRef<number | null>(null);
   const vaultSaveTimeoutRef = useRef<number | null>(null);
   const memoryHashIndexRef = useRef<Set<string>>(new Set());
+  const lifeContextSignalHandlerRef = useRef<
+    ((signal: LifeContextSignal) => void | Promise<void>) | null
+  >(null);
   const lastDailyBatchRef = useRef<number | null>(null);
   const lastDeepTasksRef = useRef<number | null>(null);
   const [hasVault, setHasVault] = useState<boolean>(() =>
@@ -488,6 +594,9 @@ export const useAura = () => {
   const [insights, setInsights] = useState<ProactiveInsight[]>([]);
   const [blindSpots, setBlindSpots] = useState<BlindSpot[]>([]);
   const [dailyPlan, setDailyPlan] = useState<DailyTask[]>([]);
+  const [baselineSwotByUser, setBaselineSwotByUser] = useState<
+    Record<string, BaselineSwotEntry[]>
+  >({});
   const [ruleOfLife, setRuleOfLife] = useState<RuleOfLife>(INITIAL_RULE_OF_LIFE);
   const [layouts, setLayouts] = useState<Record<string, DashboardLayout>>({
     [INITIAL_PROFILE.id]: DEFAULT_LAYOUT,
@@ -495,6 +604,16 @@ export const useAura = () => {
   const [layout, setLayout] = useState<DashboardLayout>(DEFAULT_LAYOUT);
   const [alwaysDo, setAlwaysDo] = useState<AlwaysChip[]>([]);
   const [alwaysWatch, setAlwaysWatch] = useState<AlwaysChip[]>([]);
+  const [lifeContextSnapshots, setLifeContextSnapshots] = useState<LifeContextSnapshot[]>([]);
+  const [latestDimensionSnapshots, setLatestDimensionSnapshots] = useState<
+    Partial<Record<LifeDimension, DimensionContextSnapshot>>
+  >({});
+  const [lastSessionScores, setLastSessionScores] = useState<
+    Partial<Record<LifeDimension, number>>
+  >({});
+  const [dashboardPreferences, setDashboardPreferences] = useState<DashboardPreferences>(
+    DEFAULT_DASHBOARD_PREFERENCES
+  );
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPlanningDay, setIsPlanningDay] = useState(false);
@@ -503,6 +622,12 @@ export const useAura = () => {
     type: 'complete' | 'delete';
     task: DailyTask;
   } | null>(null);
+  const baselineSwotLoadingRef = useRef(false);
+
+  const activeBaselineSwot = useMemo(
+    () => baselineSwotByUser[activeUserId] || [],
+    [baselineSwotByUser, activeUserId]
+  );
 
   const ensureArray = <T>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : []);
   const mergePrompts = (value?: PromptConfig[]) => {
@@ -517,8 +642,61 @@ export const useAura = () => {
 
       // Migration: Ensure all members have relationships array (legacy vaults may not have this)
       data.familySpace.members.forEach((member) => {
+        if (!member.personal || typeof member.personal !== 'object') {
+          member.personal = { jobRole: '', company: '', interests: [], lastUpdated: Date.now() } as any;
+        }
+        if (!member.health || typeof member.health !== 'object') {
+          member.health = {
+            height: '',
+            weight: '',
+            sleepTime: '',
+            wakeTime: '',
+            activities: [],
+            activityFrequency: '',
+            conditions: [],
+            medications: [],
+            lastUpdated: Date.now(),
+          } as any;
+        }
+        if (!member.relationship || typeof member.relationship !== 'object') {
+          member.relationship = {
+            relationshipStatus: 'Single',
+            livingArrangement: '',
+            socialEnergy: '',
+            dailyCommitments: [],
+            socialGoals: [],
+            lastUpdated: Date.now(),
+          } as any;
+        }
+        if (!member.spiritual || typeof member.spiritual !== 'object') {
+          member.spiritual = { worldview: '', coreValues: [], practicePulse: '', lastUpdated: Date.now() } as any;
+        }
         if (!Array.isArray(member.relationships)) {
           member.relationships = [];
+        }
+        if (!Array.isArray(member.innerCircle)) {
+          member.innerCircle = [];
+        }
+        if (!Array.isArray(member.personal?.interests)) {
+          member.personal.interests = [];
+        }
+        if (!Array.isArray(member.health?.activities)) {
+          member.health.activities = [];
+        }
+        if (!Array.isArray(member.health?.conditions)) {
+          member.health.conditions = [];
+        }
+        if (!Array.isArray(member.health?.medications)) {
+          member.health.medications = [];
+        }
+        if (!Array.isArray(member.relationship?.dailyCommitments)) {
+          member.relationship.dailyCommitments = [];
+        }
+        if (!Array.isArray(member.relationship?.socialGoals)) {
+          member.relationship.socialGoals = [];
+        }
+        if (!Array.isArray(member.spiritual?.coreValues)) {
+          member.spiritual.coreValues = [];
         }
       });
 
@@ -542,12 +720,29 @@ export const useAura = () => {
       setInsights(ensureArray<ProactiveInsight>(data.insights));
       setBlindSpots(ensureArray<BlindSpot>(data.blindSpots));
       setDailyPlan(ensureArray<DailyTask>(data.dailyPlan));
+      setBaselineSwotByUser(
+        data.baselineSwot && typeof data.baselineSwot === 'object' ? data.baselineSwot : {}
+      );
       setRuleOfLife(data.ruleOfLife || INITIAL_RULE_OF_LIFE);
       setPrompts(mergePrompts(data.prompts));
       setLayouts(data.layouts || { [data.activeUserId]: DEFAULT_LAYOUT });
       setLayout((data.layouts && data.layouts[data.activeUserId]) || DEFAULT_LAYOUT);
       setAlwaysDo(ensureArray<AlwaysChip>(data.alwaysDo));
       setAlwaysWatch(ensureArray<AlwaysChip>(data.alwaysWatch));
+      setLifeContextSnapshots(ensureArray<LifeContextSnapshot>(data.lifeContextSnapshots));
+      setLatestDimensionSnapshots(
+        data.latestDimensionSnapshots && typeof data.latestDimensionSnapshots === 'object'
+          ? (data.latestDimensionSnapshots as Partial<
+              Record<LifeDimension, DimensionContextSnapshot>
+            >)
+          : {}
+      );
+      setLastSessionScores(
+        data.lastSessionScores && typeof data.lastSessionScores === 'object'
+          ? (data.lastSessionScores as Partial<Record<LifeDimension, number>>)
+          : {}
+      );
+      setDashboardPreferences(normalizeDashboardPreferences(data.dashboardPreferences));
       setStorageUsage(getVaultStorageUsage());
     },
     [rebuildMemoryHashIndex]
@@ -608,11 +803,16 @@ export const useAura = () => {
       insights,
       blindSpots,
       dailyPlan,
+      baselineSwot: baselineSwotByUser,
       ruleOfLife,
       prompts,
       layouts,
       alwaysDo,
       alwaysWatch,
+      lifeContextSnapshots,
+      latestDimensionSnapshots,
+      lastSessionScores,
+      dashboardPreferences,
     }),
     [
       isOnboarded,
@@ -629,11 +829,16 @@ export const useAura = () => {
       insights,
       blindSpots,
       dailyPlan,
+      baselineSwotByUser,
       ruleOfLife,
       prompts,
       layouts,
       alwaysDo,
       alwaysWatch,
+      lifeContextSnapshots,
+      latestDimensionSnapshots,
+      lastSessionScores,
+      dashboardPreferences,
     ]
   );
 
@@ -748,13 +953,13 @@ export const useAura = () => {
           value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
         const mergedMetadata = updates.metadata
           ? {
-              ...item.metadata,
-              ...updates.metadata,
-              payload: {
-                ...toRecord(item.metadata?.payload),
-                ...toRecord(updates.metadata?.payload),
-              },
-            }
+            ...item.metadata,
+            ...updates.metadata,
+            payload: {
+              ...toRecord(item.metadata?.payload),
+              ...toRecord(updates.metadata?.payload),
+            },
+          }
           : item.metadata;
         return { ...item, ...updates, metadata: mergedMetadata };
       })
@@ -872,9 +1077,9 @@ export const useAura = () => {
       prev.map((c) =>
         c.id === claimId
           ? {
-              ...c,
-              status: resolution === 'OVERWRITE' ? ClaimStatus.COMMITTED : ClaimStatus.ARCHIVED,
-            }
+            ...c,
+            status: resolution === 'OVERWRITE' ? ClaimStatus.COMMITTED : ClaimStatus.ARCHIVED,
+          }
           : c
       )
     );
@@ -895,7 +1100,7 @@ export const useAura = () => {
     addAuditLog(ActionType.PROFILE_UPDATE, 'Knowledge Point Refined', `ID: ${id}`);
   };
 
-  const logMemory = async (input: string, attachedFiles?: File[], skipVerification = true) => {
+  const logMemory = async (input: string, attachedFiles?: File[], skipVerification = false) => {
     markPerf(PERF_MARKERS.logStart);
     setIsProcessing(true);
     const timestamp = Date.now();
@@ -1097,23 +1302,23 @@ export const useAura = () => {
         const filesForAI =
           files.length > 0
             ? await Promise.all(
-                files.map(
-                  (file) =>
-                    new Promise<{ data: string; mimeType: string }>((resolve, reject) => {
-                      const reader = new FileReader();
-                      reader.onload = () => {
-                        const result = reader.result as string;
-                        const base64 = result.split(',')[1];
-                        resolve({
-                          data: base64,
-                          mimeType: file.type || 'application/octet-stream',
-                        });
-                      };
-                      reader.onerror = () => reject(reader.error);
-                      reader.readAsDataURL(file);
-                    })
-                )
+              files.map(
+                (file) =>
+                  new Promise<{ data: string; mimeType: string }>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      const result = reader.result as string;
+                      const base64 = result.split(',')[1];
+                      resolve({
+                        data: base64,
+                        mimeType: file.type || 'application/octet-stream',
+                      });
+                    };
+                    reader.onerror = () => reject(reader.error);
+                    reader.readAsDataURL(file);
+                  })
               )
+            )
             : undefined;
 
         const deterministicInput = contentForMemory || inputForAI || '';
@@ -1121,22 +1326,22 @@ export const useAura = () => {
           filesForAI && filesForAI.length > 0
             ? null
             : parseLogDeterministically(deterministicInput, {
-                ownerId: activeUserId,
-                currentDate: new Date().toLocaleDateString('en-CA'),
-              });
+              ownerId: activeUserId,
+              currentDate: new Date().toLocaleDateString('en-CA'),
+            });
 
         const result =
           deterministic && deterministic.confidence >= 0.7
             ? deterministic
             : await processInput(
-                inputForAI,
-                memoryItems,
-                profile,
-                filesForAI,
-                prompts.find((p) => p.id === 'internalization')!,
-                familySpace.members,
-                fileMeta
-              );
+              inputForAI,
+              memoryItems,
+              profile,
+              filesForAI,
+              prompts.find((p) => p.id === 'internalization')!,
+              familySpace.members,
+              fileMeta
+            );
         markPerf(PERF_MARKERS.logAiEnd);
         measurePerf('arete-initial-ai', PERF_MARKERS.logStart, PERF_MARKERS.logAiEnd);
         const rawFacts = Array.isArray(result?.facts) ? result.facts : [];
@@ -1173,6 +1378,7 @@ export const useAura = () => {
               item.fields && typeof item.fields === 'object'
                 ? (item.fields as Record<string, unknown>)
                 : undefined;
+            const lifeContextSignal = normalizeLifeContextSignal(item.lifeContextSignal);
             return {
               id: typeof item.id === 'string' && item.id.trim().length > 0 ? item.id : '',
               type: normalizeIntakeType(item.type),
@@ -1187,6 +1393,7 @@ export const useAura = () => {
               fields,
               sourceId: typeof item.sourceId === 'string' ? item.sourceId : undefined,
               dedupeKey: typeof item.dedupeKey === 'string' ? item.dedupeKey : contentHash(content),
+              lifeContextSignal,
             };
           })
           .map((item, idx) => ({ ...item, id: item.id || `intake-${timestamp}-${idx}` }));
@@ -1587,7 +1794,7 @@ export const useAura = () => {
         const refinedCategory = shouldRefineCategory
           ? intakeItems.length > 0
             ? intakeItems[0].domain ||
-              inferCategory(contentForMemory, rawFacts as CategorizedFact[])
+            inferCategory(contentForMemory, rawFacts as CategorizedFact[])
             : inferCategory(contentForMemory, rawFacts as CategorizedFact[])
           : null;
 
@@ -1652,6 +1859,17 @@ export const useAura = () => {
 
         addAuditLog(ActionType.INGEST_SIGNAL, 'Signal Ingested', inputForAI, addedMemoryIds[0]);
         debouncedRefreshAura();
+        const signalHandler = lifeContextSignalHandlerRef.current;
+        if (signalHandler) {
+          const signals = intakeItems
+            .map((item) => item.lifeContextSignal)
+            .filter((signal): signal is LifeContextSignal => Boolean(signal));
+          signals.forEach((signal) => {
+            void Promise.resolve(signalHandler(signal)).catch((error) => {
+              console.error('[lifeContextSignal] handler failed', error);
+            });
+          });
+        }
         return {
           ...result,
           facts: normalizedFacts,
@@ -1677,10 +1895,10 @@ export const useAura = () => {
             prev.map((item) =>
               addedMemoryIds.includes(item.id)
                 ? {
-                    ...item,
-                    extractionConfidence: 0,
-                    extractionQualityNotes: [message],
-                  }
+                  ...item,
+                  extractionConfidence: 0,
+                  extractionQualityNotes: [message],
+                }
                 : item
             )
           );
@@ -1723,22 +1941,19 @@ export const useAura = () => {
     return Math.min(8, Math.max(5, fallback));
   };
 
-  const isSameLocalDay = (a: number, b: number) =>
-    new Date(a).toDateString() === new Date(b).toDateString();
-
   const shouldRunDailyBatch = (force?: boolean) => {
     if (force) return true;
     const lastRun = lastDailyBatchRef.current;
     if (!lastRun) return true;
-    return !isSameLocalDay(Date.now(), lastRun);
+    return Date.now() - lastRun >= DAILY_BATCH_MIN_INTERVAL_MS;
   };
 
   const shouldRunDeepTasks = (force?: boolean) => {
     if (force) return true;
+    if (recommendations.length === 0) return true;
     const lastRun = lastDeepTasksRef.current;
     if (!lastRun) return true;
-    const weekMs = 7 * 24 * 60 * 60 * 1000;
-    return Date.now() - lastRun > weekMs;
+    return Date.now() - lastRun >= DEEP_TASK_MIN_INTERVAL_MS;
   };
 
   const planMyDay = async () => {
@@ -1911,7 +2126,10 @@ export const useAura = () => {
 
     if (deepTasks.length > 0) setTasks((prev) => [...deepTasks, ...prev]);
     if (deepBlindSpots.length > 0) setBlindSpots((prev) => [...deepBlindSpots, ...prev]);
-    if (deepRecs.length > 0) setRecommendations((prev) => [...deepRecs, ...prev]);
+    if (deepRecs.length > 0) {
+      setRecommendations((prev) => [...deepRecs, ...prev]);
+      lastDeepTasksRef.current = Date.now();
+    }
 
     // Store Always-Do/Watch chips from deep initialization
     const initAlwaysDo = (result.alwaysDo || []).map((chip: any, idx: number) => ({
@@ -1960,6 +2178,70 @@ export const useAura = () => {
   }, [refreshAura]);
 
   useEffect(() => {
+    if (!isOnboarded) return;
+    if (activeBaselineSwot.length > 0) return;
+    if (baselineSwotLoadingRef.current) return;
+    baselineSwotLoadingRef.current = true;
+    const baselinePrompt =
+      prompts.find((p) => p.id === 'baselineSwot') ||
+      DEFAULT_PROMPTS.find((p) => p.id === 'baselineSwot')!;
+    generateBaselineSwot(profile, goals, baselinePrompt)
+      .then((result) => {
+        const safe = Array.isArray(result) && result.length > 0 ? result : [
+          {
+            dimension: Category.HEALTH,
+            strengths: ['Not enough data yet.'],
+            weaknesses: ['Not enough data yet.'],
+            opportunities: ['Log a health check-in.'],
+            threats: ['No risks detected yet.'],
+            confidence: 'profile',
+            nextAction: 'Log a quick health check-in.',
+          },
+          {
+            dimension: Category.FINANCE,
+            strengths: ['Not enough data yet.'],
+            weaknesses: ['Not enough data yet.'],
+            opportunities: ['Log an expense snapshot.'],
+            threats: ['No risks detected yet.'],
+            confidence: 'profile',
+            nextAction: 'Log a quick expense.',
+          },
+          {
+            dimension: Category.RELATIONSHIPS,
+            strengths: ['Not enough data yet.'],
+            weaknesses: ['Not enough data yet.'],
+            opportunities: ['Log a relationship touchpoint.'],
+            threats: ['No risks detected yet.'],
+            confidence: 'profile',
+            nextAction: 'Log a relationship touchpoint.',
+          },
+          {
+            dimension: Category.SPIRITUAL,
+            strengths: ['Not enough data yet.'],
+            weaknesses: ['Not enough data yet.'],
+            opportunities: ['Log a reflection.'],
+            threats: ['No risks detected yet.'],
+            confidence: 'profile',
+            nextAction: 'Log a short reflection.',
+          },
+          {
+            dimension: Category.PERSONAL,
+            strengths: ['Not enough data yet.'],
+            weaknesses: ['Not enough data yet.'],
+            opportunities: ['Log a progress update.'],
+            threats: ['No risks detected yet.'],
+            confidence: 'profile',
+            nextAction: 'Log a progress update.',
+          },
+        ];
+        setBaselineSwotByUser((prev) => ({ ...prev, [activeUserId]: safe }));
+      })
+      .finally(() => {
+        baselineSwotLoadingRef.current = false;
+      });
+  }, [isOnboarded, activeBaselineSwot.length, activeUserId, profile, goals, prompts]);
+
+  useEffect(() => {
     return () => {
       if (refreshTimeoutRef.current) {
         window.clearTimeout(refreshTimeoutRef.current);
@@ -1996,13 +2278,27 @@ export const useAura = () => {
     insights,
     blindSpots,
     dailyPlan,
+    baselineSwot: activeBaselineSwot,
     ruleOfLife,
     isGeneratingTasks,
     prompts,
     layout,
     alwaysDo,
     alwaysWatch,
+    lifeContextSnapshots,
+    latestDimensionSnapshots,
+    lastSessionScores,
+    dashboardPreferences,
     setActiveUserId: handleSwitchUser,
+    setLifeContextSignalHandler: (
+      handler: ((signal: LifeContextSignal) => void | Promise<void>) | null
+    ) => {
+      lifeContextSignalHandlerRef.current = handler;
+    },
+    setLifeContextSnapshots,
+    setLatestDimensionSnapshots,
+    setLastSessionScores,
+    setDashboardPreferences,
     logMemory,
     planMyDay,
     resolveConflict,
@@ -2200,8 +2496,8 @@ export const useAura = () => {
     },
     getVitalityScore: (c: any) => 85,
     dismissInsight: (i: any) => setInsights((p) => p.filter((ins) => ins.id !== i.id)),
-    setTaskFeedback: (id: string, f: any) => {},
-    setInsightFeedback: (id: string, f: any) => {},
+    setTaskFeedback: (id: string, f: any) => { },
+    setInsightFeedback: (id: string, f: any) => { },
     createTask: (t: any) => {
       setTasks((p) => [t, ...p]);
       const timestamp = Date.now();
@@ -2347,14 +2643,14 @@ export const useAura = () => {
       addAuditLog(ActionType.ARM_STRATEGY, 'Goal Deleted', id, memoryItem.id);
       debouncedRefreshAura();
     },
-    scheduleInsight: (i: any, d: any) => {},
-    deleteFacts: (items: any) => {},
+    scheduleInsight: (i: any, d: any) => { },
+    deleteFacts: (items: any) => { },
     addFamilyMember: (n: string) => {
       const id = `user-${Date.now()}`;
       setFamilySpace((prev) => ({ ...prev, members: [...prev.members, createNewProfile(id, n)] }));
       return id;
     },
-    removeFamilyMember: (id: string) => {},
+    removeFamilyMember: (id: string) => { },
     updateMemoryItem,
     deleteMemoryItem,
     deleteClaim,
@@ -2367,5 +2663,81 @@ export const useAura = () => {
       setClaims((p) =>
         p.map((c) => (ids.includes(c.id) ? { ...c, status: ClaimStatus.ARCHIVED } : c))
       ),
+    processLog: (result: any) => {
+      if (result?.items) {
+        // Cast items to MemoryItem[] as they share structure for storage
+        const items = result.items.map((i: any) => ({
+          ...i,
+          timestamp: Date.now(),
+          category: i.domain || Category.GENERAL,
+          extractedFacts: [],
+          extractionConfidence: i.confidence || 1,
+        }));
+        appendMemoryItems(items);
+        debouncedRefreshAura();
+      }
+    },
+
+    // --- Settings / Backup / Audit (used by SettingsView) ---
+    exportAuditLogs: () => {
+      const blob = new Blob([JSON.stringify(auditLogs, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `arete-audit-${new Date().toISOString().slice(0, 10)}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    },
+    clearAuditLogs: () => setAuditLogs([]),
+    copyCspReportSummary: async (): Promise<string> => {
+      const summary = 'CSP reporting not yet configured.';
+      try {
+        await navigator.clipboard.writeText(summary);
+      } catch {
+        /* clipboard may not be available */
+      }
+      return summary;
+    },
+    backupIdentity: getBackupIdentity(),
+    backupMeta: getBackupMeta(),
+    enableBackups: async (passphrase: string, recoveryCode: string): Promise<string> => {
+      const identity = await deriveBackupIdentity(passphrase, recoveryCode);
+      setBackupIdentity(identity);
+      setBackupMeta({ createdAt: new Date().toISOString() });
+      return identity;
+    },
+    createRemoteBackup: async (): Promise<void> => {
+      // Stub — remote backup via Vercel Blob requires server-side implementation
+      console.warn('Remote backup not yet wired to server endpoint.');
+    },
+    listRemoteBackups: async (): Promise<
+      { key: string; uploadedAt: string; size: number; isLatest?: boolean }[]
+    > => {
+      return [];
+    },
+    listRemoteBackupsForRecovery: async (
+      _passphrase: string,
+      _recoveryCode: string
+    ): Promise<{
+      identity: string;
+      items: { key: string; uploadedAt: string; size: number; isLatest?: boolean }[];
+    }> => {
+      return { identity: '', items: [] };
+    },
+    personalizedGreeting: useMemo(() => {
+      const hour = new Date().getHours();
+      const name = profile.identify.name.split(' ')[0] || 'Member';
+      if (hour < 5) return `Late night, ${name}`;
+      if (hour < 12) return `Good morning, ${name}`;
+      if (hour < 18) return `Good afternoon, ${name}`;
+      return `Good evening, ${name}`;
+    }, [profile.identify.name]),
+    restoreBackupWithRecovery: async (_params: {
+      passphrase: string;
+      recoveryCode: string;
+      key: string;
+    }): Promise<void> => {
+      console.warn('Backup restore not yet wired to server endpoint.');
+    },
   };
 };

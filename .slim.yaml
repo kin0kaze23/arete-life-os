@@ -1,0 +1,8 @@
+# Slim.sh configuration for Areté Life OS
+# Run: slim up
+
+services:
+  - domain: arete
+    port: 3006
+
+log_mode: minimal

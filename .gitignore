@@ -25,3 +25,9 @@ dist-ssr
 .vercel
 playwright-report
 test-results
+
+# Environment files
+.env
+.env.*
+!.env.example
+

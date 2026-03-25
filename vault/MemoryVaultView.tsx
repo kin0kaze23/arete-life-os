@@ -81,8 +81,6 @@ export const MemoryVaultView: React.FC<MemoryVaultViewProps> = ({
         return <Compass size={18} />;
       case Category.SPIRITUAL:
         return <Globe size={18} />;
-      case Category.WORK:
-        return <Briefcase size={18} />;
       case Category.PERSONAL:
         return <User size={18} />;
       default:

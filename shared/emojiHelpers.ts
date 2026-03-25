@@ -13,8 +13,6 @@ export const getCategoryEmoji = (category: Category): string => {
       return '👥';
     case Category.SPIRITUAL:
       return '🙏';
-    case Category.WORK:
-      return '💼';
     case Category.GENERAL:
       return '📌';
     default:

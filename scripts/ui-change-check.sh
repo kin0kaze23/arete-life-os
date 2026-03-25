@@ -61,7 +61,7 @@ fi
 UI_PATHS_REGEX='^(app/|dashboard/|command/|shared/|layout/|public/|stream/|onboarding/|vault/|index.html|index.tsx|metadata.json|vite.config.ts|tailwind|styles/|assets/)'
 
 # Core/AI/backend/security-sensitive paths
-CORE_PATHS_REGEX='^(core/|api/|ai/|data/|scripts/doctor.sh|vercel.json|package.json|package-lock.json|tsconfig.json|e2e/|docs/ARCHITECTURE.md|docs/AI_PROMPT_FLOW.md)'
+CORE_PATHS_REGEX='^(core/|api/|ai/|data/|scripts/|vercel.json|package.json|package-lock.json|tsconfig.json|e2e/|docs/|\\.agent/core/)'
 
 match() {
   local regex="$1"

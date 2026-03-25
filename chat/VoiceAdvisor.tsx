@@ -71,7 +71,11 @@ export const VoiceAdvisor: React.FC<VoiceAdvisorProps> = ({ profile, memory, onC
     setIsConnecting(true);
     setError(null);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error('Voice advisor requires GEMINI_API_KEY to be configured.');
+      }
+      const ai = new GoogleGenAI({ apiKey });
       const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({
         sampleRate: 16000,
       });

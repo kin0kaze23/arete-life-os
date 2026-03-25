@@ -301,6 +301,20 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                 suggestions={SUGGESTIONS.interests}
                 onUpdate={(items) => updateProfile('personal', 'interests', items)}
               />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <VaultSelect
+                  label="Personality Type (Optional)"
+                  value={profile.personal.personalityType || ''}
+                  options={['INTJ', 'INTP', 'ENTJ', 'ENTP', 'INFJ', 'INFP', 'ENFJ', 'ENFP', 'ISTJ', 'ISFJ', 'ESTJ', 'ESFJ', 'ISTP', 'ISFP', 'ESTP', 'ESFP', 'Not Sure']}
+                  onChange={(v) => updateProfile('personal', 'personalityType', v)}
+                />
+                <VaultSelect
+                  label="Communication Style (Optional)"
+                  value={profile.personal.communicationStyle || ''}
+                  options={['Direct', 'Analytical', 'Storyteller', 'Diplomat']}
+                  onChange={(v) => updateProfile('personal', 'communicationStyle', v)}
+                />
+              </div>
             </div>
           )}
 
@@ -359,6 +373,12 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                 selected={profile.health.medications}
                 suggestions={SUGGESTIONS.medications}
                 onUpdate={(items) => updateProfile('health', 'medications', items)}
+              />
+              <ChipInput
+                label="Health Goals"
+                selected={profile.health.healthGoals || []}
+                suggestions={['Lose Weight', 'Build Muscle', 'Better Sleep', 'Run a Marathon', 'Lower Blood Pressure', 'Manage Condition', 'Increase Flexibility', 'Reduce Stress']}
+                onUpdate={(items) => updateProfile('health', 'healthGoals', items)}
               />
             </div>
           )}
@@ -430,6 +450,12 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                   />
                 </div>
               </div>
+              <ChipInput
+                label="Financial Goals"
+                selected={profile.finances.financialGoals || []}
+                suggestions={['Emergency Fund', 'Pay Off Debt', 'Save for House', 'Invest More', 'Retirement Planning', 'Start a Business', 'Children Education', 'Travel Fund']}
+                onUpdate={(items) => updateProfile('finances', 'financialGoals', items)}
+              />
             </div>
           )}
 

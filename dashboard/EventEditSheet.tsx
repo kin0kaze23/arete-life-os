@@ -31,11 +31,11 @@ export const EventEditSheet: React.FC<EventEditSheetProps> = ({ event, onSave, o
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-black/80 backdrop-blur-xl animate-in fade-in duration-200">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md bg-[#0A0C10] border border-white/10 rounded-3xl shadow-2xl overflow-hidden"
+        className="w-full max-w-md bg-slate-950 border border-white/10 rounded-3xl shadow-2xl overflow-hidden"
       >
         {/* Header */}
         <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between">
-          <h3 className="text-sm font-black text-white uppercase tracking-widest">Edit Event</h3>
+          <h3 className="text-sm font-bold text-white uppercase tracking-[0.2em]">Edit Event</h3>
           <button
             type="button"
             onClick={onClose}
@@ -105,17 +105,17 @@ export const EventEditSheet: React.FC<EventEditSheetProps> = ({ event, onSave, o
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-[#08090C] border-t border-white/5 flex justify-end gap-3">
+        <div className="px-6 py-4 bg-slate-950 border-t border-white/5 flex justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-colors"
+            className="px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 hover:text-white transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-indigo-600/20 transition-all active:scale-95"
+            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold uppercase tracking-[0.2em] rounded-xl shadow-lg shadow-indigo-600/20 transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
           >
             <Check size={14} />
             Save

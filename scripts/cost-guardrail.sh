@@ -4,7 +4,7 @@ set -euo pipefail
 ALLOW=0
 BASE="HEAD"
 BASE_SET=0
-APPROVALS_FILE=".agent/COST_APPROVALS.md"
+APPROVALS_FILE=".agent/core/COST_APPROVALS.md"
 
 usage() {
   cat <<'USAGE'
@@ -164,7 +164,7 @@ for file, content in sorted(additions):
     print(f"- {file}: {content}")
 
 print("\nAdd an inline tag to approve cost impact, e.g.: // cost-approved: reason")
-print("Or add an approval rule to .agent/COST_APPROVALS.md")
+print("Or add an approval rule to .agent/core/COST_APPROVALS.md")
 
 if allow:
     print("--allow used: continuing despite potential cost impact.")

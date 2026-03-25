@@ -1,0 +1,49 @@
+{
+  "version": "1",
+  "riskTierRules": {
+    "highPrefixes": [
+      "api/",
+      "ai/",
+      "core/",
+      "data/",
+      "scripts/",
+      ".github/workflows/"
+    ]
+  },
+  "mergePolicy": {
+    "high": {
+      "requiredChecks": [
+        "risk-policy-gate",
+        "ci"
+      ]
+    },
+    "low": {
+      "requiredChecks": [
+        "risk-policy-gate",
+        "ci"
+      ]
+    }
+  },
+  "docsDrift": {
+    "controlPlanePrefixes": [
+      ".github/workflows/",
+      "scripts/"
+    ],
+    "requiredDocPrefixes": [
+      "docs/",
+      "README.md"
+    ]
+  },
+  "reviewAgent": {
+    "enabled": false,
+    "checkName": "code-review-agent",
+    "enforceOnTiers": [
+      "high"
+    ],
+    "timeoutMinutes": 20,
+    "autoRerun": {
+      "enabled": false,
+      "marker": "<!-- review-agent-auto-rerun -->"
+    }
+  }
+}

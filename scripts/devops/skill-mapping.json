@@ -1,0 +1,23 @@
+{
+  "mappings": {
+    "dashboard/*.tsx": ["visual-intelligence", "component-analysis", "product-intelligence"],
+    "stream/*.tsx": ["visual-intelligence", "component-analysis"],
+    "vault/*.tsx": ["visual-intelligence", "component-analysis", "security-intelligence"],
+    "settings/*.tsx": ["visual-intelligence", "component-analysis"],
+    "shared/*.tsx": ["visual-intelligence", "component-analysis"],
+    "core/*.ts": [
+      "data-architecture-intelligence",
+      "performance-intelligence",
+      "error-resilience-intelligence"
+    ],
+    "data/*.ts": ["data-architecture-intelligence", "security-intelligence"],
+    "api/*.ts": [
+      "api-design-intelligence",
+      "security-intelligence",
+      "error-resilience-intelligence"
+    ],
+    "app/*.tsx": ["component-analysis", "product-intelligence"],
+    "scripts/**/*.js": ["testing-strategy-intelligence"],
+    "scripts/**/*.sh": ["testing-strategy-intelligence"]
+  }
+}

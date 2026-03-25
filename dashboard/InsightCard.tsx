@@ -34,7 +34,7 @@ export const InsightCard: React.FC<InsightCardProps> = ({
   // Skip rendering if card is marked for dismissal
   if (isDismissed) return null;
 
-  // Determine styling based on variant
+    // Determine styling based on variant
   const getVariantStyles = () => {
     let bgColor = 'bg-white/[0.02]';
     let border = 'border-white/5';
@@ -45,12 +45,18 @@ export const InsightCard: React.FC<InsightCardProps> = ({
         iconColor = 'text-emerald-400';
         break;
       case 'benchmark':
+        bgColor = 'bg-amber-500/10'; // Amber-themed background
+        border = 'border-amber-500/30';
         iconColor = 'text-amber-400';
         break;
       case 'predictive':
+        bgColor = 'bg-sky-500/10'; // Sky-themed background
+        border = 'border-sky-500/30';
         iconColor = 'text-sky-400';
         break;
       case 'actionable':
+        bgColor = 'bg-red-500/10'; // Red-themed background
+        border = 'border-red-500/30';
         iconColor = 'text-red-400';
         break;
       default:

@@ -283,6 +283,17 @@ const App: React.FC = () => {
                     importData={aura.importData}
                     clearAllData={aura.clearAllData}
                     storageUsage={aura.storageUsage}
+                    auditLogs={aura.auditLogs}
+                    exportAuditLogs={aura.exportAuditLogs}
+                    clearAuditLogs={aura.clearAuditLogs}
+                    copyCspReportSummary={aura.copyCspReportSummary}
+                    backupIdentity={aura.backupIdentity}
+                    backupMeta={aura.backupMeta}
+                    enableBackups={aura.enableBackups}
+                    createRemoteBackup={aura.createRemoteBackup}
+                    listRemoteBackups={aura.listRemoteBackups}
+                    listRemoteBackupsForRecovery={aura.listRemoteBackupsForRecovery}
+                    restoreBackupWithRecovery={aura.restoreBackupWithRecovery}
                   />
                 )}
               </div>

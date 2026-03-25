@@ -293,7 +293,7 @@ const analyzeStreaks = (memory: MemoryEntry[]): StreakPattern[] => {
 
   let maxRecentStreak = 0;
   let currentStreak = 0;
-  let expectedDay = startDate;
+  const expectedDay = startDate;
   
   for (let i = 0; i < uniqueDates.length; i++) {
     const actualDate = new Date(uniqueDates[i]);

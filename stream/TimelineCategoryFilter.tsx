@@ -22,21 +22,15 @@ const categoryConfig: { category: Category; color: string; bgColor: string }[] =
     color: 'text-violet-400',
     bgColor: 'bg-violet-500/20 border-violet-500/30',
   },
-  { category: Category.WORK, color: 'text-sky-400', bgColor: 'bg-sky-500/20 border-sky-500/30' },
   {
-    category: Category.SPIRITUAL,
+    category: Category.PERSONAL,
     color: 'text-indigo-400',
     bgColor: 'bg-indigo-500/20 border-indigo-500/30',
   },
   {
-    category: Category.TRAVEL,
-    color: 'text-cyan-400',
-    bgColor: 'bg-cyan-500/20 border-cyan-500/30',
-  },
-  {
-    category: Category.SOCIAL,
-    color: 'text-emerald-400',
-    bgColor: 'bg-emerald-500/20 border-emerald-500/30',
+    category: Category.SPIRITUAL,
+    color: 'text-sky-400',
+    bgColor: 'bg-sky-500/20 border-sky-500/30',
   },
 ];
 

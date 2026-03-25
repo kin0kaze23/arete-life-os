@@ -1,6 +1,93 @@
+import type {
+  DashboardPreferences,
+  DimensionContextSnapshot,
+  LifeContextSnapshot,
+  LifeDimension,
+} from './types';
+import { Category } from './types';
+
 const VAULT_KEY = 'aura_vault_v1';
 const META_KEY = 'aura_vault_meta_v1';
-const ITERATIONS = 100_000;
+const ITERATIONS = 200_000;
+
+const LIFE_DIMENSIONS: LifeDimension[] = [
+  Category.HEALTH,
+  Category.FINANCE,
+  Category.RELATIONSHIPS,
+  Category.SPIRITUAL,
+  Category.PERSONAL,
+];
+
+export type LifeContextVaultSlice = {
+  lifeContextSnapshots: LifeContextSnapshot[];
+  latestDimensionSnapshots: Partial<Record<LifeDimension, DimensionContextSnapshot>>;
+  lastSessionScores: Partial<Record<LifeDimension, number>>;
+  dashboardPreferences: DashboardPreferences;
+};
+
+export const createEmptyLifeContextVaultSlice = (): LifeContextVaultSlice => ({
+  lifeContextSnapshots: [],
+  latestDimensionSnapshots: {},
+  lastSessionScores: {},
+  dashboardPreferences: {
+    isSnapshotExpanded: false,
+    selectedDimension: Category.HEALTH,
+    dismissedProfileGaps: {},
+  },
+});
+
+export const normalizeLifeContextVaultSlice = (value: unknown): LifeContextVaultSlice => {
+  const fallback = createEmptyLifeContextVaultSlice();
+  if (!value || typeof value !== 'object') return fallback;
+  const raw = value as Record<string, unknown>;
+  const snapshots = Array.isArray(raw.lifeContextSnapshots)
+    ? (raw.lifeContextSnapshots as LifeContextSnapshot[])
+    : [];
+
+  const latestRaw = raw.latestDimensionSnapshots;
+  const latestDimensionSnapshots =
+    latestRaw && typeof latestRaw === 'object'
+      ? (latestRaw as Partial<Record<LifeDimension, DimensionContextSnapshot>>)
+      : {};
+
+  const scoresRaw = raw.lastSessionScores;
+  const lastSessionScores: Partial<Record<LifeDimension, number>> = {};
+  if (scoresRaw && typeof scoresRaw === 'object') {
+    Object.entries(scoresRaw as Record<string, unknown>).forEach(([dimension, score]) => {
+      if (LIFE_DIMENSIONS.includes(dimension as LifeDimension) && typeof score === 'number') {
+        lastSessionScores[dimension as LifeDimension] = score;
+      }
+    });
+  }
+
+  const prefsRaw = raw.dashboardPreferences as Record<string, unknown> | undefined;
+  const selectedDimension =
+    prefsRaw && LIFE_DIMENSIONS.includes(prefsRaw.selectedDimension as LifeDimension)
+      ? (prefsRaw.selectedDimension as LifeDimension)
+      : fallback.dashboardPreferences.selectedDimension;
+  const dismissedProfileGaps =
+    prefsRaw?.dismissedProfileGaps && typeof prefsRaw.dismissedProfileGaps === 'object'
+      ? Object.fromEntries(
+          Object.entries(prefsRaw.dismissedProfileGaps as Record<string, unknown>).filter(
+            ([, timestamp]) => typeof timestamp === 'number'
+          )
+        )
+      : {};
+
+  return {
+    lifeContextSnapshots: snapshots,
+    latestDimensionSnapshots,
+    lastSessionScores,
+    dashboardPreferences: {
+      isSnapshotExpanded:
+        prefsRaw && typeof prefsRaw.isSnapshotExpanded === 'boolean'
+          ? prefsRaw.isSnapshotExpanded
+          : fallback.dashboardPreferences.isSnapshotExpanded,
+      selectedDimension,
+      dismissedProfileGaps: dismissedProfileGaps as Record<string, number>,
+    },
+  };
+};
 
 type VaultMeta = {
   version: 1;
@@ -104,6 +191,19 @@ export const unlockVault = async <T>(passphrase: string) => {
   const key = await deriveKey(passphrase, fromBase64(meta.salt), meta.iterations);
   const plaintext = await decryptString(key, payload);
   return { key, data: JSON.parse(plaintext) as T };
+};
+
+export const decryptVaultPayload = async <T>(
+  passphrase: string,
+  metaRaw: string,
+  vaultRaw: string
+) => {
+  if (!crypto?.subtle) throw new Error('Crypto unavailable');
+  const meta = JSON.parse(metaRaw) as VaultMeta;
+  const payload = JSON.parse(vaultRaw) as EncryptedPayload;
+  const key = await deriveKey(passphrase, fromBase64(meta.salt), meta.iterations);
+  const plaintext = await decryptString(key, payload);
+  return JSON.parse(plaintext) as T;
 };
 
 export const saveVault = async <T>(key: CryptoKey, data: T) => {

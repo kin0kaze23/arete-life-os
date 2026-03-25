@@ -61,20 +61,11 @@ export const StatusSidebar: React.FC<StatusSidebarProps> = ({
         return Category.HEALTH;
       case 'Relationships':
         return Category.RELATIONSHIPS;
-      case 'Personal':
-        return Category.PERSONAL;
-      case 'Work':
-        return Category.WORK;
-      case 'Social':
-        return Category.SOCIAL;
-      case 'Meals':
-        return Category.MEALS;
-      case 'Travel':
-        return Category.TRAVEL;
       case 'Spiritual':
         return Category.SPIRITUAL;
+      case 'Personal':
       default:
-        return Category.GENERAL;
+        return Category.PERSONAL;
     }
   };
 
@@ -86,7 +77,7 @@ export const StatusSidebar: React.FC<StatusSidebarProps> = ({
       description: 'Your focus metrics show fragmentation in morning sessions.',
       rationale:
         'Cognitive load is highest between 9AM-11AM. Protecting this window yields 3x productivity.',
-      category: Category.WORK,
+      category: Category.PERSONAL,
       impactScore: 9,
       status: 'ACTIVE',
       steps: ['Enable "Monk Mode" at 9 AM', 'Decline all meetings until 11 AM'],
@@ -395,46 +386,12 @@ export const StatusSidebar: React.FC<StatusSidebarProps> = ({
         />
 
         <DimensionSection
-          label="Work"
-          icon={<Briefcase size={12} />}
-          recs={getDimensionRecs(Category.WORK)}
-          metricValue={profile.personal.jobRole}
-          metricLabel="Role Focus"
-          color="text-slate-400"
-        />
-
-        <DimensionSection
           label="Personal"
           icon={<User size={12} />}
           recs={getDimensionRecs(Category.PERSONAL)}
-          metricValue={profile.relationship.relationshipStatus}
-          metricLabel="Personal Focus"
+          metricValue={profile.personal.jobRole || profile.relationship.relationshipStatus}
+          metricLabel="Life Focus"
           color="text-indigo-500"
-        />
-
-        <DimensionSection
-          label="Social"
-          icon={<Users size={12} />}
-          recs={getDimensionRecs(Category.SOCIAL)}
-          metricValue={profile.relationship.socialEnergy}
-          metricLabel="Social Energy"
-          color="text-sky-500"
-        />
-
-        <DimensionSection
-          label="Meals"
-          icon={<Utensils size={12} />}
-          recs={getDimensionRecs(Category.MEALS)}
-          metricLabel="Nutrition"
-          color="text-lime-500"
-        />
-
-        <DimensionSection
-          label="Travel"
-          icon={<Plane size={12} />}
-          recs={getDimensionRecs(Category.TRAVEL)}
-          metricLabel="Mobility"
-          color="text-teal-500"
         />
 
         <DimensionSection

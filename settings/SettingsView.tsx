@@ -5,17 +5,22 @@ import {
   Download,
   Upload,
   Trash2,
-  Info,
   ShieldAlert,
   Monitor,
   Database,
   AlertCircle,
   ShieldCheck,
-  Zap,
   HardDrive,
 } from 'lucide-react';
 import { VaultSection, VaultInput, VaultSelect, VaultSlider } from '@/shared';
-import { ProactiveInsight, RuleOfLife } from '@/data';
+import { AuditLogEntry, BackupMeta, RuleOfLife, generateRecoveryCode } from '@/data';
+
+type BackupItem = {
+  key: string;
+  uploadedAt: string;
+  size: number;
+  isLatest?: boolean;
+};
 
 interface SettingsViewProps {
   isDarkMode: boolean;
@@ -26,6 +31,24 @@ interface SettingsViewProps {
   importData: (file: File) => void;
   clearAllData: () => void;
   storageUsage?: number;
+  auditLogs: AuditLogEntry[];
+  exportAuditLogs: () => void;
+  clearAuditLogs: () => void;
+  copyCspReportSummary: () => Promise<string>;
+  backupIdentity: string | null;
+  backupMeta: BackupMeta | null;
+  enableBackups: (passphrase: string, recoveryCode: string) => Promise<string>;
+  createRemoteBackup: () => Promise<void>;
+  listRemoteBackups: (identityOverride?: string) => Promise<BackupItem[]>;
+  listRemoteBackupsForRecovery: (
+    passphrase: string,
+    recoveryCode: string
+  ) => Promise<{ identity: string; items: BackupItem[] }>;
+  restoreBackupWithRecovery: (params: {
+    passphrase: string;
+    recoveryCode: string;
+    key: string;
+  }) => Promise<void>;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -37,8 +60,28 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   importData,
   clearAllData,
   storageUsage = 0,
+  auditLogs,
+  exportAuditLogs,
+  clearAuditLogs,
+  copyCspReportSummary,
+  backupIdentity,
+  backupMeta,
+  enableBackups,
+  createRemoteBackup,
+  listRemoteBackups,
+  listRemoteBackupsForRecovery,
+  restoreBackupWithRecovery,
 }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [generatedRecoveryCode, setGeneratedRecoveryCode] = React.useState('');
+  const [confirmRecoverySaved, setConfirmRecoverySaved] = React.useState(false);
+  const [backupPassphrase, setBackupPassphrase] = React.useState('');
+  const [backupError, setBackupError] = React.useState<string | null>(null);
+  const [backupStatus, setBackupStatus] = React.useState<string | null>(null);
+  const [backupItems, setBackupItems] = React.useState<BackupItem[]>([]);
+  const [restorePassphrase, setRestorePassphrase] = React.useState('');
+  const [restoreRecoveryCode, setRestoreRecoveryCode] = React.useState('');
+  const [isBackupBusy, setIsBackupBusy] = React.useState(false);
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
@@ -57,9 +100,95 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     });
   };
 
+  const handleGenerateRecoveryCode = () => {
+    const code = generateRecoveryCode();
+    setGeneratedRecoveryCode(code);
+    setConfirmRecoverySaved(false);
+    setBackupStatus('Recovery code generated. Store it safely.');
+  };
+
+  const handleEnableBackups = async () => {
+    setBackupError(null);
+    setBackupStatus(null);
+    setIsBackupBusy(true);
+    try {
+      const identity = await enableBackups(backupPassphrase, generatedRecoveryCode);
+      setBackupStatus(`Backups enabled for identity ${identity.slice(0, 8)}…`);
+    } catch (err: any) {
+      setBackupError(err?.message || 'Unable to enable backups.');
+    } finally {
+      setIsBackupBusy(false);
+    }
+  };
+
+  const handleCreateBackup = async () => {
+    setBackupError(null);
+    setBackupStatus(null);
+    setIsBackupBusy(true);
+    try {
+      await createRemoteBackup();
+      setBackupStatus('Encrypted backup uploaded.');
+      const items = await listRemoteBackups();
+      setBackupItems(items);
+    } catch (err: any) {
+      setBackupError(err?.message || 'Backup failed.');
+    } finally {
+      setIsBackupBusy(false);
+    }
+  };
+
+  const handleRefreshBackups = async () => {
+    setBackupError(null);
+    setBackupStatus(null);
+    setIsBackupBusy(true);
+    try {
+      const items = await listRemoteBackups();
+      setBackupItems(items);
+      setBackupStatus(`Found ${items.length} backups.`);
+    } catch (err: any) {
+      setBackupError(err?.message || 'Unable to list backups.');
+    } finally {
+      setIsBackupBusy(false);
+    }
+  };
+
+  const handleFindBackupsForRecovery = async () => {
+    setBackupError(null);
+    setBackupStatus(null);
+    setIsBackupBusy(true);
+    try {
+      const result = await listRemoteBackupsForRecovery(restorePassphrase, restoreRecoveryCode);
+      setBackupItems(result.items);
+      setBackupStatus(`Found ${result.items.length} backups for recovery.`);
+    } catch (err: any) {
+      setBackupError(err?.message || 'Unable to locate backups.');
+    } finally {
+      setIsBackupBusy(false);
+    }
+  };
+
+  const handleRestoreBackup = async (key: string) => {
+    setBackupError(null);
+    setBackupStatus(null);
+    setIsBackupBusy(true);
+    try {
+      await restoreBackupWithRecovery({
+        passphrase: restorePassphrase,
+        recoveryCode: restoreRecoveryCode,
+        key,
+      });
+      setBackupStatus('Backup restored. Unlock to continue.');
+    } catch (err: any) {
+      setBackupError(err?.message || 'Restore failed.');
+    } finally {
+      setIsBackupBusy(false);
+    }
+  };
+
   // Usage in MB (approx)
   const usageMB = (storageUsage / (1024 * 1024)).toFixed(2);
   const usagePercent = Math.min(100, (storageUsage / (5 * 1024 * 1024)) * 100);
+  const recentLogs = auditLogs.slice(0, 50);
 
   return (
     <div className="max-w-4xl mx-auto space-y-12 pb-32 pt-6 px-4">
@@ -215,6 +344,199 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 onChange={handleFileChange}
               />
             </button>
+          </div>
+        </VaultSection>
+
+        <VaultSection
+          icon={<HardDrive size={24} />}
+          title="Encrypted Backups"
+          color="text-indigo-400"
+        >
+          <div className="col-span-full space-y-6">
+            <div className="p-6 bg-slate-50 dark:bg-slate-900/50 rounded-3xl border dark:border-slate-800 space-y-2">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                Status
+              </div>
+              <div className="text-sm font-bold text-slate-900 dark:text-white">
+                {backupIdentity ? 'Enabled' : 'Disabled'}
+              </div>
+              <div className="text-[10px] text-slate-500 font-mono">
+                Last backup:{' '}
+                {backupMeta?.lastBackupAt
+                  ? new Date(backupMeta.lastBackupAt).toLocaleString()
+                  : 'Never'}
+              </div>
+              {backupIdentity && (
+                <div className="text-[10px] text-slate-500 font-mono">
+                  Identity: {backupIdentity.slice(0, 8)}…
+                </div>
+              )}
+            </div>
+
+            {!backupIdentity && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button
+                  onClick={handleGenerateRecoveryCode}
+                  className="p-4 rounded-2xl bg-indigo-500/10 text-indigo-400 text-xs font-bold uppercase tracking-widest hover:bg-indigo-500/20 transition-all"
+                >
+                  Generate Recovery Code
+                </button>
+                <VaultInput
+                  label="Recovery Code"
+                  value={generatedRecoveryCode}
+                  onChange={setGeneratedRecoveryCode}
+                  placeholder="Generate to reveal"
+                />
+                <VaultInput
+                  label="Vault Passphrase"
+                  value={backupPassphrase}
+                  onChange={setBackupPassphrase}
+                  type="password"
+                  placeholder="Required to enable backups"
+                />
+                <label className="flex items-center gap-3 text-[11px] text-slate-500 font-bold uppercase tracking-widest">
+                  <input
+                    type="checkbox"
+                    checked={confirmRecoverySaved}
+                    onChange={(e) => setConfirmRecoverySaved(e.target.checked)}
+                    className="accent-indigo-500"
+                  />
+                  I saved this recovery code
+                </label>
+                <button
+                  onClick={handleEnableBackups}
+                  disabled={!generatedRecoveryCode || !confirmRecoverySaved || !backupPassphrase}
+                  className="md:col-span-2 p-4 rounded-2xl bg-emerald-500/90 text-white text-xs font-bold uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Enable Encrypted Backups
+                </button>
+              </div>
+            )}
+
+            {backupIdentity && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button
+                  onClick={handleCreateBackup}
+                  disabled={isBackupBusy}
+                  className="p-4 rounded-2xl bg-emerald-500/90 text-white text-xs font-bold uppercase tracking-widest disabled:opacity-50"
+                >
+                  Create Backup
+                </button>
+                <button
+                  onClick={handleRefreshBackups}
+                  disabled={isBackupBusy}
+                  className="p-4 rounded-2xl bg-slate-900/60 text-slate-200 text-xs font-bold uppercase tracking-widest border border-white/5 disabled:opacity-50"
+                >
+                  Refresh Backup List
+                </button>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <VaultInput
+                label="Restore Passphrase"
+                value={restorePassphrase}
+                onChange={setRestorePassphrase}
+                type="password"
+                placeholder="Required to restore"
+              />
+              <VaultInput
+                label="Recovery Code"
+                value={restoreRecoveryCode}
+                onChange={setRestoreRecoveryCode}
+                placeholder="Required to restore"
+              />
+              <button
+                onClick={handleFindBackupsForRecovery}
+                disabled={!restorePassphrase || !restoreRecoveryCode || isBackupBusy}
+                className="md:col-span-2 p-4 rounded-2xl bg-indigo-500/20 text-indigo-300 text-xs font-bold uppercase tracking-widest border border-indigo-500/30 disabled:opacity-50"
+              >
+                Find Backups for Recovery
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {backupItems.length === 0 && (
+                <div className="text-[11px] text-slate-500">No backups found yet.</div>
+              )}
+              {backupItems.map((item) => (
+                <div
+                  key={item.key}
+                  className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4 bg-slate-950/40 border border-white/5 rounded-2xl"
+                >
+                  <div className="space-y-1">
+                    <div className="text-xs text-slate-200 font-mono">
+                      {new Date(item.uploadedAt).toLocaleString()}
+                      {item.isLatest ? ' • latest' : ''}
+                    </div>
+                    <div className="text-[10px] text-slate-500">
+                      {(item.size / 1024 / 1024).toFixed(2)} MB
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleRestoreBackup(item.key)}
+                    disabled={!restorePassphrase || !restoreRecoveryCode || isBackupBusy}
+                    className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200 text-[10px] font-bold uppercase tracking-widest disabled:opacity-50"
+                  >
+                    Restore
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {(backupError || backupStatus) && (
+              <div
+                className={`text-[11px] font-bold uppercase tracking-widest ${
+                  backupError ? 'text-rose-400' : 'text-emerald-400'
+                }`}
+              >
+                {backupError || backupStatus}
+              </div>
+            )}
+          </div>
+        </VaultSection>
+
+        <VaultSection icon={<ShieldCheck size={24} />} title="Security" color="text-indigo-400">
+          <div className="col-span-full space-y-4">
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={exportAuditLogs}
+                className="px-4 py-2 rounded-xl bg-slate-900 text-slate-200 text-[10px] font-bold uppercase tracking-widest border border-white/5"
+              >
+                Export Logs
+              </button>
+              <button
+                onClick={clearAuditLogs}
+                className="px-4 py-2 rounded-xl bg-slate-900 text-slate-200 text-[10px] font-bold uppercase tracking-widest border border-white/5"
+              >
+                Clear Logs
+              </button>
+              <button
+                onClick={() => void copyCspReportSummary()}
+                className="px-4 py-2 rounded-xl bg-indigo-500/20 text-indigo-300 text-[10px] font-bold uppercase tracking-widest border border-indigo-500/30"
+              >
+                Copy CSP Summary
+              </button>
+            </div>
+            <div className="rounded-2xl border border-white/5 bg-slate-950/40 p-4 space-y-3 max-h-64 overflow-y-auto">
+              {recentLogs.length === 0 && (
+                <div className="text-[11px] text-slate-500">No audit activity yet.</div>
+              )}
+              {recentLogs.map((log) => (
+                <div key={log.id} className="flex items-start gap-3">
+                  <div className="text-[10px] text-slate-500 font-mono">
+                    {new Date(log.timestamp).toLocaleString()}
+                  </div>
+                  <div className="text-[11px] text-slate-300">
+                    <span className="font-bold uppercase tracking-widest text-slate-400">
+                      {log.actionType}
+                    </span>
+                    <div className="text-slate-200">{log.summary}</div>
+                    {log.details && <div className="text-slate-500">{log.details}</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </VaultSection>
 

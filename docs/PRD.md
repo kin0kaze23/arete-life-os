@@ -1,14 +1,16 @@
 # Product Requirements Document (PRD)
 
-> Last updated: 2026-01-27 | Version: 3.2.0
+> Last updated: 2026-01-31 | Version: 4.0.0
 
 ## 1. Product Summary
 
-**Areté Life OS** is a local-first, AI-powered personal operating system that helps users manage their entire life across health, finance, relationships, spiritual growth, and personal development. It transforms raw life signals (text, files, voice) into executable daily guidance through a secure encrypted vault.
+**Glance OS** (formerly Areté Life OS) is a local-first, AI-powered personal operating system that helps users manage their entire life across 5 dimensions: Health, Finance, Relationships, Spiritual, and Personal. It transforms raw life signals into an **intelligent dashboard** that shows your life at a glance and tells you exactly what to do next.
 
-**Target User:** Intentional individuals who want a structured, AI-assisted system to optimize their daily life across multiple domains.
+> **Vision:** Your life at a glance—see clearly, act decisively.
 
-**Core Thesis:** Most productivity tools focus on tasks. Areté focuses on _life operating patterns_ — combining what you should **DO** today, what you should **WATCH** for, and what you should **ALWAYS** maintain, across every life domain.
+**Target User:** Intentional individuals who want a structured, AI-assisted system to optimize their daily life across multiple domains—without managing 10+ apps.
+
+**Core Thesis:** Most productivity tools focus on tasks. Glance OS focuses on _life balance_ — showing your wellness score across 5 dimensions, surfacing what needs attention (SWOT), and generating personalized tasks linked to your goals.
 
 ---
 

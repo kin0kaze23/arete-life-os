@@ -12,8 +12,6 @@ export const getCategoryIcon = (cat: Category, size = 18) => {
       return <Users size={size} />;
     case Category.SPIRITUAL:
       return <Compass size={size} />;
-    case Category.WORK:
-      return <Briefcase size={size} />;
     case Category.PERSONAL:
       return <User size={size} />;
     default:

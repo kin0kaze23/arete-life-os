@@ -49,14 +49,8 @@ const getIconForCategory = (cat: Category, id: string) => {
       return <Users size={16} />;
     case Category.SPIRITUAL:
       return <Compass size={16} />;
-    case Category.WORK:
+    case Category.PERSONAL:
       return <Briefcase size={16} />;
-    case Category.SOCIAL:
-      return <Globe size={16} />;
-    case Category.MEALS:
-      return <Coffee size={16} />;
-    case Category.TRAVEL:
-      return <Plane size={16} />;
     default:
       return <Hash size={16} />;
   }

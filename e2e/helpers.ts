@@ -13,7 +13,7 @@ const isVisible = async (locator: ReturnType<Page['locator']>, timeout = 2000) =
 };
 
 export const ensureAppReady = async (page: Page) => {
-  await page.route('**/api/gemini', async (route) => {
+  await page.route('**/api/ai', async (route) => {
     const request = route.request();
     if (request.method() !== 'POST') {
       await route.continue();

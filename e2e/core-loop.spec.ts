@@ -10,7 +10,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('event prep plan uses search grounding and returns a checklist', async ({ page }) => {
-  test.skip(USE_LIVE_AI && !process.env.GEMINI_API_KEY, 'GEMINI_API_KEY not set for live AI');
+  test.skip(USE_LIVE_AI && !process.env.OPENAI_API_KEY, 'OPENAI_API_KEY not set for live AI');
 
   await logInput(page, 'Trip to Tokyo #research tomorrow at 10am at Narita Airport');
 
@@ -18,7 +18,7 @@ test('event prep plan uses search grounding and returns a checklist', async ({ p
   await expect(eventCard).toBeVisible({ timeout: 20_000 });
 
   const requestPromise = page.waitForRequest((req) => {
-    if (!req.url().includes('/api/gemini')) return false;
+    if (!req.url().includes('/api/ai')) return false;
     if (req.method() !== 'POST') return false;
     try {
       const body = JSON.parse(req.postData() || '{}');
@@ -29,7 +29,7 @@ test('event prep plan uses search grounding and returns a checklist', async ({ p
   });
 
   const responsePromise = page.waitForResponse((res) => {
-    if (!res.url().includes('/api/gemini')) return false;
+    if (!res.url().includes('/api/ai')) return false;
     try {
       const body = JSON.parse(res.request().postData() || '{}');
       return body.action === 'generateEventPrepPlan';
@@ -53,7 +53,7 @@ test('event prep plan uses search grounding and returns a checklist', async ({ p
 });
 
 test('prep tasks persist after refresh', async ({ page }) => {
-  test.skip(USE_LIVE_AI && !process.env.GEMINI_API_KEY, 'GEMINI_API_KEY not set for live AI');
+  test.skip(USE_LIVE_AI && !process.env.OPENAI_API_KEY, 'OPENAI_API_KEY not set for live AI');
 
   await logInput(page, 'Conference in Berlin #research tomorrow at 9am at Messe Berlin');
 
@@ -87,7 +87,7 @@ test('prep tasks persist after refresh', async ({ page }) => {
 });
 
 test('recommendation feedback is recorded', async ({ page }) => {
-  test.skip(USE_LIVE_AI && !process.env.GEMINI_API_KEY, 'GEMINI_API_KEY not set for live AI');
+  test.skip(USE_LIVE_AI && !process.env.OPENAI_API_KEY, 'OPENAI_API_KEY not set for live AI');
 
   await logInput(page, 'Need advice on improving energy, focus, and travel prep this week.');
 
