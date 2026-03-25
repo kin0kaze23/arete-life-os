@@ -21,7 +21,7 @@ const LifeStreamView = React.lazy(() => loadStream().then((m) => ({ default: m.L
 const ChatView = React.lazy(() => loadChat().then((m) => ({ default: m.ChatView })));
 const SettingsView = React.lazy(() => loadSettings().then((m) => ({ default: m.SettingsView })));
 const OnboardingView = React.lazy(() =>
-  loadOnboarding().then((m) => ({ default: m.OnboardingView }))
+  loadOnboarding().then((m) => ({ default: m.OnboardingFlow }))
 );
 
 const LoadingFallback = <div className="p-6 text-slate-400">Loading...</div>;
