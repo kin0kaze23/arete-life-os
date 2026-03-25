@@ -28,3 +28,4 @@ export { SmartSuggestions } from './SmartSuggestions';
 export { WeeklyDigest } from './WeeklyDigest';
 export { DimensionTrendIndicator } from './DimensionTrendIndicator';
 export { LifePulseBar } from './LifePulseBar';
+export { InsightCard } from './InsightCard';

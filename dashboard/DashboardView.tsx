@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { getProfileCompletion } from '@/shared';
 import { 
   AlwaysChip,
@@ -14,6 +14,7 @@ import {
   computeFinanceMetrics,
   extractFinanceMetricsFromMemory,
 } from '@/data';
+import { generateInsights } from '@/api/insightEngine';
 import { FocusList } from './FocusList';
 import { StatusSidebar } from './StatusSidebar';
 import { EventPrepPopup } from './EventPrepPopup';
@@ -25,6 +26,7 @@ import { LifeRadarChart } from './LifeRadarChart';
 import { SmartSuggestions } from './SmartSuggestions';
 import { WeeklyDigest } from './WeeklyDigest';
 import { DimensionTrendIndicator } from './DimensionTrendIndicator';
+import { InsightCard } from './InsightCard';
 
 interface DashboardViewProps {
   memory: MemoryEntry[];
@@ -86,8 +88,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const [activePrepEvent, setActivePrepEvent] = useState<TimelineEvent | null>(null);
   const [editingEvent, setEditingEvent] = useState<TimelineEvent | null>(null);
+  const [insights, setInsights] = useState<ProactiveInsight[]>([]);
+  const [loadingInsights, setLoadingInsights] = useState(true);
 
   const completion = getProfileCompletion(profile);
+
+  // Generate insights when memory or profile changes
+  useEffect(() => {
+    const fetchInsights = async () => {
+      setLoadingInsights(true);
+      try {
+        const newInsights = await generateInsights(memory, profile);
+        setInsights(newInsights);
+      } catch (error) {
+        console.error('Error generating insights:', error);
+        // Ensure we still render with fallback insights
+        setInsights([]);
+      } finally {
+        setLoadingInsights(false);
+      }
+    };
+
+    fetchInsights();
+  }, [memory, profile]);
 
   const financeMetrics = useMemo(() => {
     const fromMemory = extractFinanceMetricsFromMemory(memory);
@@ -170,16 +193,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const handleSuggestionDismiss = (id: string) => console.log('Suggestion dismissed:', id);
   const handleDigestShare = () => console.log('Sharing digest');
 
-  // Mock function handlers
-  const handleSuggestionAction = (id: string) => console.log('Suggestion action:', id);
-  const handleSuggestionDismiss = (id: string) => console.log('Suggestion dismissed:', id);
-  const handleDigestShare = () => console.log('Sharing digest');
+  // Insight handling functions
+  const handleInsightAction = (id: string) => {
+    console.log('Insight action:', id);
+    // Here we would have actual logic to respond to the insight
+  };
+
+  const handleInsightDismiss = (id: string) => {
+    setInsights(prev => prev.filter(insight => insight.id !== id));
+    console.log('Insight dismissed:', id);
+  };
 
   return (
     <div className="max-w-7xl mx-auto pb-32">
       {/* Added header with Life Pulse Bar (Enhanced version of LifePulseBar - similar to old DimensionPulseBar concept but enhanced) */}
       <div className="mb-8 p-4 rounded-2xl border border-white/5 bg-white/[0.02]">
-        <LifePulseBar memoryEntries={memory} goals={goals} />
+        <LifePulseBar memoryEntries={memory} goals={[]} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start">
@@ -233,6 +262,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               onDismiss={handleSuggestionDismiss}
             />
           </div>
+
+          {/* Insights Section */}
+          {insights.length > 0 && (
+            <div className="p-4 rounded-2xl border border-purple-500/20 bg-purple-500/5 backdrop-blur-sm">
+              <div className="flex items-center justify-between pb-2">
+                <h3 className="text-lg font-bold text-white tracking-tight">Intelligence Insights</h3>
+                {loadingInsights && (
+                  <span className="text-xs text-slate-500 animate-pulse">Analyzing...</span>
+                )}
+              </div>
+              <div className="space-y-2">
+                {insights.slice(0, 4).map((insight) => (
+                  <InsightCard 
+                    key={insight.id} 
+                    insight={insight} 
+                    variant={insight.type as 'pattern' | 'benchmark' | 'predictive' | 'actionable' || 'pattern'}
+                    onAction={handleInsightAction}
+                    onDismiss={handleInsightDismiss} 
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Original Upcoming */}
           <div>
