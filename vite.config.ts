@@ -6,7 +6,7 @@ import react from '@vitejs/plugin-react';
 const devGeminiProxy = () => ({
   name: 'dev-gemini-proxy',
   configureServer(server: any) {
-    server.middlewares.use('/api/gemini', (req: any, res: any) => {
+    // server.middlewares.use('/api/gemini', (req: any, res: any) => {
       if (req.method !== 'POST') {
         res.statusCode = 405;
         res.setHeader('Content-Type', 'application/json');
