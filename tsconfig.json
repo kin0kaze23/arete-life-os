@@ -19,5 +19,5 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "exclude": ["src_pages_backup"]
+  "exclude": ["node_modules", "dist", "build", "src_pages_backup"]
 }
