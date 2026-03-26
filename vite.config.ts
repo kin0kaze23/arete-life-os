@@ -1,7 +1,7 @@
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-import { handleGeminiAction } from './api/gemini';
+// import { handleGeminiAction } from './api/gemini'; // CONSOLIDATED
 
 const devGeminiProxy = () => ({
   name: 'dev-gemini-proxy',
