@@ -17,6 +17,13 @@ type GuidanceQuestionLike = {
   urgency?: 'low' | 'medium' | 'high';
 };
 
+type TelegramUpdateLike = {
+  message?: {
+    text?: string;
+    chat?: { id?: number };
+  };
+};
+
 const parseTimeParts = (value?: string) => {
   const [rawHour, rawMinute] = (value || '').split(':');
   const hour = Number(rawHour);
@@ -133,3 +140,9 @@ export const canSendGuidanceMessage = ({
   return { allowed: true, messageType };
 };
 
+export const handleIncomingMessage = async (_update: TelegramUpdateLike) => {
+  // The consolidated Telegram webhook still accepts message updates, but the
+  // prior guidance-processing implementation is no longer present in this repo.
+  // Keep the entrypoint stable while the broader Telegram flow is repaired.
+  return { handled: false as const };
+};

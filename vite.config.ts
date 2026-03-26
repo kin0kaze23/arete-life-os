@@ -1,7 +1,6 @@
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-// import { handleGeminiAction } from './api/gemini'; // CONSOLIDATED
 
 const devGeminiProxy = () => ({
   name: 'dev-gemini-proxy',
@@ -22,10 +21,14 @@ const devGeminiProxy = () => ({
         try {
           const parsed = body ? JSON.parse(body) : {};
           console.log('[DEV PROXY] Action:', parsed.action);
-          const result = await handleGeminiAction(parsed.action, parsed.payload);
-          res.statusCode = 200;
+          res.statusCode = 410;
           res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify(result));
+          res.end(
+            JSON.stringify({
+              error: 'Deprecated endpoint',
+              details: 'Use /api/ai for AI requests in local development.',
+            })
+          );
         } catch (err: any) {
           console.error('[DEV PROXY ERROR]', err?.message || err);
           console.error('[DEV PROXY STACK]', err?.stack);

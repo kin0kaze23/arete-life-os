@@ -3,7 +3,6 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { generateInsights } from '../insightEngine.js';
 import { detectPatterns } from '../patternDetection.js';
 import { getBenchmark } from '../benchmarks.js';
-import { processInput } from '../aiActions/processInput.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const action = req.query.action as string;
@@ -16,8 +15,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return await handlePatterns(req, res);
       case 'benchmark':
         return await handleBenchmark(req, res);
-      case 'process':
-        return await handleProcess(req, res);
       default:
         return res.status(400).json({ error: 'Unknown action' });
     }
@@ -33,19 +30,13 @@ async function handleInsights(req: VercelRequest, res: VercelResponse) {
 }
 
 async function handlePatterns(req: VercelRequest, res: VercelResponse) {
-  const { memory } = req.body;
-  const patterns = await detectPatterns(memory);
+  const { memory, profile } = req.body;
+  const patterns = await detectPatterns(memory, profile);
   return res.json({ patterns });
 }
 
 async function handleBenchmark(req: VercelRequest, res: VercelResponse) {
-  const { dimension, age, role } = req.query;
-  const benchmark = await getBenchmark(dimension as string, Number(age), role as string);
+  const { memory, profile } = req.body;
+  const benchmark = await getBenchmark(memory, profile);
   return res.json({ benchmark });
-}
-
-async function handleProcess(req: VercelRequest, res: VercelResponse) {
-  const { input, userId } = req.body;
-  const result = await processInput(input, userId);
-  return res.json({ result });
 }
