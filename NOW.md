@@ -8,7 +8,10 @@ Stabilize the API surface under Vercel Hobby limits while keeping insight-relate
 ## Status
 active
 
-## Blockers
+## Last Gate
+Unknown
+
+## Blocked By
 The deployment shape is constrained by the current serverless function limit, so API changes must stay within that cap.
 
 ## Latest Decisions

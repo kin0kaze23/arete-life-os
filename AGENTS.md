@@ -1,5 +1,13 @@
 # AreteLifeOS - Agent Instructions
 
+## Repo Memory
+
+| Field | Value |
+|---|---|
+| Tech Stack | React 19 + Vite + Tailwind CSS |
+| Gate Commands | `npm run lint` · `npm run typecheck` · `npm run test` · `npm run build` |
+| Deploy Target | Vercel |
+
 ## Run Commands
 - Install: `npm install`
 - Dev: `npm run dev`
