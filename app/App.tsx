@@ -24,7 +24,9 @@ const OnboardingView = React.lazy(() =>
   loadOnboarding().then((m) => ({ default: m.OnboardingFlow }))
 );
 
-const LoadingFallback = <div className="p-6 text-slate-400">Loading...</div>;
+const LoadingFallback = (
+  <div className="p-6 text-slate-400">Preparing your Arete workspace...</div>
+);
 
 const App: React.FC = () => {
   const aura = useAura();
@@ -112,7 +114,7 @@ const App: React.FC = () => {
     try {
       await aura.logMemory(inputToProcess, files, true);
       setUserInput('');
-      showToast('Memory Internialized', 'success');
+      showToast('Memory internalized', 'success');
     } catch (err: any) {
       const message = err?.message || 'Internalization error';
       setLogError(message);
