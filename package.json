@@ -1,5 +1,5 @@
 {
-  "name": "areté-life-os",
+  "name": "aret\u00e9-life-os",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -22,7 +22,8 @@
     "test": "echo \"No tests yet\"",
     "test:e2e": "playwright test",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "postinstall": "node -e \"process.env.VERCEL || require('child_process').execSync('npx playwright install --with-deps',{stdio:'inherit'})\""
   },
   "dependencies": {
     "@google/genai": "^1.38.0",
