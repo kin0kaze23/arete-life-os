@@ -18,11 +18,11 @@
 
 ## Environment Model
 
-| Environment | Source | How to deploy |
-|-------------|--------|---------------|
-| **Local** | Feature branch on your machine | `npm run dev` |
-| **Staging/QA** | Vercel Preview | Auto-deployed on PR |
-| **Production** | `main` branch | Merge PR or promote preview |
+| Environment    | Source                         | How to deploy               |
+| -------------- | ------------------------------ | --------------------------- |
+| **Local**      | Feature branch on your machine | `npm run dev`               |
+| **Staging/QA** | Vercel Preview                 | Auto-deployed on PR         |
+| **Production** | `main` branch                  | Merge PR or promote preview |
 
 ---
 
@@ -117,6 +117,7 @@ git push -u origin hotfix/fix-description
 ### Step 6: Post-mortem (if needed)
 
 For significant bugs:
+
 1. Document root cause
 2. Add test to prevent regression
 3. Update runbook if process gap
@@ -266,14 +267,14 @@ Use the Vercel Preview deployment with production-like data:
 
 ## Anti-Patterns to Avoid
 
-| Anti-pattern | Better approach |
-|-------------|-----------------|
-| Committing directly to `main` | Use feature branches + PR |
-| Deploying prod from local tree | Let Vercel deploy from `main` |
-| Testing only locally | Always verify on Vercel Preview |
-| Large PRs with many changes | Split into smaller PRs |
-| Skipping `npm run doctor` | Run before every PR |
-| Secrets in `.env.local` | Use Doppler for secrets |
+| Anti-pattern                   | Better approach                 |
+| ------------------------------ | ------------------------------- |
+| Committing directly to `main`  | Use feature branches + PR       |
+| Deploying prod from local tree | Let Vercel deploy from `main`   |
+| Testing only locally           | Always verify on Vercel Preview |
+| Large PRs with many changes    | Split into smaller PRs          |
+| Skipping `npm run doctor`      | Run before every PR             |
+| Secrets in `.env.local`        | Use Doppler for secrets         |
 
 ---
 
