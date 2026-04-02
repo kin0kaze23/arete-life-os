@@ -3,18 +3,20 @@
 ## Quick Setup Commands
 
 1. **Link Vercel Project**
+
    ```bash
    vercel link --yes
    ```
 
 2. **Deploy to Production**
+
    ```bash
    vercel --prod
    ```
 
 3. **Run Quality Gates**
    ```bash
-   npm run typecheck && npm run lint && npm run build 
+   npm run typecheck && npm run lint && npm run build
    ```
 
 ## Essential Steps

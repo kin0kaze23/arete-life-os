@@ -3,12 +3,14 @@
 ## Supabase Project Setup
 
 ### 1. Create Supabase Account
+
 - Go to https://supabase.com
-- Sign up with your email or GitHub account 
+- Sign up with your email or GitHub account
 - Verify your account via email confirmation
 - Log in to your dashboard
 
 ### 2. Create New Project
+
 - Click "New Project"
 - Choose a project name (e.g. "AreteLifeOS")
 - Select your preferred region
@@ -17,9 +19,11 @@
 - Wait for project initialization (takes 1-2 minutes)
 
 ### 3. Configure Environment Variables
+
 After the project is created:
+
 - Navigate to Project Settings > API page
-- Copy the "Project URL" and "API Keys" 
+- Copy the "Project URL" and "API Keys"
 - Update your `.env.local` file:
 
 ```bash
@@ -29,6 +33,7 @@ SUPABASE_SERVICE_ROLE_KEY=[service_role_key_from_supabase]
 ```
 
 ### 4. Apply Database Schema
+
 - Navigate to Database > SQL Editor in your Supabase dashboard
 - Execute the schema file by copying the SQL from the `sql/` directory
 - Or connect locally using the Supabase CLI:
@@ -41,6 +46,7 @@ supabase db reset
 ```
 
 ### 5. Configure Row Level Security (RLS) Policies
+
 - In the Supabase dashboard, go to Database > Tables
 - For each table that requires user-based access:
   - Enable RLS
@@ -63,38 +69,47 @@ FOR UPDATE USING (auth.uid() = user_id);
 ## Vercel Deployment Setup
 
 ### 1. Install Vercel CLI
+
 ```bash
 npm i -g vercel
 ```
 
 ### 2. Login to Vercel
+
 ```bash
 vercel login
 ```
 
 ### 3. Link Project to Vercel
+
 ```bash
 vercel link --yes
 ```
 
 ### 4. Set Vercel Environment Variables
+
 Visit your project dashboard on vercel.com or use the CLI:
+
 ```bash
 vercel env pull
 ```
 
 Add these environment variables:
+
 - NEXT_PUBLIC_SUPABASE_URL
 - NEXT_PUBLIC_SUPABASE_ANON_KEY
 - SUPABASE_SERVICE_ROLE_KEY
 
 ### 5. Deploy
+
 Deploy your project to Vercel using:
+
 ```bash
 vercel --prod
 ```
 
 For local deployment, you can also just run:
+
 ```bash
 npm run deploy
 ```
@@ -102,6 +117,7 @@ npm run deploy
 ## Sync Testing Procedure
 
 ### 1. Local Environment Test
+
 ```bash
 # Start local development:
 npm run dev
@@ -113,6 +129,7 @@ npm run dev
 ```
 
 ### 2. Production Environment Test
+
 ```bash
 # Deploy to production:
 vercel --prod
@@ -124,6 +141,7 @@ vercel --prod
 ```
 
 ### 3. Data Consistency Test
+
 - Verify that the same data is available in both Supabase and local iOS storage
 - Test that deletions are properly synced in both directions
 - Ensure offline functionality works correctly
@@ -131,26 +149,34 @@ vercel --prod
 ## Troubleshooting Common Issues
 
 ### Issue: Connection Refused
+
 **Solution:**
+
 - Verify you have a stable internet connection
 - Check if the project URL in your environment is correct
 - Confirm firewall isn't blocking the connection
 
 ### Issue: Authentication Error
+
 **Solution:**
+
 - Ensure the anon key matches the Supabase project
 - Restart your development server after making environment changes
 - Clear browser cache or restart the app to refresh auth session
 
-### Issue: Sync Failing 
+### Issue: Sync Failing
+
 **Solution:**
+
 - Check network connectivity
 - Verify the sync service is properly initialized with correct configs
 - Use browser dev tools to monitor failed API calls
 - Check for schema mismatches between iOS and Supabase
 
 ### Issue: Deployment Failure
+
 **Solution:**
+
 - Ensure all required environment variables are set in Vercel dashboard
 - Verify Node.js version matches project requirements
 - Check the project build logs for errors
