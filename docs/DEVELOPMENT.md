@@ -10,9 +10,11 @@
 ```bash
 nvm use 20 || nvm install 20
 npm install
+npm run setup:hooks
 ```
 
 The repo pins Node 20 in `.nvmrc`. Run the `nvm` command above before any local npm, Vite, or test command.
+`npm run setup:hooks` installs the local pre-push hook that blocks pushes unless the repo is on Node 20 and `npm run doctor` passes.
 
 ## 3) Environment variables
 

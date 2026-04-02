@@ -26,23 +26,26 @@ Read in this order:
 4. Use a feature branch for all work. Validate on a Vercel preview before merge.
 5. Honor `.nvmrc` and switch to Node 20 before running npm, Vite, or test commands.
 6. Run `npm run doctor` before handoff, PR, or release.
+7. Use the canonical repo path for daily development. If a preserved local copy exists, suffix it with `-sandbox`.
 
 ## Daily Workflow
 
 1. Sync from `main`.
 2. Run `nvm use 20`.
-3. Create a branch.
-4. Make changes locally.
-5. Run `npm run doctor`.
-6. Open a PR.
-7. Verify the Vercel preview deployment.
-8. Merge to `main` after review and QA.
+3. Run `npm run setup:hooks` once per clone/worktree.
+4. Create a branch.
+5. Make changes locally.
+6. Run `npm run doctor`.
+7. Open a PR.
+8. Verify the Vercel preview deployment.
+9. Merge to `main` after review and QA.
 
 ## Commands
 
 ```bash
 nvm use 20
 npm install
+npm run setup:hooks
 npm run dev
 npm run doctor
 npm run test
@@ -56,3 +59,4 @@ vercel link
 - Only `main` should move production forward.
 - If a preview deployment is fully verified, it can be promoted to production in Vercel.
 - Roll back by redeploying a known-good Vercel deployment or reverting the Git commit on `main`.
+- The canonical local path for this repo should stay `/Users/jonathannugroho/Developer/PersonalProjects/AreteLifeOS`.

@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+if [[ -f ".nvmrc" ]]; then
+  expected_major="$(tr -d '[:space:]' < .nvmrc)"
+  if [[ -s "${HOME}/.nvm/nvm.sh" ]]; then
+    # Load nvm so the hook runs on the repo-pinned runtime.
+    # shellcheck disable=SC1090
+    source "${HOME}/.nvm/nvm.sh"
+    nvm use >/dev/null
+  fi
+
+  current_major="$(node -p "process.versions.node.split('.')[0]" 2>/dev/null || true)"
+  if [[ "$current_major" != "$expected_major" ]]; then
+    echo "pre-push: expected Node ${expected_major}.x from .nvmrc, found '${current_major:-missing}'."
+    echo "pre-push: run 'nvm use ${expected_major}' and retry."
+    exit 1
+  fi
+fi
+
+echo "pre-push: running npm run gate:push"
+npm run gate:push
