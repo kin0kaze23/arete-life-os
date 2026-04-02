@@ -18,8 +18,8 @@
 | AI Fallback  | OpenAI (`gpt-5.1`, configurable reasoning effort)                                               |
 | Encryption   | AES-256-GCM + PBKDF2 (100K iterations), zero-knowledge                                          |
 | Storage      | localStorage (encrypted vault) + IndexedDB (encrypted files)                                    |
-| Deployment   | Vercel (auto-deploy from GitHub `main`)                                                         |
-| CI           | GitHub Actions (lint + typecheck + build)                                                       |
+| Deployment   | Vercel (`main` = production, PR previews = staging/QA)                                          |
+| CI           | GitHub Actions (`npm run doctor`, UI smoke, core guardrails)                                    |
 | Quality Gate | `npm run doctor` (format + lint + typecheck + test + build)                                     |
 
 ---
@@ -41,6 +41,14 @@
 - Cost approvals: `./.agent/COST_APPROVALS.md` (regex allowlist for cost-neutral changes)
 
 Note: The portable `./.agent/AGENT.md` uses this section for automation discovery.
+
+## 1.6 Delivery Model
+
+- Local checkout is for development only.
+- GitHub pull requests are the review and staging boundary.
+- Vercel preview deployments are the staging environment for QA.
+- `main` is the only production branch and source of truth.
+- Never commit `.env*` files or `.vercel/project.json`.
 
 ---
 

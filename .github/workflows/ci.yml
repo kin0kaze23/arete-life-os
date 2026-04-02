@@ -21,7 +21,7 @@ jobs:
           cache: npm
 
       - name: Install
-        run: npm install
+        run: npm ci
 
       - name: Doctor
         run: npm run doctor
@@ -68,7 +68,7 @@ jobs:
 
       - name: Install
         if: steps.changes.outputs.ui == 'true'
-        run: npm install
+        run: npm ci
 
       - name: Install Playwright
         if: steps.changes.outputs.ui == 'true'

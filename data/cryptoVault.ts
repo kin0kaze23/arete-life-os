@@ -106,6 +106,19 @@ export const unlockVault = async <T>(passphrase: string) => {
   return { key, data: JSON.parse(plaintext) as T };
 };
 
+export const decryptVaultPayload = async <T>(
+  passphrase: string,
+  metaRaw: string,
+  vaultRaw: string
+) => {
+  if (!crypto?.subtle) throw new Error('Crypto unavailable');
+  const meta = JSON.parse(metaRaw) as VaultMeta;
+  const payload = JSON.parse(vaultRaw) as EncryptedPayload;
+  const key = await deriveKey(passphrase, fromBase64(meta.salt), meta.iterations);
+  const plaintext = await decryptString(key, payload);
+  return JSON.parse(plaintext) as T;
+};
+
 export const saveVault = async <T>(key: CryptoKey, data: T) => {
   const payload = await encryptString(key, JSON.stringify(data));
   localStorage.setItem(VAULT_KEY, JSON.stringify(payload));
