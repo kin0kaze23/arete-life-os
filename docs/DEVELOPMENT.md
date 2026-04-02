@@ -8,8 +8,11 @@
 ## 2) First-time setup
 
 ```bash
+nvm use 20 || nvm install 20
 npm install
 ```
+
+The repo pins Node 20 in `.nvmrc`. Run the `nvm` command above before any local npm, Vite, or test command.
 
 ## 3) Environment variables
 
