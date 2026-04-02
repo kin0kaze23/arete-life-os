@@ -7,11 +7,13 @@
     "node": "20.x"
   },
   "scripts": {
+    "setup:hooks": "git config core.hooksPath .githooks",
     "dev": "vite",
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "doctor": "bash ./scripts/doctor.sh",
+    "gate:push": "npm run doctor",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
