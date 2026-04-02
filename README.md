@@ -8,16 +8,35 @@ Local‑first Life OS with encrypted vault, AI mentor, and a three‑column exec
 
 ## Run Locally
 
-**Prerequisites:** Node.js
+**Prerequisites:** Node.js 20.x via `nvm`
 
 1. Install dependencies:
+   `nvm use 20 || nvm install 20`
    `npm install`
-2. Set the `GEMINI_API_KEY` in `.env.local` (server-side `/api/gemini` proxy; do not commit this file)
-3. Optional: set `GEMINI_MODEL_RESEARCH` to a search‑grounding‑supported Gemini model for event prep grounding (e.g. `gemini-2.5-flash`)
-4. Run the app:
+2. Install the local Git hook:
+   `npm run setup:hooks`
+3. Set the `GEMINI_API_KEY` in `.env.local` (server-side `/api/gemini` proxy; do not commit this file)
+4. Optional: set `GEMINI_MODEL_RESEARCH` to a search‑grounding‑supported Gemini model for event prep grounding (e.g. `gemini-2.5-flash`)
+5. Run the app:
    `npm run dev`
 
 On first launch, set a passphrase to encrypt local data. This passphrase is not recoverable.
+
+## Deployment Workflow
+
+- Local machine = development only
+- Vercel preview deployments = staging/QA
+- `main` = production source of truth
+
+Recommended flow:
+
+1. Work locally on a feature branch from `main`.
+2. Run `npm run doctor` before pushing.
+3. Open a PR and verify the Vercel preview deployment.
+4. Merge to `main` only after preview QA passes.
+5. Let Vercel deploy production from `main`, or promote the verified preview deployment.
+
+Use the canonical local repo path for daily development. If you need to preserve dirty or experimental work, keep it in a sibling folder suffixed with `-sandbox`.
 
 ## Repo structure (feature folders)
 
@@ -57,6 +76,7 @@ On first launch, set a passphrase to encrypt local data. This passphrase is not 
 ## E2E tests (Playwright)
 
 - Install dependencies: `npm install`
+- Run unit/integration tests: `npm run test`
 - Run E2E suite: `npm run test:e2e`
 - Optional: run with live AI instead of stubs:
   `E2E_LIVE_AI=1 GEMINI_API_KEY=... npm run test:e2e`

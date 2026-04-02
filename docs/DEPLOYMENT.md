@@ -31,8 +31,18 @@ Users must set a local passphrase on first launch to encrypt data stored in the 
 
 ## 3) Branch deploy behavior
 
-- **Preview deploys:** every pull request automatically
+- **Local development:** your machine only. Use `npm run dev`.
+- **Preview deploys:** every pull request automatically. Treat these as staging/QA.
 - **Production deploys:** every push to `main`
+- **Do not** deploy production from a dirty local working tree. Land reviewed changes in GitHub first.
+- If a preview deployment has been fully verified, you can promote it in Vercel instead of rebuilding production.
+
+## 3.1) Source-of-truth policy
+
+- `main` is the only production branch.
+- GitHub is the source of truth for what is in production.
+- `.vercel/project.json` is local machine metadata and should not be committed.
+- If you need a persistent shared staging environment later, add a dedicated `staging` branch and map it to a non-production Vercel environment. Until then, PR previews are enough.
 
 ## 4) Rollback
 
@@ -47,6 +57,14 @@ npm run preview
 ```
 
 Ensure the app behaves the same as production.
+
+## 6) First-time local Vercel link
+
+```bash
+vercel link
+```
+
+This creates a local `.vercel/project.json` file for your machine. Keep it untracked.
 
 ## How to verify
 

@@ -8,8 +8,13 @@
 ## 2) First-time setup
 
 ```bash
+nvm use 20 || nvm install 20
 npm install
+npm run setup:hooks
 ```
+
+The repo pins Node 20 in `.nvmrc`. Run the `nvm` command above before any local npm, Vite, or test command.
+`npm run setup:hooks` installs the local pre-push hook that blocks pushes unless the repo is on Node 20 and `npm run doctor` passes.
 
 ## 3) Environment variables
 
@@ -24,7 +29,7 @@ npm install
 cp .env.example .env.local
 ```
 
-**Important:** `.env.local` must never be committed.
+**Important:** `.env`, `.env.local`, and any `.env.*` files must never be committed.
 **Note:** AI requests are handled by the server-side `/api/gemini` proxy in production.
 During local development, Vite serves a dev proxy at `/api/gemini` using your `.env.local` key.
 
@@ -34,7 +39,7 @@ During local development, Vite serves a dev proxy at `/api/gemini` using your `.
 npm run dev
 ```
 
-Open the URL shown in the terminal (usually http://localhost:5173).
+Open the URL shown in the terminal (by default http://127.0.0.1:3000).
 
 On first launch, set a passphrase to encrypt local data. This passphrase is never recoverable.
 
@@ -59,4 +64,5 @@ npm run preview
 - App loads without errors in the browser
 - `npm run lint` passes (0 warnings)
 - `npm run typecheck` passes
+- `npm run test` passes
 - `npm run build` completes successfully
