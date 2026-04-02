@@ -18,12 +18,18 @@ The repo pins Node 20 in `.nvmrc`. Run the `nvm` command above before any local 
 
 ## 3) Environment variables
 
+### Option A: Doppler (Recommended)
+
+```bash
+# Run with Doppler secrets injection
+doppler run --project aretelifeos --config dev -- npm run dev
+```
+
+### Option B: Local .env.local file
+
 1. Copy `.env.example` to `.env.local`
 2. Set your `GEMINI_API_KEY`
-3. (Optional) Set your `OPENAI_API_KEY` to enable fallback
-4. (Optional) Set `OPENAI_MODEL` (default: `gpt-5.1`)
-5. (Optional) Set `OPENAI_REASONING_EFFORT` (default: `medium`)
-6. (Optional) Set `GEMINI_MODEL_PRO` / `GEMINI_MODEL_FLASH`
+3. (Optional) Set `GEMINI_MODEL_RESEARCH` to a search-grounding-supported Gemini model for event prep grounding (e.g. `gemini-2.5-flash`)
 
 ```bash
 cp .env.example .env.local
@@ -31,7 +37,7 @@ cp .env.example .env.local
 
 **Important:** `.env`, `.env.local`, and any `.env.*` files must never be committed.
 **Note:** AI requests are handled by the server-side `/api/gemini` proxy in production.
-During local development, Vite serves a dev proxy at `/api/gemini` using your `.env.local` key.
+During local development, Vite serves a dev proxy at `/api/gemini` using your `.env.local` key or Doppler-injected secrets.
 
 ## 4) Run locally
 
