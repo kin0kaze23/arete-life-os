@@ -19,6 +19,19 @@ Local‑first Life OS with encrypted vault, AI mentor, and a three‑column exec
 
 On first launch, set a passphrase to encrypt local data. This passphrase is not recoverable.
 
+## Deployment Workflow
+
+- Local machine = development only
+- Vercel preview deployments = staging/QA
+- `main` = production source of truth
+
+Recommended flow:
+
+1. Work locally on a branch.
+2. Open a PR and verify the Vercel preview deployment.
+3. Merge to `main` only after preview QA passes.
+4. Let Vercel deploy production from `main`, or promote the verified preview deployment.
+
 ## Repo structure (feature folders)
 
 - `app/` App shell + error boundary
@@ -57,6 +70,7 @@ On first launch, set a passphrase to encrypt local data. This passphrase is not 
 ## E2E tests (Playwright)
 
 - Install dependencies: `npm install`
+- Run unit/integration tests: `npm run test`
 - Run E2E suite: `npm run test:e2e`
 - Optional: run with live AI instead of stubs:
   `E2E_LIVE_AI=1 GEMINI_API_KEY=... npm run test:e2e`
