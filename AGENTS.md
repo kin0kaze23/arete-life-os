@@ -24,21 +24,24 @@ Read in this order:
 2. Never deploy production from a dirty local working tree.
 3. Treat GitHub as the source of truth for production.
 4. Use a feature branch for all work. Validate on a Vercel preview before merge.
-5. Run `npm run doctor` before handoff, PR, or release.
+5. Honor `.nvmrc` and switch to Node 20 before running npm, Vite, or test commands.
+6. Run `npm run doctor` before handoff, PR, or release.
 
 ## Daily Workflow
 
 1. Sync from `main`.
-2. Create a branch.
-3. Make changes locally.
-4. Run `npm run doctor`.
-5. Open a PR.
-6. Verify the Vercel preview deployment.
-7. Merge to `main` after review and QA.
+2. Run `nvm use 20`.
+3. Create a branch.
+4. Make changes locally.
+5. Run `npm run doctor`.
+6. Open a PR.
+7. Verify the Vercel preview deployment.
+8. Merge to `main` after review and QA.
 
 ## Commands
 
 ```bash
+nvm use 20
 npm install
 npm run dev
 npm run doctor
