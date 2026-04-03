@@ -113,6 +113,15 @@ export const ensureAppReady = async (page: Page) => {
 
   await page.goto('/');
 
+  // Bypass Clerk authentication in E2E mode
+  // Check for Clerk sign-in page and auto-signin using test mode
+  const signInHeading = page.getByRole('heading', { name: /sign in|welcome/i });
+  if (await isVisible(signInHeading, 3000)) {
+    // In E2E test mode, Clerk should auto-auth
+    // Wait for the app to redirect after auth
+    await page.waitForTimeout(2000);
+  }
+
   const createHeading = page.getByRole('heading', { name: /create secure vault/i });
   const unlockHeading = page.getByRole('heading', { name: /unlock secure vault/i });
 
