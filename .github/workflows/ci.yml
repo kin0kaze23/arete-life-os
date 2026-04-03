@@ -31,6 +31,10 @@ jobs:
     if: github.event_name == 'pull_request'
     env:
       CI: true
+      VITE_E2E: '1'
+      # Requires CLERK_PUBLISHABLE_KEY secret to be set in repository settings
+      # Visit: https://github.com/kin0kaze23/arete-life-os/settings/secrets/actions
+      VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
