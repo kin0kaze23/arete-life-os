@@ -18,6 +18,7 @@
 **Not another dashboard. A living mirror of your life.**
 
 The dashboard is an **addictive, real-time pulse** of all 5 life dimensions. Users should feel:
+
 - "What's my score now?" after every log (like a fitness tracker for your whole life)
 - Immediate feedback: did what I just did help or hurt?
 - A wise companion who knows them deeply — not a cold analytics tool
@@ -42,13 +43,14 @@ The dashboard is an **addictive, real-time pulse** of all 5 life dimensions. Use
 
 ### 2.1 Tone: Balanced Companion
 
-| Moment | Tone |
-|--------|------|
-| **Greeting / Opening** | Warm, gentle, emotionally aware |
-| **Action Steps** | Tactical, clear, specific (with local context) |
-| **Closing / Reflection** | Warm, grounding, non-judgmental |
+| Moment                   | Tone                                           |
+| ------------------------ | ---------------------------------------------- |
+| **Greeting / Opening**   | Warm, gentle, emotionally aware                |
+| **Action Steps**         | Tactical, clear, specific (with local context) |
+| **Closing / Reflection** | Warm, grounding, non-judgmental                |
 
 **Example:**
+
 > "Good morning. You've been carrying a lot this week — I see it in your logs.
 >
 > Today, one meaningful step: **Call Mount Elizabeth Clinic at +65 6735 5000** to schedule that checkup. At 34 in Singapore, you're in a high-pressure phase. Your Health score (78%) is strong, but spiritual drift (31%) often precedes burnout for professionals in your context.
@@ -57,13 +59,13 @@ The dashboard is an **addictive, real-time pulse** of all 5 life dimensions. Use
 
 ### 2.2 Visual Qualities
 
-| Quality | Description |
-|---------|-------------|
-| **Calm** | Low cognitive load, generous whitespace, no visual noise |
-| **Warm** | Soft color palette, rounded corners, gentle gradients |
-| **Premium** | Refined typography, intentional spacing, no clutter |
-| **Mobile-First** | Thumb-friendly tap targets, vertical scrolling, single-column |
-| **Alive** | Subtle animations on score updates (↑↓ arrows, color transitions) |
+| Quality          | Description                                                       |
+| ---------------- | ----------------------------------------------------------------- |
+| **Calm**         | Low cognitive load, generous whitespace, no visual noise          |
+| **Warm**         | Soft color palette, rounded corners, gentle gradients             |
+| **Premium**      | Refined typography, intentional spacing, no clutter               |
+| **Mobile-First** | Thumb-friendly tap targets, vertical scrolling, single-column     |
+| **Alive**        | Subtle animations on score updates (↑↓ arrows, color transitions) |
 
 ### 2.3 Addictive Loop
 
@@ -115,6 +117,7 @@ User wants to check again → Hook established
 **Purpose:** The addictive hook — users check this like a fitness tracker.
 
 **Content:**
+
 ```
 Health        ████████░░  78%  ↑ +3% today
 Finance       █████░░░░░  54%  ↓ -2% this week
@@ -126,6 +129,7 @@ Overall Balance: 61% (🟡 "Some areas need care")
 ```
 
 **Visual treatment:**
+
 - Horizontal progress bars with gradient fill (red → yellow → green)
 - Color-coded dots: 🟢 (70-100), 🟡 (40-69), 🔴 (0-39)
 - Animated ↑↓ arrows on score change
@@ -142,6 +146,7 @@ Overall Balance: 61% (🟡 "Some areas need care")
 **Auto-focus:** Lowest-scoring dimension shown first (expandable to see others).
 
 **Layout (2x2 grid):**
+
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │  🔴 Spiritual — 31% (Needs Attention)                        │
@@ -161,6 +166,7 @@ Overall Balance: 61% (🟡 "Some areas need care")
 ```
 
 **Chip design:**
+
 - Each SWOT quadrant is a card with icon header
 - Bullet points are short (1 line each)
 - "Always-Do/Watch" are pill badges at bottom
@@ -172,6 +178,7 @@ Overall Balance: 61% (🟡 "Some areas need care")
 **Purpose:** Translate insight into action — 1-2 priorities max.
 
 **Format per priority:**
+
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │  🎯 [Dimension] — Priority Title                             │
@@ -184,6 +191,7 @@ Overall Balance: 61% (🟡 "Some areas need care")
 ```
 
 **Personalization example:**
+
 > 🎯 Health — Protect Your Momentum
 >
 > Why: Your 25min runs are paying off (Health ↑78%). Don't lose this.
@@ -197,6 +205,7 @@ Overall Balance: 61% (🟡 "Some areas need care")
 **Purpose:** End with warmth — grounding, not guilt.
 
 **Examples:**
+
 - "You've been action-heavy this week. Rest isn't laziness — it's part of the work."
 - "Small steps compound. You're doing better than you think."
 - "What gave you energy today? Do more of that."
@@ -207,13 +216,13 @@ Overall Balance: 61% (🟡 "Some areas need care")
 
 ### 4.1 The 5 Dimensions
 
-| Dimension | What It Measures | Key Signals |
-|-----------|------------------|-------------|
-| **Health** | Physical wellbeing, energy, activity | Sleep, exercise, conditions, mood |
-| **Finance** | Money stress, budget adherence, savings | Income, spending, savings rate |
-| **Relationships** | Connection quality, social energy | Partner time, friend contact, goals |
-| **Spiritual** | Meaning, values alignment, practice | Prayer/meditation, values referenced |
-| **Personal** | Career, growth, life direction | Job satisfaction, skill building |
+| Dimension         | What It Measures                        | Key Signals                          |
+| ----------------- | --------------------------------------- | ------------------------------------ |
+| **Health**        | Physical wellbeing, energy, activity    | Sleep, exercise, conditions, mood    |
+| **Finance**       | Money stress, budget adherence, savings | Income, spending, savings rate       |
+| **Relationships** | Connection quality, social energy       | Partner time, friend contact, goals  |
+| **Spiritual**     | Meaning, values alignment, practice     | Prayer/meditation, values referenced |
+| **Personal**      | Career, growth, life direction          | Job satisfaction, skill building     |
 
 ### 4.2 Score Calculation
 
@@ -228,6 +237,7 @@ Dimension Score (0-100) =
 **Profile Completeness:** % of dimension-specific profile fields filled
 
 **Recent Signal Quality:** Sentiment and frequency of logs in past 7 days
+
 - Positive logs (exercise completed, wins) → score up
 - Negative logs (stress, struggles) → score down
 
@@ -237,13 +247,13 @@ Dimension Score (0-100) =
 
 ### 4.3 Score Change Triggers
 
-| Event | Score Impact |
-|-------|--------------|
-| User logs a win (e.g., "completed 5km run") | +2-5% to Health |
-| User logs struggle (e.g., "stressed about money") | -3-8% to Finance |
-| User completes a task | +1-3% to dimension |
-| User ignores "Always-Do" for 5+ days | -5-10% to dimension |
-| New "Always-Watch" triggered | -5% to dimension |
+| Event                                             | Score Impact        |
+| ------------------------------------------------- | ------------------- |
+| User logs a win (e.g., "completed 5km run")       | +2-5% to Health     |
+| User logs struggle (e.g., "stressed about money") | -3-8% to Finance    |
+| User completes a task                             | +1-3% to dimension  |
+| User ignores "Always-Do" for 5+ days              | -5-10% to dimension |
+| New "Always-Watch" triggered                      | -5% to dimension    |
 
 ---
 
@@ -272,11 +282,13 @@ Collect all 28 questions in one session, but make it feel **fast, warm, and prog
 ### 5.3 Question Flow (28 Questions Total)
 
 #### Section 1: Identity (3 questions)
+
 1. What's your name?
 2. Where do you live? (City, Country)
 3. What's your age? (or decade: 20s/30s/40s/50s+)
 
 #### Section 2: Health (5 questions)
+
 4. What time do you usually wake up?
 5. What time do you usually go to bed?
 6. How would you describe your activity level? (Sedentary / Light / Moderate / Active)
@@ -284,6 +296,7 @@ Collect all 28 questions in one session, but make it feel **fast, warm, and prog
 8. What does a good day of self-care look like for you?
 
 #### Section 3: Finance (5 questions)
+
 9. What's your monthly income range? (<$3k / $3-5k / $5-10k / $10k+)
 10. What are your typical monthly fixed costs? (rent, loans, etc.)
 11. What are your typical monthly variable costs? (food, entertainment, etc.)
@@ -291,6 +304,7 @@ Collect all 28 questions in one session, but make it feel **fast, warm, and prog
 13. What's your biggest money stress right now?
 
 #### Section 4: Relationships (5 questions)
+
 14. What's your relationship status? (Single / Dating / Committed / Married)
 15. Do you live alone, with partner, with family, or with roommates?
 16. How often do you want to connect with important people? (Daily / Weekly / Monthly)
@@ -298,6 +312,7 @@ Collect all 28 questions in one session, but make it feel **fast, warm, and prog
 18. What's one relationship goal you have?
 
 #### Section 5: Spiritual (5 questions)
+
 19. Do you have a spiritual or religious practice? (Yes/No — describe if yes)
 20. What core values guide your decisions? (Select 3-5 from list + custom)
 21. How often do you want to engage in spiritual practices? (Daily / Weekly / Occasionally)
@@ -305,6 +320,7 @@ Collect all 28 questions in one session, but make it feel **fast, warm, and prog
 23. What does "living well" mean to you?
 
 #### Section 6: Personal (5 questions)
+
 24. What's your current role at work? (or "Not currently employed")
 25. What company or industry are you in?
 26. What are your main interests or hobbies?
@@ -352,25 +368,25 @@ After 28 questions, AI generates:
 
 The AI should reference:
 
-| Context | Example Output |
-|---------|----------------|
-| **Age** | "At 34, your metabolism is still resilient — but recovery matters more than in your 20s." |
-| **Location** | "Singapore's humidity may affect your sleep quality. Consider..." |
-| **Life Phase** | "You're in a high-pressure career build phase. This is normal, but watch for..." |
-| **Values** | "This aligns with your value of [family] — you mentioned wanting more time with them." |
-| **Struggles** | "You've reported 'lack of meaning' 3x this month. Let's address this gently." |
+| Context        | Example Output                                                                            |
+| -------------- | ----------------------------------------------------------------------------------------- |
+| **Age**        | "At 34, your metabolism is still resilient — but recovery matters more than in your 20s." |
+| **Location**   | "Singapore's humidity may affect your sleep quality. Consider..."                         |
+| **Life Phase** | "You're in a high-pressure career build phase. This is normal, but watch for..."          |
+| **Values**     | "This aligns with your value of [family] — you mentioned wanting more time with them."    |
+| **Struggles**  | "You've reported 'lack of meaning' 3x this month. Let's address this gently."             |
 
 ### 6.2 Hyper-Local Examples
 
 When giving action steps, include real local context:
 
-| Dimension | Example |
-|-----------|---------|
-| **Health** | "Call Mount Elizabeth Clinic at +65 6735 5000" |
-| **Finance** | "Check your DBS NAV Planner for cashflow visibility" |
-| **Relationships** | "Book a table at [local restaurant] for a date night" |
-| **Spiritual** | "Visit [local temple/church] this weekend" |
-| **Personal** | "Sign up for [local course/event] to build that skill" |
+| Dimension         | Example                                                |
+| ----------------- | ------------------------------------------------------ |
+| **Health**        | "Call Mount Elizabeth Clinic at +65 6735 5000"         |
+| **Finance**       | "Check your DBS NAV Planner for cashflow visibility"   |
+| **Relationships** | "Book a table at [local restaurant] for a date night"  |
+| **Spiritual**     | "Visit [local temple/church] this weekend"             |
+| **Personal**      | "Sign up for [local course/event] to build that skill" |
 
 ---
 
@@ -378,63 +394,63 @@ When giving action steps, include real local context:
 
 ### 7.1 Color System
 
-| Use Case | Palette |
-|----------|---------|
-| **Health** | Green gradient: #22c55e → #4ade80 |
-| **Finance** | Blue gradient: #3b82f6 → #60a5fa |
-| **Relationships** | Purple gradient: #a855f7 → #c084fc |
-| **Spiritual** | Amber gradient: #f59e0b → #fbbf24 |
-| **Personal** | Rose gradient: #f43f5e → #fb7185 |
-| **Score High (70-100)** | #22c55e (green) |
-| **Score Medium (40-69)** | #fbbf24 (amber) |
-| **Score Low (0-39)** | #ef4444 (red) |
-| **Background** | Dark: #1a1a2e → #16213e gradient |
-| **Cards** | rgba(255, 255, 255, 0.05-0.10) |
-| **Text Primary** | #ffffff |
-| **Text Secondary** | #a0a0a0 |
-| **Text Muted** | #666666 |
+| Use Case                 | Palette                            |
+| ------------------------ | ---------------------------------- |
+| **Health**               | Green gradient: #22c55e → #4ade80  |
+| **Finance**              | Blue gradient: #3b82f6 → #60a5fa   |
+| **Relationships**        | Purple gradient: #a855f7 → #c084fc |
+| **Spiritual**            | Amber gradient: #f59e0b → #fbbf24  |
+| **Personal**             | Rose gradient: #f43f5e → #fb7185   |
+| **Score High (70-100)**  | #22c55e (green)                    |
+| **Score Medium (40-69)** | #fbbf24 (amber)                    |
+| **Score Low (0-39)**     | #ef4444 (red)                      |
+| **Background**           | Dark: #1a1a2e → #16213e gradient   |
+| **Cards**                | rgba(255, 255, 255, 0.05-0.10)     |
+| **Text Primary**         | #ffffff                            |
+| **Text Secondary**       | #a0a0a0                            |
+| **Text Muted**           | #666666                            |
 
 ### 7.2 Typography
 
-| Element | Font Size | Weight |
-|---------|-----------|--------|
-| Page Title | 24px | 600 |
-| Section Header | 18px | 600 |
-| Card Title | 14px | 600 |
-| Body Text | 13px | 400 |
-| Small Text | 11px | 400 |
-| Micro Text | 9px | 500 |
+| Element        | Font Size | Weight |
+| -------------- | --------- | ------ |
+| Page Title     | 24px      | 600    |
+| Section Header | 18px      | 600    |
+| Card Title     | 14px      | 600    |
+| Body Text      | 13px      | 400    |
+| Small Text     | 11px      | 400    |
+| Micro Text     | 9px       | 500    |
 
 ### 7.3 Spacing Scale
 
 | Token | Value |
-|-------|-------|
-| xs | 4px |
-| sm | 8px |
-| md | 12px |
-| lg | 16px |
-| xl | 24px |
-| 2xl | 32px |
-| 3xl | 48px |
+| ----- | ----- |
+| xs    | 4px   |
+| sm    | 8px   |
+| md    | 12px  |
+| lg    | 16px  |
+| xl    | 24px  |
+| 2xl   | 32px  |
+| 3xl   | 48px  |
 
 ### 7.4 Corner Radius
 
-| Element | Radius |
-|---------|--------|
-| Cards | 12px |
-| Small Cards / Chips | 8px |
-| Pills / Badges | 16px (fully rounded) |
-| Buttons | 8px |
+| Element             | Radius               |
+| ------------------- | -------------------- |
+| Cards               | 12px                 |
+| Small Cards / Chips | 8px                  |
+| Pills / Badges      | 16px (fully rounded) |
+| Buttons             | 8px                  |
 
 ### 7.5 Animations
 
-| Trigger | Animation |
-|---------|-----------|
+| Trigger      | Animation                        |
+| ------------ | -------------------------------- |
 | Score change | Smooth bar fill (300ms ease-out) |
-| ↑ Arrow | Slide up + fade in (200ms) |
-| ↓ Arrow | Slide down + fade in (200ms) |
-| Card expand | Height transition (250ms ease) |
-| Button hover | Scale 1.02 (150ms) |
+| ↑ Arrow      | Slide up + fade in (200ms)       |
+| ↓ Arrow      | Slide down + fade in (200ms)     |
+| Card expand  | Height transition (250ms ease)   |
+| Button hover | Scale 1.02 (150ms)               |
 
 ---
 
@@ -453,6 +469,7 @@ When giving action steps, include real local context:
 ### 8.3 Score Update
 
 When a score changes:
+
 1. Bar animates to new width (300ms)
 2. ↑ or ↓ arrow fades in next to score (color: green/red)
 3. Change percentage shown (+3%, -2%, etc.)
@@ -464,11 +481,11 @@ When a score changes:
 
 ### 9.1 Breakpoints
 
-| Screen | Layout |
-|--------|--------|
-| < 640px | Single column, stacked sections |
-| 640-1024px | 2-column SWOT grid |
-| > 1024px | Max-width 800px container, centered |
+| Screen     | Layout                              |
+| ---------- | ----------------------------------- |
+| < 640px    | Single column, stacked sections     |
+| 640-1024px | 2-column SWOT grid                  |
+| > 1024px   | Max-width 800px container, centered |
 
 ### 9.2 Mobile-First Choices
 
@@ -481,14 +498,14 @@ When a score changes:
 
 ## 10. Success Metrics
 
-| Metric | Target |
-|--------|--------|
-| Daily Active Users | 70%+ of onboarded users return daily |
-| Logs per Day | 3+ average |
-| Dashboard Dwell Time | 2+ minutes per session |
-| Dimension Check Rate | 80%+ of users tap to expand at least 1 dimension |
-| Onboarding Completion | 60%+ finish all 28 questions |
-| Profile Completeness | 80%+ of users have 70%+ profile filled after week 1 |
+| Metric                | Target                                              |
+| --------------------- | --------------------------------------------------- |
+| Daily Active Users    | 70%+ of onboarded users return daily                |
+| Logs per Day          | 3+ average                                          |
+| Dashboard Dwell Time  | 2+ minutes per session                              |
+| Dimension Check Rate  | 80%+ of users tap to expand at least 1 dimension    |
+| Onboarding Completion | 60%+ finish all 28 questions                        |
+| Profile Completeness  | 80%+ of users have 70%+ profile filled after week 1 |
 
 ---
 
@@ -583,6 +600,7 @@ it's part of the work."
 ---
 
 **Next Steps:**
+
 1. Designer reviews this document
 2. Designer creates high-fidelity mockups
 3. Developer implements in React + Tailwind

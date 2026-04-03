@@ -161,8 +161,8 @@ export const VaultInput: React.FC<{
   type?: string;
   onChange: (v: string) => void;
 }> = ({ label, value, placeholder, type = 'text', onChange }) => (
-  <div className="group space-y-3">
-    <label className="text-[9px] font-black text-slate-500 group-focus-within:text-indigo-400 uppercase tracking-[0.25em] ml-1 transition-colors">
+  <div className="group space-y-2">
+    <label className="text-[10px] font-bold text-white/50 group-focus-within:text-white uppercase tracking-widest ml-1 transition-colors">
       {label}
     </label>
     <input
@@ -170,7 +170,7 @@ export const VaultInput: React.FC<{
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full bg-slate-950/40 border border-white/5 rounded-2xl px-6 py-5 focus:outline-none focus:border-indigo-500/40 focus:ring-4 focus:ring-indigo-500/5 transition-all text-[13px] text-slate-200 placeholder-slate-800 shadow-inner"
+      className="w-full bg-white/[0.03] border border-white/10 hover:border-white/20 rounded-xl px-5 py-4 focus:outline-none focus:border-white/40 focus:bg-white/[0.05] transition-all text-sm text-white placeholder-white/20 shadow-sm"
     />
   </div>
 );
@@ -410,23 +410,23 @@ export const ChipInput: React.FC<{
     }
   };
   return (
-    <div className="space-y-3">
-      <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.25em] ml-1">
+    <div className="space-y-2">
+      <label className="text-[10px] font-bold text-white/50 uppercase tracking-widest ml-1">
         {label}
       </label>
-      <div className="flex flex-wrap gap-2 min-h-[60px] p-4 bg-slate-950/40 border border-white/5 rounded-2xl focus-within:border-indigo-500/40 transition-all shadow-inner">
+      <div className="flex flex-wrap gap-2 min-h-[56px] p-3 bg-white/[0.03] border border-white/10 rounded-xl focus-within:border-white/40 transition-all shadow-sm">
         {safeSelected.map((item) => (
           <span
             key={item}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-bold text-indigo-300"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/10 border border-white/5 text-[11px] font-bold text-white"
           >
             {item}
             <button
               type="button"
               onClick={() => onUpdate(safeSelected.filter((i) => i !== item))}
-              className="hover:text-rose-400 transition-colors"
+              className="hover:text-rose-400 text-white/50 transition-colors"
             >
-              <X size={10} />
+              <X size={12} />
             </button>
           </span>
         ))}
@@ -440,12 +440,12 @@ export const ChipInput: React.FC<{
               add(inputValue);
             }
           }}
-          placeholder="Inject metric..."
-          className="flex-1 bg-transparent border-none outline-none text-xs text-slate-200 placeholder-slate-800 min-w-[140px]"
+          placeholder="New value..."
+          className="flex-1 bg-transparent border-none outline-none text-sm text-white placeholder-white/20 min-w-[140px] px-2"
         />
       </div>
       {suggestions.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-3">
+        <div className="flex flex-wrap gap-2 mt-2">
           {suggestions
             .filter((s) => !safeSelected.includes(s))
             .slice(0, 8)
@@ -454,7 +454,7 @@ export const ChipInput: React.FC<{
                 key={s}
                 type="button"
                 onClick={() => add(s)}
-                className="px-3 py-1.5 bg-slate-900/50 hover:bg-slate-800 text-[10px] font-bold text-slate-500 rounded-xl transition-all border border-white/5"
+                className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-[11px] font-medium text-white/70 rounded-lg transition-all border border-white/5"
               >
                 + {s}
               </button>
@@ -471,26 +471,26 @@ export const VaultSelect: React.FC<{
   options: readonly string[] | string[];
   onChange: (v: string) => void;
 }> = ({ label, value, options, onChange }) => (
-  <div className="group space-y-3">
-    <label className="text-[9px] font-black text-slate-500 group-focus-within:text-indigo-400 uppercase tracking-[0.25em] ml-1 transition-colors">
+  <div className="group space-y-2">
+    <label className="text-[10px] font-bold text-white/50 group-focus-within:text-white uppercase tracking-widest ml-1 transition-colors">
       {label}
     </label>
     <div className="relative">
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-slate-950/40 border border-white/5 rounded-2xl px-6 py-5 focus:outline-none focus:border-indigo-500/40 transition-all text-[13px] text-slate-200 cursor-pointer appearance-none shadow-inner"
+        className="w-full bg-white/[0.03] border border-white/10 hover:border-white/20 rounded-xl px-5 py-4 focus:outline-none focus:border-white/40 focus:bg-white/[0.05] transition-all text-sm text-white cursor-pointer appearance-none shadow-sm"
       >
-        <option value="" disabled>
-          Select Path...
+        <option value="" disabled className="text-black">
+          Select...
         </option>
         {options.map((opt) => (
-          <option key={opt} value={opt} className="bg-slate-900">
+          <option key={opt} value={opt} className="text-black">
             {opt}
           </option>
         ))}
       </select>
-      <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-600 group-hover:text-indigo-400 transition-colors">
+      <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-white/50 group-hover:text-white transition-colors">
         <ChevronDown size={16} />
       </div>
     </div>

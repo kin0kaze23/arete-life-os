@@ -1,5 +1,6 @@
 import React from 'react';
 import { ShieldCheck, Loader2, Mic, Search, Command } from 'lucide-react';
+import { UserButton } from '@clerk/clerk-react';
 import { UserProfile } from '@/data';
 import { getProfileCompletion, ProfileCompletionRing, ActionTooltip } from '@/shared';
 
@@ -80,6 +81,14 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-4">
+          <UserButton
+            appearance={{
+              elements: {
+                avatarBox:
+                  'w-10 h-10 rounded-xl border border-slate-800 hover:border-indigo-500/50 transition-all',
+              },
+            }}
+          />
           {onStartVoice && (
             <ActionTooltip label="Vocal Link" side="bottom">
               <button
