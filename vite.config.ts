@@ -45,11 +45,6 @@ export default defineConfig(({ command, mode }) => {
   // Check both .env file and process.env for VITE_E2E
   const isE2E = env.VITE_E2E === '1' || process.env.VITE_E2E === '1';
 
-  console.log(`[Vite Config] command=${command}, mode=${mode}, VITE_E2E=${isE2E}`);
-  console.log(
-    `[Vite Config] env.VITE_E2E=${env.VITE_E2E}, process.env.VITE_E2E=${process.env.VITE_E2E}`
-  );
-
   return {
     server: {
       port: 3000,
