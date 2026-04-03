@@ -17,17 +17,19 @@ Areté Life OS is a **local-first, encryption-native** personal operating system
 
 ## Technology Stack
 
-| Layer         | Technology               | Notes                                             |
-| ------------- | ------------------------ | ------------------------------------------------- |
-| Frontend      | React 19, TypeScript     | Single-page app                                   |
-| Styling       | Tailwind CSS (CDN)       | Dark-first design system                          |
-| Build         | Vite                     | Fast HMR, ESM-native                              |
-| AI (Primary)  | Google Gemini API        | `gemini-3-pro-preview` / `gemini-3-flash-preview` |
-| AI (Fallback) | OpenAI API               | `gpt-5.1` with configurable reasoning effort      |
-| Encryption    | Web Crypto API           | AES-256-GCM + PBKDF2 (100K iterations)            |
-| Storage       | localStorage + IndexedDB | Encrypted vault + encrypted file blobs            |
-| Deployment    | Vercel                   | Auto-deploy from GitHub `main`                    |
-| CI            | GitHub Actions           | Lint + typecheck + build gate                     |
+| Layer         | Technology               | Notes                                              |
+| ------------- | ------------------------ | -------------------------------------------------- |
+| Frontend      | React 19, TypeScript     | Single-page app                                    |
+| Styling       | Tailwind CSS (CDN)       | Dark-first design system                           |
+| Build         | Vite                     | Fast HMR, ESM-native                               |
+| AI (Primary)  | Google Gemini API        | `gemini-3-pro-preview` / `gemini-3-flash-preview`  |
+| AI (Fallback) | OpenAI API               | `gpt-5.1` with configurable reasoning effort       |
+| Encryption    | Web Crypto API           | AES-256-GCM + PBKDF2 (100K iterations)             |
+| Storage       | localStorage + IndexedDB | Encrypted vault + encrypted file blobs             |
+| Deployment    | Vercel                   | Auto-deploy from GitHub `main`                     |
+| CI            | GitHub Actions           | Lint + typecheck + build gate                      |
+| Auth          | Clerk                    | Cloud authentication (E2E tests use mock provider) |
+| E2E Testing   | Playwright               | Core loop testing with mocked AI responses         |
 
 ---
 
@@ -60,6 +62,8 @@ areté-life-os/
 │   └── index.ts
 ├── core/                      # Central state management
 │   ├── useAura.ts             # THE central hook (2200+ lines)
+│   ├── ClerkMockProvider.tsx  # Mock Clerk components for E2E testing
+│   ├── AuthProvider.ts        # Auth provider wrapper (Clerk abstraction)
 │   └── index.ts
 ├── dashboard/                 # Dashboard components
 │   ├── DashboardView.tsx      # Main layout
