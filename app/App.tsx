@@ -6,7 +6,6 @@ import { askAura } from '@/ai';
 import { ErrorBoundary } from '@/app/ErrorBoundary';
 import { X, CheckCircle2, User, Database, Settings } from 'lucide-react';
 import { useOnlineStatus, NetworkBanner, Toast, BackgroundAura } from '@/shared';
-
 import { SignedIn, SignedOut, SignIn, UserButton } from '@clerk/clerk-react';
 
 const loadVault = () => import('@/vault');
