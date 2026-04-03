@@ -6,3 +6,4 @@ export * from './utils';
 export * from './categoryIcons';
 export * from './Toast';
 export * from './emojiHelpers';
+export * from './BackgroundAura';

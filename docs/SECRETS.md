@@ -10,8 +10,24 @@
 
 ## Allowed locations
 
-- Local dev: `.env.local` or another ignored `.env.*` file
-- CI/Production: Vercel Environment Variables
+- **Local dev**: Doppler (`doppler run --project aretelifeos --config dev -- <command>`) or `.env.local`
+- **CI/Production**: Vercel Environment Variables or Doppler Service Tokens
+
+**Doppler Integration:**
+
+AreteLifeOS uses Doppler for secrets management. The Doppler project is configured with these environments:
+
+- `dev` — Local development
+- `preview` — Vercel Preview deployments (staging/QA)
+- `prod` — Production deployment
+
+```bash
+# Run dev server with Doppler-injected secrets
+doppler run --project aretelifeos --config dev -- npm run dev
+
+# Run any command with Doppler secrets
+doppler run --project aretelifeos --config dev -- npm run doctor
+```
 
 **Never expose secrets in the browser bundle.** All AI calls must go through server-side APIs.
 

@@ -113,6 +113,39 @@ export const ensureAppReady = async (page: Page) => {
 
   await page.goto('/');
 
+  // Bypass Clerk authentication in E2E mode
+  // Wait for Clerk to initialize and check for sign-in state
+  await page.waitForTimeout(1000);
+
+  // Check for various Clerk sign-in indicators
+  const clerkSignInIndicators = [
+    page.getByRole('heading', { name: /sign in|welcome|continue/i }),
+    page.getByText(/sign in|welcome back|enter your email/i),
+    page.locator('form[data-form-type="sign-in"]'),
+    page.locator('[data-clerkjs]'),
+  ];
+
+  let isClerkSignIn = false;
+  for (const indicator of clerkSignInIndicators) {
+    if (await isVisible(indicator, 2000)) {
+      isClerkSignIn = true;
+      break;
+    }
+  }
+
+  // If we detect Clerk sign-in page, wait for auto-auth redirect
+  if (isClerkSignIn) {
+    // Wait for Clerk to process authentication and redirect
+    await page.waitForTimeout(3000);
+  }
+
+  // Check for user button (indicates already signed in)
+  const userButton = page.locator('[data-localization="userButton"], button[data-user-button]');
+  const isSignedIn = await userButton
+    .first()
+    .isVisible()
+    .catch(() => false);
+
   const createHeading = page.getByRole('heading', { name: /create secure vault/i });
   const unlockHeading = page.getByRole('heading', { name: /unlock secure vault/i });
 

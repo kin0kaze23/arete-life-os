@@ -1,25 +1,21 @@
-import React, { useMemo, useState } from 'react';
-import { getProfileCompletion } from '@/shared';
+import React from 'react';
 import {
-  AlwaysChip,
-  DailyTask,
   UserProfile,
-  ProactiveInsight,
-  Category,
   MemoryEntry,
+  DailyTask,
   TimelineEvent,
+  ProactiveInsight,
   BlindSpot,
-  Recommendation,
   Source,
-  computeFinanceMetrics,
-  extractFinanceMetricsFromMemory,
+  Recommendation,
+  AlwaysChip,
 } from '@/data';
-import { FocusList } from './FocusList';
-import { StatusSidebar } from './StatusSidebar';
-import { EventPrepPopup } from './EventPrepPopup';
-import { EventEditSheet } from './EventEditSheet';
-import { SystemStatusFooter } from './SystemStatusFooter';
-import { UpcomingCalendar } from './UpcomingCalendar';
+import { getProfileCompletion } from '@/shared';
+import { LifePulse, ScoreData } from './components/LifePulse';
+import { SwotChips, SwotItem } from './components/SwotChips';
+import { PriorityCards, PriorityAction } from './components/PriorityCards';
+import { Reflection } from './components/Reflection';
+import { Sparkles, ArrowRight } from 'lucide-react';
 
 interface DashboardViewProps {
   memory: MemoryEntry[];
@@ -53,151 +49,137 @@ interface DashboardViewProps {
   deleteTimelineEvent?: (id: string) => void;
 }
 
-export const DashboardView: React.FC<DashboardViewProps> = ({
-  memory = [],
-  tasks,
-  dailyPlan,
-  timelineEvents,
-  blindSpots = [],
-  profile,
-  recommendations,
-  toggleTask,
-  deleteTask,
-  logMemory,
-  planMyDay,
-  onNavigate,
-  updateMemoryItem,
-  deleteMemoryItem,
-  activatePrepPlan,
-  onToast,
-  alwaysDoChips = [],
-  alwaysWatchChips = [],
-  keepRecommendation,
-  removeRecommendation,
-  isPlanningDay,
-  isGeneratingTasks,
-  updateTimelineEvent,
-  deleteTimelineEvent,
-}) => {
-  const [activePrepEvent, setActivePrepEvent] = useState<TimelineEvent | null>(null);
-  const [editingEvent, setEditingEvent] = useState<TimelineEvent | null>(null);
+// Mock Data Builders
+const mockScores: ScoreData[] = [
+  { id: '1', label: 'Health', score: 78, change: 3, trendText: 'today', colorVar: '--dim-health' },
+  {
+    id: '2',
+    label: 'Finance',
+    score: 54,
+    change: -2,
+    trendText: 'this week',
+    colorVar: '--dim-finance',
+  },
+  {
+    id: '3',
+    label: 'Relationships',
+    score: 82,
+    change: 5,
+    trendText: 'today',
+    colorVar: '--dim-relationships',
+  },
+  {
+    id: '4',
+    label: 'Spiritual',
+    score: 31,
+    change: -8,
+    trendText: 'this month',
+    colorVar: '--dim-spiritual',
+  },
+  {
+    id: '5',
+    label: 'Personal',
+    score: 61,
+    change: 0,
+    trendText: 'steady',
+    colorVar: '--dim-personal',
+  },
+];
 
-  const completion = getProfileCompletion(profile);
+const mockSwot: SwotItem[] = [
+  { type: 'strength', points: ['Morning prayer 4/7 days', 'Core values are clear'] },
+  { type: 'weakness', points: ['No practice in 5 days', 'Values mentioned 0x recently'] },
+  { type: 'opportunity', points: ['10min reflection = +12%', 'Reconnect w/ community'] },
+  {
+    type: 'threat',
+    points: ['Spiritual drift often precedes burnout', 'Said "lack of meaning" 3x'],
+  },
+];
 
-  const financeMetrics = useMemo(() => {
-    const fromMemory = extractFinanceMetricsFromMemory(memory);
-    if (fromMemory) return fromMemory;
-    return computeFinanceMetrics(profile);
-  }, [memory, profile.finances]);
+const mockPriorities: PriorityAction[] = [
+  {
+    id: 'p1',
+    dimension: 'Health',
+    title: 'Protect Your Momentum',
+    why: "Your 25min runs are paying off (Health ↑78%). Don't lose this.",
+    firstStep: 'Evening walk 15min — you said running felt great.',
+    colorVar: '--dim-health',
+  },
+  {
+    id: 'p2',
+    dimension: 'Spiritual',
+    title: 'Gentle Reconnection',
+    why: '5 days without practice is your longest gap in 2 months.',
+    firstStep: '5min reflection: "What gave meaning today?"',
+    colorVar: '--dim-spiritual',
+  },
+];
 
-  // Derived Habits
-  const habitItems = useMemo(() => {
-    const items = memory.filter(
-      (item) => item.category === Category.HABIT || item.metadata?.type === 'habit'
+export const DashboardView: React.FC<DashboardViewProps> = ({ profile, onNavigate }) => {
+  const completion = getProfileCompletion(profile).overall;
+
+  // EMPTY STATE LOGIC
+  // If the user's profile is basically empty, we show the empty state driving them to Onboarding.
+  if (completion < 10) {
+    return (
+      <div className="max-w-2xl mx-auto mt-20 text-center space-y-8 px-6 relative">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px] pointer-events-none" />
+
+        <div className="w-16 h-16 rounded-3xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mx-auto mb-4">
+          <Sparkles className="w-8 h-8 text-indigo-400" />
+        </div>
+
+        <div className="space-y-4 relative z-10">
+          <h2 className="text-3xl font-black text-white tracking-tight">
+            Your Life Pulse <br className="hidden sm:block" /> Needs A Baseline
+          </h2>
+          <p className="text-white/60 text-lg max-w-md mx-auto leading-relaxed">
+            I don't have enough context yet. Complete your profile setup to activate your localized,
+            real-time life scoring.
+          </p>
+        </div>
+
+        <button
+          onClick={() => onNavigate('Onboarding')}
+          className="relative z-10 mx-auto bg-white text-black hover:bg-white/90 px-8 py-4 rounded-xl font-bold text-sm flex items-center gap-3 transition-transform active:scale-95"
+        >
+          Begin Profile Setup
+          <ArrowRight className="w-4 h-4" />
+        </button>
+      </div>
     );
-    return items.sort((a, b) => b.timestamp - a.timestamp).slice(0, 5);
-  }, [memory]);
+  }
 
-  // Derived Tasks (Focus)
-  // Combine dailyPlan and tasks, prioritizing plan
-  const focusTasks = useMemo(() => {
-    // If we have a daily plan, that IS the focus.
-    if (dailyPlan.length > 0) return dailyPlan;
-    return tasks;
-  }, [dailyPlan, tasks]);
-
-  const handleToggleHabit = (id: string) => {
-    // For now, we'll try to update the item to indicate completion for today
-    // This depends on backend logic, but UI will optimize optimistically
-    if (updateMemoryItem) {
-      // Just a placeholder update for visual feedback or sorting
-      updateMemoryItem(id, { timestamp: Date.now() });
-    }
-  };
-
+  // ACTIVE DASHBOARD STATE
   return (
-    <div className="max-w-7xl mx-auto pb-32">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start">
-        {/* Column 1: Tactics (Focus) */}
-        <div className="space-y-8">
-          <div className="flex items-center justify-between pb-4 border-b border-white/5">
-            <div>
-              <h3 className="text-xl font-black text-white tracking-tight">Mission Control</h3>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest">Horizon Focus</p>
-            </div>
-          </div>
-          <FocusList
-            tasks={focusTasks}
-            habitItems={habitItems}
-            onToggleTask={(id) => toggleTask(id)}
-            onToggleHabit={handleToggleHabit}
-            onDeleteTask={(id) => deleteTask(id)}
-            onRefreshPlan={planMyDay}
-            onRefreshQueue={planMyDay} // Re-using planMyDay for simplicity, or could be generateTasks
-            isPlanning={isPlanningDay}
-            events={timelineEvents}
-          />
-        </div>
-
-        {/* Column 2: Horizon (Upcoming) */}
-        <div className="space-y-8">
-          <div className="flex items-center justify-between pb-4 border-b border-white/5">
-            <div>
-              <h3 className="text-xl font-black text-white tracking-tight">Upcoming Events</h3>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest">Schedule</p>
-            </div>
-          </div>
-          <UpcomingCalendar
-            events={timelineEvents}
-            onSelectEvent={setActivePrepEvent}
-            onEditEvent={setEditingEvent}
-            onDeleteEvent={deleteTimelineEvent}
-          />
-        </div>
-
-        {/* Column 3: Insight & Status */}
-        <div className="space-y-8">
-          {/* StatusSidebar (Header handled internally) */}
-          <StatusSidebar
-            profile={profile}
-            completion={completion.overall}
-            blindSpots={blindSpots}
-            financeMetrics={financeMetrics}
-            recommendations={recommendations}
-            onNavigate={onNavigate}
-            onActivate={(rec) => activatePrepPlan?.(rec, (rec as any).metadata?.eventId)}
-            onKeepRecommendation={keepRecommendation}
-            onRemoveRecommendation={removeRecommendation}
-            alwaysDoChips={alwaysDoChips}
-            alwaysWatchChips={alwaysWatchChips}
-          />
-        </div>
+    <div className="max-w-3xl mx-auto pb-32 pt-8 px-4 sm:px-6">
+      <div className="mb-10 text-center sm:text-left">
+        <h2 className="text-2xl font-black text-white tracking-tight mb-2">
+          Good evening, {profile.identify?.name || 'there'}
+        </h2>
+        <p className="text-white/60 text-base leading-relaxed">
+          "You've carried a lot this week. One dimension needs gentle attention."
+        </p>
       </div>
 
-      <div className="mt-10">{/* AlwaysPanels removed and merged into StatusSidebar */}</div>
-
-      <EventPrepPopup
-        event={activePrepEvent}
-        profile={profile}
-        memory={memory}
-        onClose={() => setActivePrepEvent(null)}
-        onActivate={(plan, id) => {
-          activatePrepPlan?.(plan, id);
-          onToast?.(`Armed: ${plan.title}. Tasks added to Today's Focus.`, 'success');
-          setActivePrepEvent(null);
-        }}
-      />
-
-      {editingEvent && updateTimelineEvent && (
-        <EventEditSheet
-          event={editingEvent}
-          onSave={updateTimelineEvent}
-          onClose={() => setEditingEvent(null)}
+      <div className="space-y-10">
+        <LifePulse
+          scores={mockScores}
+          overallBalance={61}
+          balanceText='🟡 "Some areas need care"'
         />
-      )}
 
-      <div className="mt-12">
-        <SystemStatusFooter completion={completion.overall} />
+        <SwotChips
+          dimensionName="Spiritual"
+          dimensionScore={31}
+          swotData={mockSwot}
+          alwaysDo="Morning prayer — 5min"
+          alwaysWatch="Isolation from community"
+        />
+
+        <PriorityCards priorities={mockPriorities} />
+
+        <Reflection text="You've been action-heavy this week. Rest isn't laziness — it's part of the work." />
       </div>
     </div>
   );
