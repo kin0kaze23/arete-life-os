@@ -42,6 +42,8 @@ export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, '.', '');
   if (env.GEMINI_API_KEY) process.env.GEMINI_API_KEY = env.GEMINI_API_KEY;
   const isDev = command === 'serve';
+  const isE2E = env.VITE_E2E === '1';
+
   return {
     server: {
       port: 3000,
@@ -51,6 +53,12 @@ export default defineConfig(({ command, mode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
+        // In E2E mode, mock Clerk components
+        ...(isE2E
+          ? {
+              '@clerk/clerk-react': path.resolve(__dirname, './core/ClerkMockProvider.tsx'),
+            }
+          : {}),
       },
     },
   };
