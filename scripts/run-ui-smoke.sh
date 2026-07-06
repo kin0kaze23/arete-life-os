@@ -26,13 +26,13 @@ fi
 # to force resolution.
 ALLOWED_FAILURE_NAME="core-loop-vault-onboarding-timeout"
 ALLOWED_FAILURE_REASON="Vault unlock + onboarding flow does not complete in CI without full Clerk secrets and Gemini API config"
-ALLOWED_FAILURE_SIGNATURE="log-input.*toBeVisible\|ensureAppReady"
+ALLOWED_FAILURE_SIGNATURE="log-input.*toBeVisible|ensureAppReady"
 ALLOWED_FAILURE_OWNER="kin0kaze23"
 ALLOWED_FAILURE_DATE="2026-07-06"
 ALLOWED_FAILURE_EXPIRY="2026-08-06"  # 30 days — must be resolved by this date
 ALLOWED_FAILURE_FOLLOWUP="Needs vault/onboarding mock or Clerk test authentication in CI"
 
-# Check expiry
+# Check expiry (inclusive — allowed through end-of-day on the expiry date)
 CURRENT_DATE=$(date +%Y%m%d)
 EXPIRY_DATE=$(echo "$ALLOWED_FAILURE_EXPIRY" | tr -d '-')
 if [[ "$CURRENT_DATE" -gt "$EXPIRY_DATE" ]]; then
@@ -43,6 +43,12 @@ if [[ "$CURRENT_DATE" -gt "$EXPIRY_DATE" ]]; then
 fi
 
 # ─── 1. Screenshot test (REQUIRED — always blocking) ─────────────────────
+# Self-test: verify signature matches known Playwright failure output
+echo "expect(page.getByTestId('log-input')).toBeVisible()" | grep -qE "$ALLOWED_FAILURE_SIGNATURE" || {
+  echo "FATAL: Allowed-failure signature does not match expected Playwright output" >&2
+  exit 1
+}
+
 echo "==> Running screenshot visual verification (required)..."
 npx playwright test e2e/screenshot.spec.ts
 echo "✓ Screenshot test passed"
@@ -52,8 +58,8 @@ echo ""
 echo "==> Running core-loop E2E test (allowed-failure: $ALLOWED_FAILURE_NAME)..."
 
 # Capture output and exit code separately
+CORE_LOOP_EXIT=0
 CORE_LOOP_OUTPUT=$(npx playwright test e2e/core-loop.spec.ts 2>&1) || CORE_LOOP_EXIT=$?
-CORE_LOOP_EXIT=${CORE_LOOP_EXIT:-0}
 
 if [[ "$CORE_LOOP_EXIT" -eq 0 ]]; then
   echo "✓ Core-loop test passed — pre-existing issue may be resolved!"
