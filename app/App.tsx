@@ -6,6 +6,7 @@ import { askAura } from '@/ai';
 import { ErrorBoundary } from '@/app/ErrorBoundary';
 import { X, CheckCircle2, User, Database, Settings } from 'lucide-react';
 import { useOnlineStatus, NetworkBanner, Toast, BackgroundAura } from '@/shared';
+import LoadingFallback from '@/shared/LoadingFallback';
 import { SignedIn, SignedOut, SignIn, UserButton } from '@clerk/clerk-react';
 
 const loadVault = () => import('@/vault');
@@ -25,7 +26,7 @@ const OnboardingView = React.lazy(() =>
   loadOnboarding().then((m) => ({ default: m.OnboardingView }))
 );
 
-const LoadingFallback = <div className="p-6 text-slate-400">Loading...</div>;
+const LoadingFallbackComponent = <LoadingFallback />;
 
 const App: React.FC = () => {
   const aura = useAura();
@@ -239,7 +240,7 @@ const App: React.FC = () => {
 
       <SignedIn>
         {!aura.isUnlocked ? (
-          <Suspense fallback={LoadingFallback}>
+          <Suspense fallback={LoadingFallbackComponent}>
             <VaultLockView
               hasVault={aura.hasVault}
               hasLegacyData={aura.hasLegacyData}
@@ -249,7 +250,7 @@ const App: React.FC = () => {
             />
           </Suspense>
         ) : !aura.isOnboarded ? (
-          <Suspense fallback={LoadingFallback}>
+          <Suspense fallback={LoadingFallbackComponent}>
             <OnboardingView
               profile={aura.profile}
               setProfile={aura.setProfile}
@@ -296,7 +297,7 @@ const App: React.FC = () => {
 
               <div className="flex-1 overflow-y-auto p-6 md:p-10 no-scrollbar">
                 <ErrorBoundary>
-                  <Suspense fallback={LoadingFallback}>
+                  <Suspense fallback={LoadingFallbackComponent}>
                     <div
                       key={`${activeTab}-${aura.activeUserId}`}
                       className="animate-in fade-in slide-in-from-bottom-2 duration-300 h-full"
