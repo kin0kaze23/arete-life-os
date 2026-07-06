@@ -30,7 +30,27 @@ const LoadingFallbackComponent = <LoadingFallback />;
 // E2E mode bypasses Clerk auth wrappers so tests can run without Clerk secrets.
 // SECURITY: This is guarded by VITE_E2E env var (only set in Playwright/CI).
 // vite.config.ts throws if VITE_E2E=1 in production builds.
-const isE2E = import.meta.env.VITE_E2E === '1';
+// Runtime guard below adds defense-in-depth for non-build environments.
+let isE2E = import.meta.env.VITE_E2E === '1';
+
+// Runtime guard: if E2E bypass is active on a non-localhost host, force real auth.
+// This prevents the bypass from being exploitable if VITE_E2E leaks into a
+// non-build environment (e.g., vite preview --host 0.0.0.0 with VITE_E2E=1).
+if (
+  isE2E &&
+  typeof window !== 'undefined' &&
+  window.location.hostname !== 'localhost' &&
+  window.location.hostname !== '127.0.0.1' &&
+  window.location.hostname !== '::1'
+) {
+  console.error(
+    'SECURITY WARNING: VITE_E2E auth bypass detected on non-localhost host ' +
+      `(${window.location.hostname}). Falling back to real Clerk auth. ` +
+      'Check that VITE_E2E is not set in your deployment environment.'
+  );
+  isE2E = false;
+}
+
 const SignedInWrapper = isE2E ? React.Fragment : SignedIn;
 
 const App: React.FC = () => {
