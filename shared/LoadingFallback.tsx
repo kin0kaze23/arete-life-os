@@ -10,7 +10,7 @@ const LoadingFallback: React.FC = () => (
     role="status"
     aria-label="Loading content"
   >
-    <div className="relative w-10 h-10">
+    <div className="relative w-10 h-10" aria-hidden="true">
       <div className="absolute inset-0 rounded-full border-2 border-slate-700/40" />
       <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-indigo-400 animate-[spin_0.8s_linear_infinite]" />
     </div>

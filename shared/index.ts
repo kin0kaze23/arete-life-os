@@ -7,3 +7,4 @@ export * from './categoryIcons';
 export * from './Toast';
 export * from './emojiHelpers';
 export * from './BackgroundAura';
+export { default as LoadingFallback } from './LoadingFallback';
