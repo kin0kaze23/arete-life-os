@@ -17,11 +17,11 @@ if (typeof globalThis.localStorage === 'undefined') {
     key: (index: number) => Object.keys(store)[index] ?? null,
     get length() {
       return Object.keys(store).length;
-    }
+    },
   };
   Object.defineProperty(globalThis, 'localStorage', {
     value: localStoragePolyfill,
     writable: true,
-    configurable: true
+    configurable: true,
   });
 }
