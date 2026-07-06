@@ -27,6 +27,10 @@ const OnboardingView = React.lazy(() =>
 
 const LoadingFallbackComponent = <LoadingFallback />;
 
+// E2E mode bypasses Clerk auth wrappers so tests can run without Clerk secrets
+const isE2E = import.meta.env.VITE_E2E === '1';
+const SignedInWrapper = isE2E ? React.Fragment : SignedIn;
+
 const App: React.FC = () => {
   const aura = useAura();
   const [activeTab, setActiveTab] = useState<
@@ -132,112 +136,116 @@ const App: React.FC = () => {
   return (
     <>
       <BackgroundAura />
-      <SignedOut>
-        <div className="fixed inset-0 flex items-center justify-center overflow-hidden">
-          {/* Centered card */}
-          <div className="relative z-10 w-full max-w-sm mx-4 animate-in fade-in zoom-in-95 duration-700">
-            {/* Logo + branding above the card */}
-            <div className="text-center mb-8">
-              {/* Arete "A" mark */}
-              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/10 mb-5 shadow-xl">
-                <svg
-                  viewBox="0 0 40 40"
-                  fill="none"
-                  className="w-7 h-7"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path d="M8 34L18 8" stroke="white" strokeWidth="3.5" strokeLinecap="round" />
-                  <path d="M32 34L22 8" stroke="white" strokeWidth="3.5" strokeLinecap="round" />
-                  <path
-                    d="M13 24H27"
-                    stroke="white"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeOpacity="0.6"
-                  />
-                </svg>
+      {!isE2E && (
+        <SignedOut>
+          <div className="fixed inset-0 flex items-center justify-center overflow-hidden">
+            {/* Centered card */}
+            <div className="relative z-10 w-full max-w-sm mx-4 animate-in fade-in zoom-in-95 duration-700">
+              {/* Logo + branding above the card */}
+              <div className="text-center mb-8">
+                {/* Arete "A" mark */}
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/10 mb-5 shadow-xl">
+                  <svg
+                    viewBox="0 0 40 40"
+                    fill="none"
+                    className="w-7 h-7"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path d="M8 34L18 8" stroke="white" strokeWidth="3.5" strokeLinecap="round" />
+                    <path d="M32 34L22 8" stroke="white" strokeWidth="3.5" strokeLinecap="round" />
+                    <path
+                      d="M13 24H27"
+                      stroke="white"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeOpacity="0.6"
+                    />
+                  </svg>
+                </div>
+                <h1 className="text-2xl font-black text-white tracking-tight leading-tight">
+                  Welcome back
+                </h1>
+                <p className="text-white/40 text-sm mt-1.5 font-medium">
+                  Your Life Pulse is waiting
+                </p>
+                {/* 5 dimension dots */}
+                <div className="flex items-center justify-center gap-1.5 mt-4">
+                  {[
+                    'var(--dim-health)',
+                    'var(--dim-finance)',
+                    'var(--dim-relationships)',
+                    'var(--dim-spiritual)',
+                    'var(--dim-personal)',
+                  ].map((color, i) => (
+                    <div
+                      key={i}
+                      className="w-1.5 h-1.5 rounded-full opacity-60"
+                      style={{ background: color }}
+                    />
+                  ))}
+                </div>
               </div>
-              <h1 className="text-2xl font-black text-white tracking-tight leading-tight">
-                Welcome back
-              </h1>
-              <p className="text-white/40 text-sm mt-1.5 font-medium">Your Life Pulse is waiting</p>
-              {/* 5 dimension dots */}
-              <div className="flex items-center justify-center gap-1.5 mt-4">
-                {[
-                  'var(--dim-health)',
-                  'var(--dim-finance)',
-                  'var(--dim-relationships)',
-                  'var(--dim-spiritual)',
-                  'var(--dim-personal)',
-                ].map((color, i) => (
-                  <div
-                    key={i}
-                    className="w-1.5 h-1.5 rounded-full opacity-60"
-                    style={{ background: color }}
-                  />
-                ))}
-              </div>
+
+              {/* Clerk sign-in widget — fully dark themed */}
+              <SignIn
+                routing="hash"
+                appearance={{
+                  elements: {
+                    rootBox: 'w-full',
+                    card: 'bg-white/[0.03] backdrop-blur-2xl border border-white/[0.08] shadow-2xl rounded-2xl w-full',
+                    cardBox: 'w-full shadow-none rounded-2xl',
+                    header: 'hidden',
+                    socialButtonsBlockButton:
+                      'bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] hover:border-white/20 text-white transition-all rounded-xl h-11',
+                    socialButtonsBlockButtonText: 'text-white/80 font-medium text-sm',
+                    socialButtonsBlockButtonArrow: 'text-white/40',
+                    dividerLine: 'bg-white/[0.06]',
+                    dividerText: 'text-white/30 text-xs',
+                    formFieldLabel:
+                      'text-white/50 text-xs font-semibold uppercase tracking-widest mb-1',
+                    formFieldInput:
+                      'bg-white/[0.04] border border-white/[0.08] hover:border-white/20 focus:border-white/40 focus:bg-white/[0.06] text-white placeholder-white/20 rounded-xl px-4 h-12 text-sm transition-all outline-none',
+                    formButtonPrimary:
+                      'bg-white text-[#02040a] hover:bg-white/90 font-bold text-sm tracking-wider rounded-xl h-12 transition-all active:scale-[0.98]',
+                    footerActionLink:
+                      'text-white/60 hover:text-white font-semibold transition-colors',
+                    footerActionText: 'text-white/30 text-sm',
+                    footer: 'bg-transparent border-t border-white/[0.06] pt-4',
+                    footerPages: 'bg-transparent',
+                    footerPagesLink: 'text-white/30 hover:text-white/60 text-xs',
+                    internal: 'bg-transparent',
+                    logoBox: 'hidden',
+                    logoImage: 'hidden',
+                    identityPreviewEditButton: 'text-white/60 hover:text-white transition-colors',
+                    identityPreviewText: 'text-white/80 text-sm',
+                    errorText: 'text-rose-400 text-xs',
+                    formFieldErrorText: 'text-rose-400 text-xs mt-1',
+                    formFieldSuccessText: 'text-emerald-400 text-xs mt-1',
+                    formFieldHintText: 'text-white/30 text-xs mt-1',
+                    otpCodeFieldInput:
+                      'bg-white/[0.04] border border-white/[0.08] text-white rounded-xl text-center font-bold text-lg h-14 w-12',
+                    resendCodeLink:
+                      'text-white/60 hover:text-white font-medium text-sm transition-colors',
+                    alternativeMethodsBlockButton:
+                      'bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] text-white/80 rounded-xl h-11 text-sm transition-all',
+                  },
+                  layout: {
+                    logoPlacement: 'none',
+                    socialButtonsVariant: 'iconButton',
+                  },
+                }}
+              />
+
+              {/* Minimal footer */}
+              <p className="text-center text-white/20 text-xs mt-6 font-medium">
+                Secured by Clerk · End-to-end encrypted
+              </p>
             </div>
-
-            {/* Clerk sign-in widget — fully dark themed */}
-            <SignIn
-              routing="hash"
-              appearance={{
-                elements: {
-                  rootBox: 'w-full',
-                  card: 'bg-white/[0.03] backdrop-blur-2xl border border-white/[0.08] shadow-2xl rounded-2xl w-full',
-                  cardBox: 'w-full shadow-none rounded-2xl',
-                  header: 'hidden',
-                  socialButtonsBlockButton:
-                    'bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] hover:border-white/20 text-white transition-all rounded-xl h-11',
-                  socialButtonsBlockButtonText: 'text-white/80 font-medium text-sm',
-                  socialButtonsBlockButtonArrow: 'text-white/40',
-                  dividerLine: 'bg-white/[0.06]',
-                  dividerText: 'text-white/30 text-xs',
-                  formFieldLabel:
-                    'text-white/50 text-xs font-semibold uppercase tracking-widest mb-1',
-                  formFieldInput:
-                    'bg-white/[0.04] border border-white/[0.08] hover:border-white/20 focus:border-white/40 focus:bg-white/[0.06] text-white placeholder-white/20 rounded-xl px-4 h-12 text-sm transition-all outline-none',
-                  formButtonPrimary:
-                    'bg-white text-[#02040a] hover:bg-white/90 font-bold text-sm tracking-wider rounded-xl h-12 transition-all active:scale-[0.98]',
-                  footerActionLink:
-                    'text-white/60 hover:text-white font-semibold transition-colors',
-                  footerActionText: 'text-white/30 text-sm',
-                  footer: 'bg-transparent border-t border-white/[0.06] pt-4',
-                  footerPages: 'bg-transparent',
-                  footerPagesLink: 'text-white/30 hover:text-white/60 text-xs',
-                  internal: 'bg-transparent',
-                  logoBox: 'hidden',
-                  logoImage: 'hidden',
-                  identityPreviewEditButton: 'text-white/60 hover:text-white transition-colors',
-                  identityPreviewText: 'text-white/80 text-sm',
-                  errorText: 'text-rose-400 text-xs',
-                  formFieldErrorText: 'text-rose-400 text-xs mt-1',
-                  formFieldSuccessText: 'text-emerald-400 text-xs mt-1',
-                  formFieldHintText: 'text-white/30 text-xs mt-1',
-                  otpCodeFieldInput:
-                    'bg-white/[0.04] border border-white/[0.08] text-white rounded-xl text-center font-bold text-lg h-14 w-12',
-                  resendCodeLink:
-                    'text-white/60 hover:text-white font-medium text-sm transition-colors',
-                  alternativeMethodsBlockButton:
-                    'bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] text-white/80 rounded-xl h-11 text-sm transition-all',
-                },
-                layout: {
-                  logoPlacement: 'none',
-                  socialButtonsVariant: 'iconButton',
-                },
-              }}
-            />
-
-            {/* Minimal footer */}
-            <p className="text-center text-white/20 text-xs mt-6 font-medium">
-              Secured by Clerk · End-to-end encrypted
-            </p>
           </div>
-        </div>
-      </SignedOut>
+        </SignedOut>
+      )}
 
-      <SignedIn>
+      <SignedInWrapper>
         {!aura.isUnlocked ? (
           <Suspense fallback={LoadingFallbackComponent}>
             <VaultLockView
@@ -412,7 +420,7 @@ const App: React.FC = () => {
             </main>
           </div>
         )}
-      </SignedIn>
+      </SignedInWrapper>
     </>
   );
 };
