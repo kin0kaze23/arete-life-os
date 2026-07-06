@@ -27,7 +27,9 @@ const OnboardingView = React.lazy(() =>
 
 const LoadingFallbackComponent = <LoadingFallback />;
 
-// E2E mode bypasses Clerk auth wrappers so tests can run without Clerk secrets
+// E2E mode bypasses Clerk auth wrappers so tests can run without Clerk secrets.
+// SECURITY: This is guarded by VITE_E2E env var (only set in Playwright/CI).
+// vite.config.ts throws if VITE_E2E=1 in production builds.
 const isE2E = import.meta.env.VITE_E2E === '1';
 const SignedInWrapper = isE2E ? React.Fragment : SignedIn;
 

@@ -45,6 +45,15 @@ export default defineConfig(({ command, mode }) => {
   // Check both .env file and process.env for VITE_E2E
   const isE2E = env.VITE_E2E === '1' || process.env.VITE_E2E === '1';
 
+  // Production safety guard: VITE_E2E must never be active in production builds.
+  // This prevents the Clerk auth bypass from accidentally shipping to production.
+  if (isE2E && mode === 'production') {
+    throw new Error(
+      'SECURITY: VITE_E2E=1 is set in a production build. ' +
+        'This would bypass Clerk authentication. Remove VITE_E2E from production env.'
+    );
+  }
+
   return {
     server: {
       port: 3000,
