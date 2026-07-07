@@ -22,7 +22,7 @@ jobs:
       release_status: ${{ steps.gate.outputs.release_status }}
       risk_level: ${{ steps.gate.outputs.risk_level }}
       reviewer_required: ${{ steps.gate.outputs.reviewer_required }}
-    
+
     steps:
       - uses: actions/checkout@v4
         with:
