@@ -26,7 +26,8 @@ export function validateEnvSafety(): EnvSafetyReport {
 
   // Check 1: VITE_E2E must not be active in production
   if (isProd && isE2E) {
-    const msg = 'SECURITY WARNING: VITE_E2E auth bypass is active in production mode. ' +
+    const msg =
+      'SECURITY WARNING: VITE_E2E auth bypass is active in production mode. ' +
       'This should never happen — check that VITE_E2E is not set in deployment environment.';
     console.error(msg);
     warnings.push(msg);
@@ -34,7 +35,8 @@ export function validateEnvSafety(): EnvSafetyReport {
 
   // Check 2: Clerk publishable key should be present in production
   if (isProd && !import.meta.env.VITE_CLERK_PUBLISHABLE_KEY) {
-    const msg = 'WARNING: VITE_CLERK_PUBLISHABLE_KEY is not set in production mode. ' +
+    const msg =
+      'WARNING: VITE_CLERK_PUBLISHABLE_KEY is not set in production mode. ' +
       'Clerk authentication will not work without it.';
     console.warn(msg);
     warnings.push(msg);
