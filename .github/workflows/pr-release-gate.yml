@@ -45,6 +45,8 @@ jobs:
           GITHUB_EVENT_PULL_REQUEST_BASE_REF: ${{ github.event.pull_request.base.ref }}
           GITHUB_EVENT_PULL_REQUEST_HEAD_REF: ${{ github.event.pull_request.head.ref }}
           GITHUB_EVENT_PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload release decision report
         if: always()
@@ -59,8 +61,16 @@ jobs:
         if: always()
         run: |
           STATUS="${{ steps.gate.outputs.release_status }}"
+          RISK="${{ steps.gate.outputs.risk_level }}"
+          EVIDENCE="${{ steps.gate.outputs.reviewer_evidence_found }}"
           if [[ "$STATUS" == "block" ]]; then
-            echo "🚫 PR blocked: release_status is 'block'"
+            echo "🚫 PR blocked: enforcement status is 'block'"
+            if [[ "$RISK" == "high" && "$EVIDENCE" != "true" ]]; then
+              echo "Reason: High-risk sensitive change requires trusted reviewer evidence."
+              echo "To unblock: Get a GitHub approving review or apply the 'reviewer-approved' label."
+            else
+              echo "Reason: Expired allowed failure or blocking policy violation"
+            fi
             exit 1
           fi
-          echo "✅ PR not blocked (status: $STATUS)"
+          echo "✅ PR not blocked (status: $STATUS, risk: $RISK, evidence: $EVIDENCE)"
