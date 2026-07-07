@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
-# pr-release-gate-action.sh — v4.34 PR Release Gate Action
+# pr-release-gate-action.sh — v4.34.2 PR Release Gate Action
 #
 # Runs the sensitive change classifier and release decision report on PR changes.
 # Writes a structured GitHub job summary and sets step outputs.
+#
+# v4.34.2: Runs classifier ONCE and passes output to release-decision-report
+# via --classifier-output flag, eliminating fragile eval/bash cross-repo issues.
 #
 # Environment variables:
 #   GITHUB_STEP_SUMMARY — file path for job summary (set by GitHub Actions)
@@ -36,6 +39,10 @@ echo "[pr-release-gate] Diff range: ${DIFF_RANGE}"
 CLASSIFIER_OUTPUT=$(bash "$ROOT_DIR/.github/scripts/sensitive-change-classifier.sh" --diff "$DIFF_RANGE" 2>/dev/null || echo "")
 echo "$CLASSIFIER_OUTPUT"
 
+# Save classifier output for reuse by release-decision-report (v4.34.2: eliminates
+# fragile eval/bash cross-repo path dependency)
+echo "$CLASSIFIER_OUTPUT" > /tmp/classifier-output.txt
+
 # Parse classifier output
 RISK_LEVEL=$(echo "$CLASSIFIER_OUTPUT" | grep "risk_level:" | awk '{print $2}')
 SENSITIVE_AREAS=$(echo "$CLASSIFIER_OUTPUT" | grep "sensitive_areas:" | sed 's/.*sensitive_areas: //')
@@ -57,7 +64,9 @@ ADVISORY_PATTERNS="${ADVISORY_PATTERNS:-}"
 CLASSIFIER_REASON="${CLASSIFIER_REASON:-No sensitive patterns detected}"
 
 # ─── Run release decision report ─────────────────────────────────────────
-REPORT_OUTPUT=$(bash "$ROOT_DIR/.github/scripts/release-decision-report.sh" --diff "$DIFF_RANGE" --repo "$ROOT_DIR" 2>/dev/null || echo "")
+# v4.34.2: Pass precomputed classifier output to avoid fragile internal eval/bash
+# calls that fail in cross-repo contexts (AreteLifeOS v4.34.1 validation gap)
+REPORT_OUTPUT=$(bash "$ROOT_DIR/.github/scripts/release-decision-report.sh" --diff "$DIFF_RANGE" --repo "$ROOT_DIR" --classifier-output /tmp/classifier-output.txt 2>/dev/null || echo "")
 echo "$REPORT_OUTPUT"
 
 # Save report to file for artifact upload

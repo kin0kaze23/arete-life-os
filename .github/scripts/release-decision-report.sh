@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# release-decision-report.sh — v4.33 Release Decision Report
+# release-decision-report.sh — v4.34.2 Release Decision Report
 #
 # Generates a release decision report by combining:
 # - Sensitive change classification (path + content-aware)
@@ -8,7 +8,12 @@
 #
 # Usage:
 #   bash .opencode/scripts/release-decision-report.sh [--diff <ref>] [--repo <path>] \
-#     [--manual-override] [--manual-override-reason <text>]
+#     [--manual-override] [--manual-override-reason <text>] \
+#     [--classifier-output <file>]
+#
+# When --classifier-output is provided, the report uses precomputed classifier
+# output from the specified file instead of running the classifier internally.
+# This eliminates fragile eval/bash path dependencies in cross-repo contexts.
 #
 # Non-blocking: exits 0 always (advisory output only).
 
@@ -18,6 +23,7 @@ DIFF_REF=""
 REPO_PATH="."
 MANUAL_OVERRIDE="false"
 MANUAL_OVERRIDE_REASON=""
+CLASSIFIER_OUTPUT_FILE=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -25,25 +31,40 @@ while [[ $# -gt 0 ]]; do
     --repo) REPO_PATH="$2"; shift 2 ;;
     --manual-override) MANUAL_OVERRIDE="true"; shift ;;
     --manual-override-reason) MANUAL_OVERRIDE_REASON="$2"; shift 2 ;;
+    --classifier-output) CLASSIFIER_OUTPUT_FILE="$2"; shift 2 ;;
     *) shift ;;
   esac
 done
 
-WORKSPACE_ROOT="$(cd "$(dirname "$0")/../.." WORKSPACE_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"WORKSPACE_ROOT="$(cd "$(dirname "$0")/../.." && pwd)" pwd)"
+WORKSPACE_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
 # 1. Sensitive change classification
-CLASSIFIER_ARGS=""
-if [[ -n "$DIFF_REF" ]]; then
-  CLASSIFIER_ARGS="--diff $DIFF_REF"
-fi
-if [[ "$MANUAL_OVERRIDE" == "true" ]]; then
-  CLASSIFIER_ARGS="$CLASSIFIER_ARGS --manual-override"
-  if [[ -n "$MANUAL_OVERRIDE_REASON" ]]; then
-    CLASSIFIER_ARGS="$CLASSIFIER_ARGS --manual-override-reason \"$MANUAL_OVERRIDE_REASON\""
+# Use precomputed output if provided, otherwise run classifier internally
+if [[ -n "$CLASSIFIER_OUTPUT_FILE" && -f "$CLASSIFIER_OUTPUT_FILE" ]]; then
+  CLASSIFIER_OUTPUT=$(cat "$CLASSIFIER_OUTPUT_FILE" 2>/dev/null || echo "")
+elif [[ -n "$CLASSIFIER_OUTPUT_FILE" ]]; then
+  # File specified but not found — fall back to internal call
+  echo "[release-decision-report] Warning: classifier output file not found: $CLASSIFIER_OUTPUT_FILE" >&2
+  CLASSIFIER_OUTPUT=""
+  if [[ -n "$DIFF_REF" ]]; then
+    CLASSIFIER_OUTPUT=$(cd "$REPO_PATH" && bash "$WORKSPACE_ROOT/.github/scripts/sensitive-change-classifier.sh" --diff "$DIFF_REF" 2>/dev/null || echo "")
+  else
+    CLASSIFIER_OUTPUT=$(cd "$REPO_PATH" && bash "$WORKSPACE_ROOT/.github/scripts/sensitive-change-classifier.sh" 2>/dev/null || echo "")
   fi
+else
+  # No precomputed output — run classifier internally (backward compatible)
+  CLASSIFIER_ARGS=""
+  if [[ -n "$DIFF_REF" ]]; then
+    CLASSIFIER_ARGS="--diff $DIFF_REF"
+  fi
+  if [[ "$MANUAL_OVERRIDE" == "true" ]]; then
+    CLASSIFIER_ARGS="$CLASSIFIER_ARGS --manual-override"
+    if [[ -n "$MANUAL_OVERRIDE_REASON" ]]; then
+      CLASSIFIER_ARGS="$CLASSIFIER_ARGS --manual-override-reason \"$MANUAL_OVERRIDE_REASON\""
+    fi
+  fi
+  CLASSIFIER_OUTPUT=$(cd "$REPO_PATH" && eval bash "$WORKSPACE_ROOT/.github/scripts/sensitive-change-classifier.sh" $CLASSIFIER_ARGS 2>/dev/null || echo "")
 fi
-
-CLASSIFIER_OUTPUT=$(cd "$REPO_PATH" && eval bash "$WORKSPACE_ROOT/.github/scripts/sensitive-change-classifier.sh" $CLASSIFIER_ARGS 2>/dev/null || echo "")
 
 RISK_LEVEL=$(echo "$CLASSIFIER_OUTPUT" | grep "risk_level:" | awk '{print $2}')
 SENSITIVE_AREAS=$(echo "$CLASSIFIER_OUTPUT" | grep "sensitive_areas:" | sed 's/.*sensitive_areas: //')

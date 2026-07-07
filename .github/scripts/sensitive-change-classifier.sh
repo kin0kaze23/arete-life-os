@@ -49,6 +49,8 @@ PATH_PATTERNS=(
   "deployment|vercel.json|Vercel deployment config"
   "deployment|wrangler|Cloudflare Workers config"
   "deployment|railway|Railway deployment config"
+  "deployment|.github/scripts/|CI/CD tooling scripts"
+  "deployment|.opencode/scripts/|Protocol tooling scripts"
   "pii|/pii/|PII handling"
   "pii|/user-data/|User data handling"
   "pii|/personal/|Personal data"
@@ -219,6 +221,15 @@ for file in "${CHANGED_FILES[@]}"; do
   # Docs often mention security terms descriptively without changing security behavior
   case "$file" in
     *.md|*.mdx|*.rst|LICENSE*|CHANGELOG*|CONTRIBUTING*|CODE_OF_CONDUCT*)
+      continue
+      ;;
+  esac
+
+  # Skip content-based detection for classifier/release-gate tooling scripts
+  # These scripts contain auth/security regex patterns that cause self-detection noise.
+  # Path-based detection still applies (classified as deployment tooling above).
+  case "$file" in
+    .github/scripts/*|.opencode/scripts/*)
       continue
       ;;
   esac
