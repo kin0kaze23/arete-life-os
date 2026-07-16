@@ -7,6 +7,7 @@ import { ErrorBoundary } from '@/app/ErrorBoundary';
 import { X, CheckCircle2, User, Database, Settings } from 'lucide-react';
 import { useOnlineStatus, NetworkBanner, Toast, BackgroundAura, LoadingFallback } from '@/shared';
 import { SignedIn, SignedOut, SignIn, UserButton } from '@clerk/clerk-react';
+import { validateEnvSafety } from './envSafety';
 
 const loadVault = () => import('@/vault');
 const loadDashboard = () => import('@/dashboard');
@@ -52,6 +53,10 @@ if (
 }
 
 const SignedInWrapper = isE2E ? React.Fragment : SignedIn;
+
+// Production-safe env validation — warns about dangerous env var combinations.
+// Does not weaken auth — only adds observability.
+validateEnvSafety();
 
 const App: React.FC = () => {
   const aura = useAura();
